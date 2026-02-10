@@ -1,0 +1,80 @@
+ 
+.voice-message {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 12px;
+  background-color: var(--color-item-bg);
+  border: 1px solid var(--color-border);
+  border-radius: 99px;
+  max-width: 400px;
+  width: 100%;
+  cursor: default;
+}
+
+.voice-play-btn {
+  width: 36px;
+  height: 36px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  border: none;
+  background-color: var(--color-primary);
+  color: #fff;
+  cursor: pointer;
+  transition: background-color 0.2s, transform 0.1s;
+}
+
+.voice-play-btn:hover {
+  background-color: var(--color-primary-hover);
+}
+.voice-play-btn:active {
+  transform: scale(0.9);
+}
+
+.voice-content {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+
+.voice-waveform {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  height: 28px;
+  flex: 1;
+  cursor: pointer;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+.waveform-bar {
+  width: 3px;
+  min-height: 4px;
+  border-radius: 1.5px;
+  background-color: rgba(138, 143, 150, 0.3);  
+  flex-shrink: 0;
+}
+
+.waveform-progress {
+  position: absolute;
+  top: 0;
+  left: 0;
+  height: 100%;
+  background-color: var(--color-primary);
+  mix-blend-mode: screen;  
+  pointer-events: none;
+}
+
+.voice-time {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--color-text-secondary);
+  font-variant-numeric: tabular-nums;
+}

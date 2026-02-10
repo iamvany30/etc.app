@@ -1,0 +1,39 @@
+ 
+.titlebar {
+    height: 32px;
+    background-color: var(--color-background);  
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    
+     
+    box-shadow: 0 1px 3px rgba(0,0,0,0.2); 
+    border-bottom: 1px solid var(--color-border);
+    
+    user-select: none;
+    -webkit-app-region: drag; 
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: 99999;
+}
+
+ 
+.titlebar-left { width: 135px; }
+.titlebar-center {
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--color-text-secondary);
+    letter-spacing: 0.5px;
+    text-transform: lowercase;
+    pointer-events: none;
+}
+.titlebar-right { display: flex; -webkit-app-region: no-drag; }
+.title-button {
+    width: 45px; height: 31px; display: flex; align-items: center; justify-content: center;
+    background: transparent; border: none; color: var(--color-text); transition: background-color 0.2s;
+}
+.title-button:hover { background-color: var(--color-border-light); }
+.title-button.close:hover { background-color: #e81123; color: #fff; }
+.title-button svg { width: 10px; height: 10px; }

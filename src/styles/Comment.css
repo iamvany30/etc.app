@@ -1,0 +1,50 @@
+.replies-container {
+    margin-left: 20px;
+    padding-left: 12px;
+    border-left: 1px solid var(--color-border);
+    margin-top: 4px;
+}
+
+.comment-actions {
+    margin-top: 4px;
+}
+
+.comment-reply-btn {
+    background: none;
+    border: none;
+    color: var(--color-text-secondary);
+    font-size: 13px;
+    cursor: pointer;
+    padding: 0;
+}
+
+.comment-reply-btn:hover {
+    text-decoration: underline;
+    color: var(--color-primary);
+}
+
+.reply-form {
+    display: flex;
+    gap: 8px;
+    margin-top: 8px;
+    background: var(--color-input-bg);
+    padding: 6px 12px;
+    border-radius: 20px;
+}
+
+.reply-input {
+    flex: 1;
+    background: none;
+    border: none;
+    color: var(--color-text);
+    outline: none;
+    font-size: 14px;
+}
+
+.reply-form button {
+    background: none;
+    border: none;
+    color: var(--color-primary);
+    font-weight: bold;
+    cursor: pointer;
+}

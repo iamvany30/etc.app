@@ -1,0 +1,210 @@
+.create-post-card {
+    padding: 16px;
+    border-bottom: 1px solid var(--color-border);
+    background-color: var(--color-background);
+}
+
+.create-post-inner {
+    display: flex;
+    gap: 12px;
+}
+
+.create-post-content {
+    flex: 1;
+    padding-top: 4px;
+}
+
+.create-post-textarea {
+    width: 100%;
+    border: none;
+    background: transparent;
+    color: var(--color-text);
+    font-size: 20px;
+    font-family: inherit;
+    resize: none;
+    outline: none;
+    min-height: 28px;
+    line-height: 24px;
+}
+
+.create-post-textarea::placeholder {
+    color: var(--color-text-secondary);
+}
+
+ 
+.create-post-footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 12px;
+    padding-left: 52px;  
+}
+
+.create-post-tools {
+    display: flex;
+    gap: 4px;
+    margin-left: -8px;  
+}
+
+.tool-btn {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    border: none;
+    background: none;
+    color: var(--color-primary);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background-color 0.2s;
+}
+
+.tool-btn:hover {
+    background-color: rgba(29, 155, 240, 0.1);
+}
+
+.tool-btn svg {
+    fill: currentColor;
+}
+
+.create-post-submit, .tool-btn.mic {
+    min-width: 40px;
+    background-color: var(--color-primary);
+    color: #ffffff;
+    border: none;
+    border-radius: 9999px;
+    font-weight: 700;
+    font-size: 15px;
+    cursor: pointer;
+    transition: background-color 0.2s, opacity 0.2s;
+}
+
+.create-post-submit {
+     padding: 8px 16px;
+}
+
+.create-post-submit:hover:not(:disabled) {
+    background-color: var(--color-primary-hover);
+}
+
+.create-post-submit:disabled {
+    opacity: 0.5;
+    cursor: default;
+}
+
+.tool-btn.mic:hover {
+    background-color: var(--color-primary-hover);
+}
+
+ 
+.attachments-preview {
+    display: flex;
+    gap: 8px;
+    margin-top: 12px;
+    overflow-x: auto;
+    padding-bottom: 4px;
+}
+
+.attachment-item {
+    position: relative;
+    width: fit-content;
+}
+
+.attachment-item img {
+    height: 200px;
+    border-radius: 16px;
+    border: 1px solid var(--color-border);
+    object-fit: cover;
+}
+
+.remove-att-btn {
+    position: absolute;
+    top: 4px;
+    right: 4px;
+    background-color: rgba(0, 0, 0, 0.7);
+    border: none;
+    border-radius: 50%;
+    width: 28px;
+    height: 28px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+
+.remove-att-btn:hover {
+    background-color: rgba(0, 0, 0, 0.9);
+}
+
+ 
+
+.voice-recorder-ui {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    width: 100%;
+    background-color: var(--color-item-bg);
+    border-radius: 99px;
+    padding: 6px 10px;
+    min-height: 52px;  
+}
+
+.voice-btn {
+    flex-shrink: 0;
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    border: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: background-color 0.2s;
+    padding: 0;
+}
+
+.voice-btn.stop { background-color: #f4212e; color: #fff; }
+.voice-btn.play, .voice-btn.send { background-color: var(--color-primary); color: #fff; }
+.voice-btn.cancel, .voice-btn.delete { background: none; color: var(--color-text-secondary); }
+.voice-btn:hover { opacity: 0.8; }
+.voice-btn:disabled { opacity: 0.5; cursor: wait; }
+
+.voice-waveform {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    gap: 2px;
+    height: 24px;
+    overflow: hidden;
+    min-width: 0;
+}
+
+.voice-bar {
+    width: 3px;
+    border-radius: 1.5px;
+    transition: transform 0.1s ease-out;
+}
+.voice-bar.recording {
+    background-color: #f4212e;
+}
+.voice-bar.preview {
+    background-color: var(--color-text-muted);
+}
+
+.voice-time {
+    font-size: 14px;
+    color: var(--color-text-secondary);
+    font-variant-numeric: tabular-nums;
+    min-width: 40px;
+    text-align: right;
+}
+
+.create-post-media-preview {
+    height: 200px;
+    border-radius: 16px;
+    border: 1px solid var(--color-border);
+    object-fit: cover;
+    background-color: #000;
+}

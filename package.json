@@ -1,0 +1,84 @@
+{
+  "name": "etc.app",
+  "version": "0.1.0",
+  "description": "etc.app",
+  "author": "imvany",
+  "private": true,
+  "main": "electron/main.js",
+  "homepage": "./",
+  "dependencies": {
+    "@testing-library/dom": "^10.4.1",
+    "@testing-library/jest-dom": "^6.9.1",
+    "@testing-library/react": "^16.3.2",
+    "@testing-library/user-event": "^13.5.0",
+    "jsmediatags": "^3.9.7",
+    "react": "^19.2.4",
+    "react-dom": "^19.2.4",
+    "react-router-dom": "^7.13.0",
+    "react-scripts": "5.0.1",
+    "web-vitals": "^2.1.4"
+  },
+  "scripts": {
+    "start": "react-scripts start",
+    "build": "react-scripts build",
+    "test": "react-scripts test",
+    "eject": "react-scripts eject",
+    "electron": "wait-on http://localhost:3000 && electron .",
+    "dev": "concurrently \"npm start\" \"npm run electron\"",
+    "dist": "npm run build && electron-builder"
+  },
+  "build": {
+  "appId": "com.etc.app",
+  "productName": "итд.app",
+  "directories": {
+    "output": "dist"
+  },
+  "files": [
+    "build/**/*",
+    "electron/**/*",
+    "package.json"
+  ],
+  "win": {
+    "target": "nsis",
+    "icon": "build/favicon.ico"
+  },
+  "mac": {
+    "target": "dmg",
+    "category": "public.app-category.social-networking"
+  },
+  "linux": {
+    "target": [
+      "AppImage",
+      "deb"
+    ],
+    "category": "Chat"
+  },
+  "publish": {
+    "provider": "github"
+  }
+},
+  "eslintConfig": {
+    "extends": [
+      "react-app",
+      "react-app/jest"
+    ]
+  },
+  "browserslist": {
+    "production": [
+      ">0.2%",
+      "not dead",
+      "not op_mini all"
+    ],
+    "development": [
+      "last 1 chrome version",
+      "last 1 firefox version",
+      "last 1 safari version"
+    ]
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.2",
+    "electron": "^34.0.0",
+    "electron-builder": "^24.13.3",
+    "wait-on": "^8.0.2"
+  }
+}

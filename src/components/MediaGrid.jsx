@@ -1,0 +1,130 @@
+import React from 'react';
+import { useModal } from '../context/ModalContext';
+import ImageModal from './modals/ImageModal';
+import VoicePlayer from './VoicePlayer';
+import '../styles/MediaGrid.css';
+
+
+
+const isVideo = (attachment) => {
+    const type = attachment.mimeType || attachment.type || '';
+    const url = attachment.url || '';
+    if (type.startsWith('video/')) return true;
+    return /\.(mp4|webm|ogg|mov|qt)(?:\?|$)/i.test(url);
+};
+
+const DownloadIcon = () => (
+    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+        <polyline points="7 10 12 15 17 10"></polyline>
+        <line x1="12" y1="15" x2="12" y2="3"></line>
+    </svg>
+);
+
+const MediaGrid = ({ attachments }) => {
+    const { openModal } = useModal();
+
+    if (!attachments || attachments.length === 0) return null;
+
+    
+    const visualMedia = attachments.filter(a => !a.type?.startsWith('audio/') && !(a.mimeType || '').startsWith('audio/'));
+    const audioMedia = attachments.filter(a => a.type?.startsWith('audio/') || (a.mimeType || '').startsWith('audio/'));
+
+    
+    const handleOpenModal = (e, index) => {
+        
+        if (e.target.tagName === 'VIDEO' || e.target.closest('.media-download-overlay-btn')) return;
+        
+        e.preventDefault();
+        e.stopPropagation();
+        openModal(<ImageModal images={visualMedia} initialIndex={index} />);
+    };
+
+    const handleDownload = (e, media) => {
+        e.preventDefault();
+        e.stopPropagation(); 
+
+        const url = media.url;
+        
+        if (window.api && window.api.downloadFile) {
+            
+            window.api.downloadFile(url);
+        } else {
+            
+            const link = document.createElement('a');
+            link.href = url;
+            link.setAttribute('download', ''); 
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+    };
+
+    return (
+        <div className="media-content-wrapper" onClick={e => e.stopPropagation()}>
+            
+            
+            {audioMedia.length > 0 && (
+                <div className="audio-list">
+                    {audioMedia.map(track => (
+                        <VoicePlayer key={track.id} src={track.url} duration={track.duration} />
+                    ))}
+                </div>
+            )}
+
+            
+            {visualMedia.length > 0 && (
+                <div className={`media-grid count-${Math.min(visualMedia.length, 4)}`}>
+                    {visualMedia.slice(0, 4).map((media, index) => {
+                        const isVid = isVideo(media);
+
+                        return (
+                            <div 
+                                key={media.id} 
+                                className="media-item"
+                                onClick={(e) => !isVid && handleOpenModal(e, index)}
+                            >
+                                
+                                <button 
+                                    className="media-download-overlay-btn" 
+                                    onClick={(e) => handleDownload(e, media)}
+                                    title="Скачать файл на компьютер"
+                                >
+                                    <DownloadIcon />
+                                </button>
+
+                                
+                                {isVid ? (
+                                    <div className="video-container">
+                                        <video 
+                                            src={media.url} 
+                                            preload="metadata" 
+                                            controls 
+                                            className="post-video"
+                                        />
+                                    </div>
+                                ) : (
+                                    <img 
+                                        src={media.url} 
+                                        alt="post media" 
+                                        className="post-image"
+                                        loading="lazy"
+                                    />
+                                )}
+
+                                
+                                {index === 3 && visualMedia.length > 4 && (
+                                    <div className="more-overlay" onClick={(e) => handleOpenModal(e, index)}>
+                                        <span>+{visualMedia.length - 4}</span>
+                                    </div>
+                                )}
+                            </div>
+                        );
+                    })}
+                </div>
+            )}
+        </div>
+    );
+};
+
+export default MediaGrid;

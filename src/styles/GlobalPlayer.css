@@ -1,0 +1,139 @@
+.global-player {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background-color: var(--color-card);
+    border-top: 1px solid var(--color-border);
+    height: 75px;
+    display: flex;
+    flex-direction: column;
+    z-index: 1002; 
+    box-shadow: 0 -4px 12px rgba(0, 0, 0, 0.2);
+    transition: bottom 0.3s ease;
+}
+
+.gp-progress-container {
+    height: 4px;
+    background-color: var(--color-border);
+    cursor: pointer;
+    width: 100%;
+    position: relative;
+}
+
+.gp-progress-bar {
+    height: 100%;
+    background-color: var(--color-primary);
+    position: absolute;
+    top: 0; left: 0;
+}
+
+.gp-inner {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 16px;
+    flex: 1;
+}
+
+.gp-info {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    width: 40%;
+    overflow: hidden;
+}
+
+.gp-avatar {
+    width: 42px;
+    height: 42px;
+    background-color: var(--color-item-bg);
+    border-radius: 6px;
+    overflow: hidden;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.gp-cover-img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.gp-text {
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+.gp-title {
+    font-weight: 700;
+    font-size: 14px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.gp-artist {
+    font-size: 12px;
+    color: var(--color-text-secondary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.gp-controls {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+}
+
+.gp-btn {
+    background: none;
+    border: none;
+    color: var(--color-text);
+    cursor: pointer;
+    padding: 8px;
+    border-radius: 50%;
+}
+.gp-btn:hover { background-color: var(--color-item-bg); }
+
+.gp-play-btn {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    border: none;
+    background-color: var(--color-text);
+    color: var(--color-background);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+}
+
+.gp-time {
+    font-size: 12px;
+    color: var(--color-text-secondary);
+    font-variant-numeric: tabular-nums;
+    width: 20%;
+    text-align: right;
+    display: none; 
+}
+@media (min-width: 600px) {
+    .gp-time { display: block; }
+}
+
+
+@media (max-width: 500px) {
+    .global-player {
+        bottom: 54px; 
+        border-bottom: 1px solid var(--color-border); 
+        height: 65px; 
+    }
+    
+    .gp-avatar { width: 36px; height: 36px; }
+    
+    .gp-controls { gap: 8px; }
+}

@@ -1,0 +1,43 @@
+ 
+
+.mobile-nav {
+    display: flex;
+    justify-content: space-around;
+    align-items: center;
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    height: 53px;
+    background-color: rgba(0, 0, 0, 0.85);  
+    backdrop-filter: blur(12px);
+    border-top: 1px solid var(--color-border);
+    z-index: 1000;
+}
+
+.mobile-nav-item {
+    flex: 1;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100%;
+    color: var(--color-text-secondary);
+    transition: color 0.2s;
+}
+
+.mobile-nav-item.active {
+    color: var(--color-text);
+}
+
+.mobile-nav-item svg {
+     
+    width: 26px;
+    height: 26px;
+}
+
+ 
+@media (min-width: 500px) {
+    .mobile-nav {
+        display: none;
+    }
+}

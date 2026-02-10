@@ -1,0 +1,245 @@
+ 
+
+.settings-modal {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    min-height: 400px;
+    background-color: var(--color-card);
+}
+
+ 
+.settings-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 16px 20px;
+    border-bottom: 1px solid var(--color-border);
+    position: sticky;
+    top: 0;
+    background-color: var(--color-card);
+    z-index: 10;
+}
+
+.settings-back-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    border: none;
+    background: transparent;
+    color: var(--color-text);
+    cursor: pointer;
+    transition: background-color 0.2s;
+    margin-left: -8px;
+}
+
+.settings-back-btn:hover {
+    background-color: var(--color-border-light);
+}
+
+.settings-title {
+    flex: 1;
+    font-weight: 800;
+    font-size: 20px;
+    color: var(--color-text);
+    margin: 0;
+}
+
+ 
+.settings-content {
+    flex: 1;
+    overflow-y: auto;
+    padding-bottom: 20px;
+}
+
+ 
+.settings-section-title {
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--color-text-secondary);
+    margin: 20px 20px 8px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.settings-option {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 20px;
+    background: none;
+    border: none;
+    cursor: pointer;
+    text-align: left;
+    transition: background-color 0.2s;
+    color: var(--color-text);
+}
+
+.settings-option:hover {
+    background-color: var(--color-border-light);
+}
+
+.settings-option-left {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+}
+
+.settings-icon {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    background-color: var(--color-item-bg);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--color-text);
+    flex-shrink: 0;
+}
+
+.settings-option-info {
+    display: flex;
+    flex-direction: column;
+}
+
+.settings-option-name {
+    font-weight: 500;
+    font-size: 15px;
+    color: var(--color-text);
+}
+
+.settings-option-desc {
+    font-size: 13px;
+    color: var(--color-text-secondary);
+}
+
+.settings-arrow {
+    color: var(--color-text-muted);
+}
+
+ 
+.settings-option.danger .settings-icon {
+    background-color: rgba(244, 33, 46, 0.1);
+    color: #f4212e;
+}
+.settings-option.danger .settings-option-name {
+    color: #f4212e;
+}
+
+ 
+.settings-toggle {
+    cursor: default;
+}
+.settings-toggle:hover {
+    background-color: transparent;
+}
+
+.toggle-switch {
+    width: 44px;
+    height: 24px;
+    background-color: var(--color-border);
+    border-radius: 99px;
+    position: relative;
+    cursor: pointer;
+    transition: background-color 0.2s;
+    border: none;
+    padding: 2px;
+}
+
+.toggle-switch.active {
+    background-color: var(--color-primary);
+}
+
+.toggle-thumb {
+    width: 20px;
+    height: 20px;
+    background-color: #fff;
+    border-radius: 50%;
+    display: block;
+    transition: transform 0.2s;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+}
+
+.toggle-switch.active .toggle-thumb {
+    transform: translateX(20px);
+}
+
+ 
+.settings-form {
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+.form-group {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.form-label {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--color-text-secondary);
+}
+
+.form-input, .form-textarea {
+    width: 100%;
+    padding: 12px;
+    background-color: var(--color-input-bg);
+    border: 1px solid transparent;
+    border-radius: 12px;
+    color: var(--color-text);
+    font-size: 15px;
+    font-family: inherit;
+    outline: none;
+    transition: border-color 0.2s;
+}
+
+.form-input:focus, .form-textarea:focus {
+    border-color: var(--color-primary);
+    background-color: var(--color-background);
+}
+
+.form-hint {
+    font-size: 12px;
+    color: var(--color-text-secondary);
+}
+
+.settings-save-btn {
+    width: 100%;
+    padding: 12px;
+    background-color: var(--color-text);
+    color: var(--color-background);
+    border: none;
+    border-radius: 99px;
+    font-weight: 700;
+    font-size: 15px;
+    cursor: pointer;
+    margin-top: 10px;
+}
+.settings-save-btn:disabled {
+    opacity: 0.5;
+    cursor: default;
+}
+
+.status-message {
+    padding: 12px;
+    border-radius: 12px;
+    font-size: 14px;
+    margin: 0 20px;
+    text-align: center;
+}
+.status-message.error {
+    background-color: rgba(244, 33, 46, 0.1);
+    color: #f4212e;
+}
+.status-message.success {
+    background-color: rgba(0, 186, 124, 0.1);
+    color: #00ba7c;
+}

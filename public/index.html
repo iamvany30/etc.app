@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="ru">
+  <head>
+    <meta charset="utf-8" />
+    <link rel="icon" href="%PUBLIC_URL%/favicon.ico" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#000000" />
+    
+    <!-- ОБНОВЛЕННЫЙ CSP: Добавлена поддержка *.bckt.ru для медиа -->
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="
+        default-src 'self';
+        script-src 'self' 'unsafe-inline';
+        style-src 'self' 'unsafe-inline' https://fonts.googleapis.com;
+        font-src 'self' https://fonts.gstatic.com;
+        img-src 'self' data: blob: https://xn--d1ah4a.com https://*.bckt.ru;
+        media-src 'self' data: blob: https://xn--d1ah4a.com https://*.bckt.ru;
+        connect-src 'self' https://xn--d1ah4a.com https://*.bckt.ru;
+      "
+    />
+
+    <title>итд.app</title>
+  </head>
+  <body>
+    <noscript>You need to enable JavaScript to run this app.</noscript>
+    <div id="root"></div>
+  </body>
+</html>

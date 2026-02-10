@@ -30,9 +30,11 @@
   "build": {
     "appId": "com.etc.app",
     "productName": "итд.app",
-    "extends": null,
-    "directories": {
-      "output": "dist"
+    "artifactName": "${name}-setup-${version}.${ext}",
+    "publish": {
+      "provider": "github",
+      "owner": "imvany",
+      "repo": "etc.app"
     },
     "files": [
       "build/**/*",
@@ -58,11 +60,6 @@
       ],
       "category": "Chat",
       "icon": "public/favicon.ico"
-    },
-    "publish": {
-      "provider": "github",
-      "owner": "ТВОЙ_ЛОГИН_GITHUB",
-      "repo": "ТВОЙ_РЕПОЗИТОРИЙ"
     }
   },
   "eslintConfig": {

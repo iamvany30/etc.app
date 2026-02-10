@@ -33,7 +33,7 @@
     "artifactName": "${name}-setup-${version}.${ext}",
     "publish": {
       "provider": "github",
-      "owner": "imvany",
+      "owner": "iamvany30",
       "repo": "etc.app"
     },
     "files": [

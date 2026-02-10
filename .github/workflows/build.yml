@@ -1,4 +1,5 @@
 name: Build and Publish
+run: CI=false npm run build
 
 on:
   push:

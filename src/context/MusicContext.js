@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useRef, useEffect } from 'react';
+import React, { createContext, useContext, useState, useRef, useEffect, useCallback } from 'react';
 
 const MusicContext = createContext();
 
@@ -10,7 +10,16 @@ export const MusicProvider = ({ children }) => {
     const [duration, setDuration] = useState(0);
     const audioRef = useRef(new Audio());
 
-    const playTrack = (track, newPlaylist = []) => {
+    const togglePlay = useCallback(() => {
+        if (isPlaying) {
+            audioRef.current.pause();
+        } else {
+            if (audioRef.current.src) audioRef.current.play();
+        }
+        setIsPlaying(!isPlaying);
+    }, [isPlaying]);
+
+    const playTrack = useCallback((track, newPlaylist = []) => {
         if (currentTrack?.id === track.id) {
             togglePlay();
             return;
@@ -22,30 +31,21 @@ export const MusicProvider = ({ children }) => {
         audioRef.current.src = track.src;
         audioRef.current.play();
         setIsPlaying(true);
-    };
+    }, [currentTrack, togglePlay]);
 
-    const togglePlay = () => {
-        if (isPlaying) {
-            audioRef.current.pause();
-        } else {
-            if (audioRef.current.src) audioRef.current.play();
-        }
-        setIsPlaying(!isPlaying);
-    };
-
-    const nextTrack = () => {
+    const nextTrack = useCallback(() => {
         const index = playlist.findIndex(t => t.id === currentTrack?.id);
         if (index !== -1 && index < playlist.length - 1) {
             playTrack(playlist[index + 1]);
         }
-    };
+    }, [playlist, currentTrack, playTrack]);
 
-    const prevTrack = () => {
+    const prevTrack = useCallback(() => {
         const index = playlist.findIndex(t => t.id === currentTrack?.id);
         if (index > 0) {
             playTrack(playlist[index - 1]);
         }
-    };
+    }, [playlist, currentTrack, playTrack]);
 
     useEffect(() => {
         const audio = audioRef.current;
@@ -62,7 +62,7 @@ export const MusicProvider = ({ children }) => {
             audio.removeEventListener('loadedmetadata', updateDuration);
             audio.removeEventListener('ended', handleEnd);
         };
-    }, [playlist, currentTrack, nextTrack]);
+    }, [nextTrack]);
 
     return (
         <MusicContext.Provider value={{

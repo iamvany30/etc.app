@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { apiClient } from '../api/client';
-import { useUser } from '../context/UserContext';
 import '../styles/Comment.css';
 
 const renderParsedText = (text) => {
@@ -10,7 +9,7 @@ const renderParsedText = (text) => {
     const parts = text.split(regex).filter(Boolean);
 
     return parts.map((part, i) => {
-        if (/^https?:\/\//.test(part)) return <a key={i} href={part} target="_blank" rel="noopener" className="post-external-link">{part}</a>;
+        if (/^https?:\/\//.test(part)) return <a key={i} href={part} target="_blank" rel="noopener noreferrer" className="post-external-link">{part}</a>;
         if (part.startsWith('#')) return <Link key={i} to={`/explore?q=${encodeURIComponent(part)}`} className="post-hashtag">{part}</Link>;
         if (part.startsWith('@')) return <Link key={i} to={`/profile/${part.substring(1)}`} className="post-mention">{part}</Link>;
         return part;
@@ -18,7 +17,6 @@ const renderParsedText = (text) => {
 };
 
 const Comment = ({ comment, postId, onCommentAdded }) => {
-    const { currentUser } = useUser();
     const [isReplying, setIsReplying] = useState(false);
     const [replyText, setReplyText] = useState('');
     const [isSubmitting, setIsSubmitting] = useState(false);
@@ -29,7 +27,6 @@ const Comment = ({ comment, postId, onCommentAdded }) => {
 
         setIsSubmitting(true);
         try {
-            
             const finalContent = `@${comment.author.username} ${replyText}`;
             const res = await apiClient.addComment(postId, finalContent);
             

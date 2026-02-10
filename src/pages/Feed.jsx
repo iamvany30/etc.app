@@ -67,7 +67,7 @@ const Feed = () => {
         setNextCursor(null);
         setHasMore(true);
         loadPosts(true);
-    }, [tab]);
+    }, [tab, loadPosts]);
 
     /**
      * Коллбэк для последнего элемента (Infinite Scroll)

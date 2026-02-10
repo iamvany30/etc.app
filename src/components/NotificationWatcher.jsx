@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import { useEffect, useRef } from 'react';
 import { useUser } from '../context/UserContext';
 import { apiClient } from '../api/client';
 

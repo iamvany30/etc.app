@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useUser } from '../../context/UserContext';
 import { useModal } from '../../context/ModalContext';
-import { apiClient } from '../../api/client';
+
 
 const EditProfileModal = () => {
     const { currentUser, setCurrentUser } = useUser();

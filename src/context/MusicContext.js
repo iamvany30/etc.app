@@ -62,7 +62,7 @@ export const MusicProvider = ({ children }) => {
             audio.removeEventListener('loadedmetadata', updateDuration);
             audio.removeEventListener('ended', handleEnd);
         };
-    }, [playlist, currentTrack]);
+    }, [playlist, currentTrack, nextTrack]);
 
     return (
         <MusicContext.Provider value={{

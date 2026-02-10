@@ -1,6 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useModal } from '../../context/ModalContext';
-import { apiClient } from '../../api/client';
 import { useUser } from '../../context/UserContext';
 import '../../styles/BannerEditorModal.css';
 

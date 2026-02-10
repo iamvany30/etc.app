@@ -152,6 +152,7 @@ function createMainWindow() {
         backgroundColor: '#101214', 
         frame: false,
         show: false,
+        icon: path.join(__dirname, '../public/favicon.ico'), 
         webPreferences: {
             preload: path.join(__dirname, 'preload.js'),
             contextIsolation: true,

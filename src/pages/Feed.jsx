@@ -11,30 +11,26 @@ const Feed = () => {
     const [loading, setLoading] = useState(true);
     const [loadingMore, setLoadingMore] = useState(false);
     const [error, setError] = useState(null);
-    const [nextCursor, setNextCursor] = useState(null);
     const [hasMore, setHasMore] = useState(true);
 
+    const nextCursorRef = useRef(null);
     const observer = useRef();
 
-    /**
-     * Основная функция загрузки постов
-     */
     const loadPosts = useCallback(async (isInitial = false) => {
         if (!isInitial && (loadingMore || !hasMore)) return;
         
         if (isInitial) {
             setLoading(true);
-            setPosts([]); 
         } else {
             setLoadingMore(true);
         }
         
         setError(null);
 
-        const cursor = isInitial ? null : nextCursor;
+        // Берем курсор из рефа
+        const cursor = isInitial ? null : nextCursorRef.current;
         
         try {
-            
             const res = await apiClient.getPosts(tab, cursor, 20);
             
             const newPosts = res?.data?.posts || res?.posts || [];
@@ -47,7 +43,7 @@ const Feed = () => {
             }
 
             if (pagination) {
-                setNextCursor(pagination.nextCursor);
+                nextCursorRef.current = pagination.nextCursor;
                 setHasMore(pagination.hasMore);
             } else {
                 setHasMore(false);
@@ -60,18 +56,16 @@ const Feed = () => {
             setLoading(false);
             setLoadingMore(false);
         }
-    }, [tab, nextCursor, hasMore, loadingMore]);
+    }, [tab]); 
 
     
     useEffect(() => {
-        setNextCursor(null);
+        nextCursorRef.current = null;
         setHasMore(true);
+        setPosts([]);
         loadPosts(true);
     }, [tab, loadPosts]);
 
-    /**
-     * Коллбэк для последнего элемента (Infinite Scroll)
-     */
     const lastPostRef = useCallback(node => {
         if (loading || loadingMore) return;
         if (observer.current) observer.current.disconnect();
@@ -86,13 +80,11 @@ const Feed = () => {
     }, [loading, loadingMore, hasMore, loadPosts]);
 
     const handlePostCreated = (newPost) => {
-        
         setPosts(prev => [newPost, ...prev]);
     };
 
     return (
         <div className="feed-page">
-            
             <header className="feed-tabs">
                 <button
                     className={`feed-tab ${tab === 'popular' ? 'active' : ''}`}
@@ -108,11 +100,9 @@ const Feed = () => {
                 </button>
             </header>
 
-            
             <CreatePost onPostCreated={handlePostCreated} />
 
-            
-            {loading ? (
+            {loading && posts.length === 0 ? (
                 <div className="skeleton-list">
                     {[1, 2, 3, 4].map(i => <PostSkeleton key={i} />)}
                 </div>
@@ -129,10 +119,8 @@ const Feed = () => {
                 </div>
             )}
 
-            
-            {loadingMore && <PostSkeleton />}
+            {loadingMore && <div style={{padding: 20}}><PostSkeleton /></div>}
 
-            
             {error && !loading && (
                 <div className="feed-error">
                     <p>{error}</p>
@@ -140,14 +128,12 @@ const Feed = () => {
                 </div>
             )}
 
-            
             {!loading && !loadingMore && !hasMore && posts.length > 0 && (
                 <div className="feed-end-message">
                     <span>✨</span> Вы просмотрели всё на сегодня
                 </div>
             )}
 
-            
             {!loading && posts.length === 0 && !error && (
                 <div className="empty-state">
                     <h3>Здесь пока ничего нет</h3>

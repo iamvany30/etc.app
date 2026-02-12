@@ -1,60 +1,151 @@
-.image-modal-container {
+.img-modal-overlay {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    background-color: transparent;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    user-select: none;
+}
+
+ 
+.img-modal-toolbar {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 64px;
+    padding: 0 20px;
     display: flex;
     align-items: center;
-    justify-content: center;
-    width: 100%;
-    height: 100vh;
-    background-color: rgba(0, 0, 0, 0.9);
+    justify-content: space-between;
+     
+    background: linear-gradient(to bottom, rgba(0,0,0,0.4) 0%, transparent 100%);
+    z-index: 100;
 }
 
-.image-modal-content {
-    position: relative;
-    max-width: 95vw;
-    max-height: 95vh;
-    display: flex;       
-    align-items: center; 
-    justify-content: center; 
+.img-info {
+    color: rgba(255, 255, 255, 0.9);
+    font-size: 14px;
+    font-weight: 500;
+    display: flex;
+    gap: 12px;
+    align-items: center;
+    text-shadow: 0 1px 2px rgba(0,0,0,0.5);
 }
 
-.modal-media {
-    max-width: 100%;
-    max-height: 95vh;
-    object-fit: contain;
-    display: block;
-    border-radius: 8px;
+.zoom-badge {
+    background: rgba(255, 255, 255, 0.2);
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-size: 12px;
+    font-weight: 600;
 }
 
-.image-modal-content img {
-    max-width: 100%;
-    max-height: 95vh;
-    object-fit: contain;
-    display: block;
-    border-radius: 8px;
+.img-actions {
+    display: flex;
+    gap: 10px;
 }
 
-.image-modal-nav {
-    position: absolute;
-    top: 50%;
-    transform: translateY(-50%);
-    background: rgba(255,255,255,0.1);
+ 
+.img-actions button {
+    background: rgba(0, 0, 0, 0.3);  
     border: none;
-    color: white;
-    width: 44px;
-    height: 44px;
+    color: rgba(255, 255, 255, 0.9);
+    width: 36px;
+    height: 36px;
     border-radius: 50%;
     cursor: pointer;
     display: flex;
     align-items: center;
     justify-content: center;
-    transition: background 0.2s;
+    transition: all 0.2s ease;
 }
 
-.image-modal-nav:hover { background: rgba(255,255,255,0.2); }
-.image-modal-nav.prev { left: -60px; }
-.image-modal-nav.next { right: -60px; }
-
-@media (max-width: 800px) {
-    .image-modal-nav.prev { left: 10px; }
-    .image-modal-nav.next { right: 10px; }
+.img-actions button:hover {
+    background: rgba(255, 255, 255, 0.2);
+    color: #fff;
 }
 
+ 
+.img-viewport {
+    flex: 1;
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: transparent;
+}
+
+.img-transform-layer {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    will-change: transform;
+}
+
+ 
+.modal-media-node {
+     
+    max-width: 100%;
+    max-height: 100%;
+    width: auto;
+    height: auto;
+    
+     
+    object-fit: contain;
+    display: block;
+    box-shadow: 0 10px 40px rgba(0,0,0,0.5);  
+    border-radius: 4px;  
+    
+    transition: transform 0.1s linear;  
+}
+
+ 
+.nav-btn {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    background: rgba(30, 30, 30, 0.4);
+    border: none;
+    color: rgba(255, 255, 255, 0.8);
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;  
+    font-size: 20px;
+    cursor: pointer;
+    z-index: 90;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.nav-btn:hover {
+    background: rgba(255, 255, 255, 0.2);
+    color: #fff;
+    transform: translateY(-50%) scale(1.1);
+}
+
+.nav-btn.prev { left: 20px; }
+.nav-btn.next { right: 20px; }
+
+ 
+.img-modal-footer {
+    position: absolute;
+    bottom: 25px;
+    left: 50%;
+    transform: translateX(-50%);
+    color: rgba(255, 255, 255, 0.6);
+    font-size: 13px;
+    background: rgba(0, 0, 0, 0.5);
+    padding: 6px 16px;
+    border-radius: 20px;
+    pointer-events: none;
+    opacity: 0;
+    animation: fadeInFooter 0.5s 1s forwards;  
+}
+
+@keyframes fadeInFooter { to { opacity: 1; } }

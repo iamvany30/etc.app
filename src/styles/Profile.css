@@ -1,11 +1,11 @@
 
 
+
 .profile-page {
     display: flex;
     flex-direction: column;
     min-height: 100%;
     position: relative;
-    padding-bottom: 60px; 
 }
 
 
@@ -240,7 +240,6 @@
     align-items: center;
     justify-content: center;
     transition: background-color 0.2s;
-    position: relative;
 }
 
 .profile-tab:hover {
@@ -255,14 +254,25 @@
     color: var(--color-text-secondary);
     font-weight: 500;
     font-size: 15px;
-    border-bottom: 4px solid transparent;
-    padding-top: 4px; 
+    padding: 0 16px;
 }
 
 .profile-tab.active .tab-content {
     color: var(--color-text);
     font-weight: 700;
-    border-bottom-color: var(--color-primary);
+}
+
+.profile-tab.active .tab-content::after {
+    content: "";
+    position: absolute;
+    bottom: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 100%;
+    min-width: 56px;
+    height: 4px;
+    background-color: var(--color-primary);
+    border-radius: 9999px;
 }
 
 
@@ -355,3 +365,30 @@
     to { transform: translate(-50%, -50%) rotate(360deg); }
 }
 
+ 
+.mutual-badge {
+    background-color: var(--color-item-bg);
+    color: var(--color-text-secondary);
+    font-size: 11px;
+    padding: 2px 8px;
+    border-radius: 4px;
+    margin-left: 10px;
+    font-weight: 600;
+    text-transform: lowercase;
+}
+
+ 
+.user-item-name-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.mutual-badge-mini {
+    background-color: var(--color-border);
+    color: var(--color-text-secondary);
+    font-size: 10px;
+    padding: 1px 4px;
+    border-radius: 3px;
+    font-weight: bold;
+}

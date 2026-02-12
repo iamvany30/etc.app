@@ -1,3 +1,4 @@
+ 
 .global-player {
     position: fixed;
     bottom: 0;
@@ -8,7 +9,8 @@
     height: 75px;
     display: flex;
     flex-direction: column;
-    z-index: 1002; 
+     
+    z-index: 500; 
     box-shadow: 0 -4px 12px rgba(0, 0, 0, 0.2);
     transition: bottom 0.3s ease;
 }

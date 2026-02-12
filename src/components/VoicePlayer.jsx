@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { PlayIcon, PauseIcon } from './icons/MediaIcons';  
+import '../styles/VoicePlayer.css';
 
 const VoicePlayer = ({ src, duration = 0 }) => {
     const audioRef = useRef(null);

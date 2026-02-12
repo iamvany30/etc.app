@@ -2,40 +2,74 @@
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
 
  
-:root, :root[data-theme='light'] {
+ 
+:root {
+   
   --color-primary: #1d9bf0;
-  --color-primary-hover: #1a8cd8;
-  --color-background: #ffffff;
-  --color-card: #ffffff;
-  --color-item-bg: #f7f9fa;
-  --color-border: #eff3f4;
-  --color-border-light: #eff3f4cc;
-  --color-input-bg: #eff3f4;
-  --color-text: #0f1419;
-  --color-text-secondary: #536471;
-  --color-text-muted: #8899a6;
+  
+   
+  --color-primary-hover: color-mix(in srgb, var(--color-primary), black 10%);
+  --color-primary-alpha: color-mix(in srgb, var(--color-primary), transparent 90%);
+
+   
   --color-like: #f91880;
   --color-repost: #00ba7c;
-
+  --color-white: #ffffff;
+  
+   
   --sidebar-width: 275px;
   --right-sidebar-width: 350px;
   --border-radius-card: 16px;
   --border-radius-media: 16px;
   --border-radius-btn: 9999px;
-  --transition-fast: 0.2s ease;
 }
 
  
-:root[data-theme='dark'] {
-  --color-background: #101214;
-  --color-card: #181a1d;
-  --color-item-bg: rgb(24 26 29);
-  --color-border: rgb(45 48 52);
-  --color-border-light: rgb(45 48 52 / 80%);
-  --color-input-bg: #1e2023;
-  --color-text: #e4e6e8;
-  --color-text-secondary: #8a8f96;
+:root, :root[data-bg='light'] {
+  --color-background: #ffffff;
+  --color-card: #ffffff;
+  --color-item-bg: #f7f9fa;        
+  --color-border: #eff3f4;
+  --color-border-light: rgba(0, 0, 0, 0.08);
+  --color-input-bg: #eff3f4;
+  
+  --color-text: #0f1419;
+  --color-text-secondary: #536471;
+  --color-text-muted: #8899a6;
+  
+  --shadow-card: 0 0 10px rgba(0,0,0,0.05);
+}
+
+ 
+:root[data-bg='dim'] {
+  --color-background: #15202b;
+  --color-card: #15202b;           
+  --color-item-bg: #1e2732;        
+  --color-border: #38444d;
+  --color-border-light: rgba(255, 255, 255, 0.1);
+  --color-input-bg: #273340;
+
+  --color-text: #f7f9f9;
+  --color-text-secondary: #8b98a5;
   --color-text-muted: #6a6f76;
+  
+  --shadow-card: none;
+}
+
+ 
+:root[data-bg='black'] {
+  --color-background: #000000;
+  --color-card: #000000;
+  --color-item-bg: #16181c;        
+  --color-border: #2f3336;
+  --color-border-light: rgba(255, 255, 255, 0.15);
+  --color-input-bg: #202327;
+
+  --color-text: #e7e9ea;
+  --color-text-secondary: #71767b;
+  --color-text-muted: #555a5f;
+  
+  --shadow-card: none;
 }
 
  
@@ -118,3 +152,24 @@ button, input, textarea {
 .post-external-link {
     word-break: break-all;
 }
+
+.viewed-status-dot {
+    color: var(--color-primary);
+    font-size: 8px;
+    margin-left: 4px;
+    vertical-align: middle;
+    opacity: 0.8;
+}
+
+.mutual-badge {
+    background-color: var(--color-item-bg);
+    color: var(--color-text-secondary);
+    font-size: 11px;
+    padding: 2px 6px;
+    border-radius: 4px;
+    margin-left: 8px;
+    font-weight: 500;
+    text-transform: lowercase;
+}
+
+

@@ -2,6 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { apiClient } from '../api/client';
+import '../styles/RightSidebar.css';
 
 /**
  * Вспомогательный компонент для обертки блоков в сайдбаре
@@ -117,13 +118,8 @@ const RightSidebar = () => {
             )}
 
             { }
-            <footer className="sidebar-footer">
-                <a href="https://xn--d1ah4a.com/legal/terms" target="_blank" rel="noreferrer">Условия</a>
-                <a href="https://xn--d1ah4a.com/legal/privacy" target="_blank" rel="noreferrer">Конфиденциальность</a>
-                <a href="https://xn--d1ah4a.com/legal/cookies" target="_blank" rel="noreferrer">Cookies</a>
-            </footer>
             <div className="sidebar-footer-copy">
-                © 2025 итд.app (by Ванёк)
+                © 2026 итд.app (by Ванёк)
             </div>
         </aside>
     );

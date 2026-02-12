@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Updater</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background-color: #101214;
+            color: #fff;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            user-select: none;
+            overflow: hidden;
+        }
+
+        .container {
+            width: 300px;
+            text-align: center;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .logo-wrapper {
+            position: relative;
+            width: 90px;
+            height: 90px;
+            margin-bottom: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .logo-svg {
+            width: 100%;
+            height: 100%;
+            z-index: 2;
+            filter: drop-shadow(0 0 15px rgba(25, 132, 204, 0.4));
+            animation: breathe 3s ease-in-out infinite;
+        }
+
+        .pulse-ring {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 100%;
+            height: 100%;
+            border-radius: 50%;
+            background: radial-gradient(circle, rgba(25, 132, 204, 0.2) 0%, rgba(0,0,0,0) 70%);
+            animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+            z-index: 1;
+        }
+
+        .status-text {
+            font-size: 13px;
+            font-weight: 700;
+            color: #e7e9ea;
+            margin-bottom: 6px;
+            letter-spacing: 0.5px;
+            text-transform: uppercase;
+        }
+
+        .sub-status {
+            font-size: 12px;
+            color: #71767b;
+            margin-bottom: 24px;
+            height: 16px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            width: 100%;
+            opacity: 0.8;
+        }
+
+        .progress-track {
+            width: 100%;
+            height: 4px;
+            background-color: #2f3336;
+            border-radius: 4px;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .progress-bar {
+            height: 100%;
+            width: 0%;
+            background-color: #1984CC;
+            border-radius: 4px;
+            transition: width 0.2s linear;
+            box-shadow: 0 0 8px rgba(25, 132, 204, 0.6);
+        }
+
+        @keyframes breathe {
+            0%, 100% { transform: scale(1); filter: drop-shadow(0 0 15px rgba(25, 132, 204, 0.4)); }
+            50% { transform: scale(1.05); filter: drop-shadow(0 0 25px rgba(25, 132, 204, 0.7)); }
+        }
+
+        @keyframes pulse {
+            0% { transform: translate(-50%, -50%) scale(0.8); opacity: 0.5; }
+            100% { transform: translate(-50%, -50%) scale(2); opacity: 0; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="logo-wrapper">
+            <div class="pulse-ring"></div>
+            <svg class="logo-svg" viewBox="0 0 54 54" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M14 14C14 14.5523 14.4477 15 15 15H41C41.5523 15 42 15.4477 42 16V38C42 38.5523 41.5523 39 41 39H15C14.4477 39 14 39.4477 14 40V42.7639C14 43.8192 12.5775 44.155 12.1056 43.2111L4.44721 27.8944C4.16569 27.3314 4.16569 26.6686 4.44721 26.1056L12.1056 10.7889C12.5775 9.84504 14 10.1808 14 11.2361V14Z" fill="#2D3640"/>
+                <path d="M42.5 15.263C42.5 15.1177 42.6177 15 42.763 15C42.8977 15 43.0106 15.1018 43.0246 15.2357L45.408 38.1171C45.4399 38.4229 45.4558 38.5758 45.406 38.6941C45.3623 38.7979 45.2847 38.884 45.186 38.9382C45.0735 39 44.9198 39 44.6123 39H43.3C43.02 39 42.88 39 42.773 38.9455C42.6789 38.8976 42.6024 38.8211 42.5545 38.727C42.5 38.62 42.5 38.48 42.5 38.2V15.263Z" fill="#2D3640"/>
+                <path d="M43.592 15.8829C43.5601 15.5771 43.5442 15.4242 43.594 15.3059C43.6377 15.2021 43.7153 15.116 43.814 15.0618C43.9265 15 44.0802 15 44.3877 15H45.6998C45.9798 15 46.1198 15 46.2268 15.0545C46.3208 15.1024 46.3973 15.1789 46.4453 15.273C46.4998 15.38 46.4998 15.52 46.4998 15.8V38.737C46.4998 38.8823 46.382 39 46.2368 39C46.1021 39 45.9892 38.8982 45.9752 38.7643L43.592 15.8829Z" fill="#20252E"/>
+                <path d="M49.908 15.8829C49.9399 15.5771 49.9558 15.4242 49.906 15.3059C49.8623 15.2021 49.7847 15.116 49.686 15.0618C49.5735 15 49.4198 15 49.1123 15H47.8C47.52 15 47.38 15 47.273 15.0545C47.1789 15.1024 47.1024 15.1789 47.0545 15.273C47 15.38 47 15.52 47 15.8V38.737C47 38.8823 47.1177 39 47.263 39C47.3977 39 47.5106 38.8982 47.5246 38.7643L49.908 15.8829Z" fill="#16181F"/>
+                <path d="M14 17.8C14 17.52 14 17.38 14.0545 17.273C14.1024 17.1789 14.1789 17.1024 14.273 17.0545C14.38 17 14.52 17 14.8 17H15.2C15.48 17 15.62 17 15.727 17.0545C15.8211 17.1024 15.8976 17.1789 15.9455 17.273C16 17.38 16 17.52 16 17.8V26.5V36.2C16 36.48 16 36.62 15.9455 36.727C15.8976 36.8211 15.8211 36.8976 15.727 36.9455C15.62 37 15.48 37 15.2 37H14.8C14.52 37 14.38 37 14.273 36.9455C14.1789 36.8976 14.1024 36.8211 14.0545 36.727C14 36.62 14 36.48 14 36.2V26.5V17.8Z" fill="#1984CC"/>
+                <path d="M15.0752 37C14.7108 37 14.5286 37 14.407 36.924C14.3005 36.8574 14.2229 36.7532 14.1898 36.632C14.1519 36.4937 14.2042 36.3192 14.309 35.9701L19.829 17.5701C19.8903 17.3656 19.921 17.2633 19.9817 17.1875C20.0353 17.1205 20.1053 17.0685 20.1848 17.0364C20.2749 17 20.3817 17 20.5952 17H21.2C21.48 17 21.62 17 21.727 17.0545C21.8211 17.1024 21.8976 17.1789 21.9455 17.273C22 17.38 22 17.52 22 17.8V36.2C22 36.48 22 36.62 21.9455 36.727C21.8976 36.8211 21.8211 36.8976 21.727 36.9455C21.62 37 21.48 37 21.2 37H20.8C20.52 37 20.38 37 20.273 36.9455C20.1789 36.8976 20.1024 36.8211 20.0545 36.727C20 36.62 20 36.48 20 36.2V24L16.1738 36.4353C16.1114 36.638 16.0802 36.7394 16.0194 36.8145C15.9658 36.8808 15.8961 36.9323 15.817 36.964C15.7273 37 15.6213 37 15.4091 37H15.0752Z" fill="#1984CC"/>
+                <path d="M23 17.8C23 17.52 23 17.38 23.0545 17.273C23.1024 17.1789 23.1789 17.1024 23.273 17.0545C23.38 17 23.52 17 23.8 17H30.2001C30.4801 17 30.6201 17 30.7271 17.0545C30.8211 17.1024 30.8976 17.1789 30.9456 17.273C31.0001 17.38 31.0001 17.52 31.0001 17.8V18.2C31.0001 18.48 31.0001 18.62 30.9456 18.727C30.8976 18.8211 30.8211 18.8976 30.7271 18.9455C30.6201 19 30.4801 19 30.2001 19H28.0001V36.2C28.0001 36.48 28.0001 36.62 27.9456 36.727C27.8976 36.8211 27.8211 36.8976 27.7271 36.9455C27.6201 37 27.4801 37 27.2001 37H26.8001C26.52 37 26.38 37 26.2731 36.9455C26.179 36.8976 26.1025 36.8211 26.0546 36.727C26.0001 36.62 26.0001 36.48 26.0001 36.2V19H23.8C23.52 19 23.38 19 23.2731 18.9455C23.179 18.8976 23.1025 18.8211 23.0545 18.727C23 18.6201 23 18.48 23 18.2L23 17.8Z" fill="#1984CC"/>
+                <path d="M32 17.8C32 17.52 32 17.38 32.0545 17.273C32.1024 17.1789 32.1789 17.1024 32.273 17.0545C32.38 17 32.52 17 32.8 17H39.2C39.48 17 39.62 17 39.727 17.0545C39.8211 17.1024 39.8976 17.1789 39.9455 17.273C40 17.38 40 17.52 40 17.8V36H38V19H34V36H32V17.8Z" fill="#1984CC"/>
+                <path d="M31 35.8C31 35.52 31 35.38 31.0545 35.273C31.1024 35.1789 31.1789 35.1024 31.273 35.0545C31.38 35 31.52 35 31.8 35H40.2C40.48 35 40.62 35 40.727 35.0545C40.8211 35.1024 40.8976 35.1789 40.9455 35.273C41 35.38 41 35.52 41 35.8V36.2C41 36.48 41 36.62 40.9455 36.727C40.8976 36.8211 40.8211 36.8976 40.727 36.9455C40.62 37 40.48 37 40.2 37H31.8C31.52 37 31.38 37 31.273 36.9455C31.1789 36.8976 31.1024 36.8211 31.0545 36.727C31 36.62 31 36.48 31 36.2V35.8Z" fill="#1984CC"/>
+            </svg>
+        </div>
+        
+        <div class="status-text" id="status">Загрузка...</div>
+        <div class="sub-status" id="details">Инициализация</div>
+        
+        <div class="progress-track">
+            <div class="progress-bar" id="progress"></div>
+        </div>
+    </div>
+
+    <script>
+        const { ipcRenderer } = require('electron');
+        const statusEl = document.getElementById('status');
+        const detailsEl = document.getElementById('details');
+        const progressEl = document.getElementById('progress');
+
+        ipcRenderer.on('updater-state', (event, data) => {
+            if (data.status) statusEl.innerText = data.status;
+            if (data.details) detailsEl.innerText = data.details;
+            if (typeof data.progress === 'number') {
+                progressEl.style.width = `${data.progress}%`;
+            }
+        });
+    </script>
+</body>
+</html>

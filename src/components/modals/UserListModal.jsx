@@ -20,7 +20,7 @@ const UserListModal = ({ username, type, title }) => {
                 const data = res?.users || res?.data?.users || [];
                 setUsers(data);
             } catch (e) {
-                console.error(e);
+                console.error("Ошибка загрузки списка пользователей:", e);
             } finally {
                 setLoading(false);
             }
@@ -37,22 +37,32 @@ const UserListModal = ({ username, type, title }) => {
                 {loading ? (
                     <div className="loading-indicator">Загрузка...</div>
                 ) : users.length > 0 ? (
-                    users.map(user => (
-                        <Link 
-                            to={`/profile/${user.username}`} 
-                            key={user.id} 
-                            className="user-item"
-                            onClick={closeModal}
-                        >
-                            <div className="avatar" style={{width: 40, height: 40, fontSize: 20}}>
-                                {user.avatar || "👤"}
-                            </div>
-                            <div className="user-item-info">
-                                <span className="display-name">{user.displayName}</span>
-                                <span className="username">@{user.username}</span>
-                            </div>
-                        </Link>
-                    ))
+                    users.map(user => {
+                         
+                        const isMutual = user.isFollowing && user.isFollowedBy;
+                        const followsYou = user.isFollowedBy && !user.isFollowing;
+
+                        return (
+                            <Link 
+                                to={`/profile/${user.username}`} 
+                                key={user.id} 
+                                className="user-item"
+                                onClick={closeModal}
+                            >
+                                <div className="avatar" style={{width: 40, height: 40, fontSize: 20}}>
+                                    {user.avatar || "👤"}
+                                </div>
+                                <div className="user-item-info">
+                                    <div className="user-item-name-row">
+                                        <span className="display-name">{user.displayName}</span>
+                                        {isMutual && <span className="mutual-badge-mini">взаимно</span>}
+                                        {followsYou && <span className="mutual-badge-mini">читает вас</span>}
+                                    </div>
+                                    <span className="username">@{user.username}</span>
+                                </div>
+                            </Link>
+                        );
+                    })
                 ) : (
                     <div className="empty-state">Список пуст</div>
                 )}

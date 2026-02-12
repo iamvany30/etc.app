@@ -1,5 +1,3 @@
- 
-
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { apiClient } from '../api/client';
@@ -16,9 +14,7 @@ import {
 } from '../components/icons/NotificationIcons';
 
 /**
- * Вспомогательная функция для получения иконки, класса и текста по типу уведомления.
- * @param {string} type - Тип уведомления от API (like, comment, etc.).
- * @returns {object} - Объект с иконкой, классом для CSS и текстом.
+ * Вспомогательная функция для получения данных по типу уведомления.
  */
 const getNotificationTypeInfo = (type) => {
     switch (type) {
@@ -37,41 +33,56 @@ const getNotificationTypeInfo = (type) => {
         case 'wall_post':
             return { icon: <IconWallPost />, badgeClass: 'badge-wall', text: 'написал на вашей стене' };
         default:
-            return { icon: <IconUserFilled />, badgeClass: 'badge-like', text: 'взаимодействовал с вами' };
+            return { icon: <IconUserFilled />, badgeClass: 'badge-default', text: 'взаимодействовал с вами' };
     }
 };
 
 /**
- * Вспомогательный компонент для отображения относительного времени.
- * @param {{dateStr: string}} props
+ * Компонент для отображения относительного времени.
  */
 const TimeAgo = ({ dateStr }) => {
     const [time, setTime] = useState('');
-    
     useEffect(() => {
-        const updateTime = () => {
-            const diff = Math.floor((new Date() - new Date(dateStr)) / 1000);
-            if (diff < 60) setTime(`${diff}с назад`);
-            else if (diff < 3600) setTime(`${Math.floor(diff / 60)} мин назад`);
-            else if (diff < 86400) setTime(`${Math.floor(diff / 3600)} ч назад`);
-            else setTime(new Date(dateStr).toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' }));
+        if (!dateStr) return;
+        const calcTime = () => {
+            const date = new Date(dateStr);
+            const now = new Date();
+            const diff = Math.round((now - date) / 1000);
+            if (diff < 60) setTime(`${diff}с`);
+            else if (diff < 3600) setTime(`${Math.floor(diff / 60)}м`);
+            else if (diff < 86400) setTime(`${Math.floor(diff / 3600)}ч`);
+            else setTime(date.toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' }));
         };
-        updateTime();
-        const timer = setInterval(updateTime, 60000);
+        calcTime();
+        const timer = setInterval(calcTime, 60000);
         return () => clearInterval(timer);
     }, [dateStr]);
-
     return <span className="notif-time">{time}</span>;
 };
 
 /**
- * Компонент, отображающий один элемент в списке уведомлений.
- * @param {{notif: object}} props
+ * Компонент одного элемента уведомления с логикой генерации ссылок.
  */
 const NotificationItem = ({ notif }) => {
-    const { actor, type, preview, createdAt, read } = notif;
+    const { actor, type, preview, createdAt, read, targetId, context } = notif;
     const { icon, badgeClass, text } = getNotificationTypeInfo(type);
     const itemRef = useRef(null);
+
+     
+    const getNotificationLink = () => {
+        if (type === 'follow' || type === 'mention_user') {
+            return `/profile/${actor.username}`;
+        }
+        if (targetId) {
+             
+            if ((type === 'comment' || type === 'reply') && context?.commentId) {
+                return `/post/${targetId}#comment-${context.commentId}`;
+            }
+             
+            return `/post/${targetId}`;
+        }
+        return `/profile/${actor.username}`;  
+    };
 
      
     useEffect(() => {
@@ -80,12 +91,11 @@ const NotificationItem = ({ notif }) => {
         const observer = new IntersectionObserver(
             (entries) => {
                 if (entries[0].isIntersecting) {
-                     
                     apiClient.markBatchRead([notif.id]);
-                    observer.disconnect();  
+                    observer.disconnect();
                 }
             },
-            { threshold: 0.8 }  
+            { threshold: 0.8 }
         );
 
         observer.observe(itemRef.current);
@@ -93,9 +103,8 @@ const NotificationItem = ({ notif }) => {
     }, [notif.id, read]);
 
     return (
-        <div ref={itemRef} className={`notification-item ${!read ? 'unread' : ''}`}>
-            { }
-            <Link to={`/profile/${actor.username}`} className="notif-avatar-wrap">
+        <Link to={getNotificationLink()} className={`notification-item ${!read ? 'unread' : ''}`} ref={itemRef}>
+            <div className="notif-avatar-wrap">
                 <div className="notif-avatar">
                     {actor.avatar && actor.avatar.length > 4 ? (
                         <img src={actor.avatar} alt={actor.username} />
@@ -106,21 +115,17 @@ const NotificationItem = ({ notif }) => {
                 <div className={`notif-badge ${badgeClass}`}>
                     {icon}
                 </div>
-            </Link>
+            </div>
 
-            { }
             <div className="notif-content">
                 <div className="notif-header">
-                    <Link to={`/profile/${actor.username}`} className="notif-author">
-                        {actor.displayName}
-                    </Link>
+                    <span className="notif-author">{actor.displayName}</span>
                     <span className="notif-action-text">{text}</span>
                 </div>
-                
                 {preview && <div className="notif-preview">{preview}</div>}
                 <TimeAgo dateStr={createdAt} />
             </div>
-        </div>
+        </Link>
     );
 };
 
@@ -129,7 +134,7 @@ const NotificationItem = ({ notif }) => {
  */
 const NotificationsPage = () => {
     const [notifications, setNotifications] = useState([]);
-    const [activeTab, setActiveTab] = useState('all');  
+    const [activeTab, setActiveTab] = useState('all');
     const [loading, setLoading] = useState(true);
 
     const fetchNotifications = useCallback(async () => {
@@ -144,7 +149,6 @@ const NotificationsPage = () => {
             if (window.resetNotificationCount) {
                 window.resetNotificationCount();
             }
-
         } catch (error) {
             console.error("Failed to load notifications", error);
         } finally {
@@ -156,13 +160,10 @@ const NotificationsPage = () => {
         fetchNotifications();
     }, [fetchNotifications]);
 
-     
     const handleMarkAllRead = async () => {
         try {
             await apiClient.markAllRead();
-             
             setNotifications(prev => prev.map(n => ({ ...n, read: true })));
-             
             if (window.resetNotificationCount) {
                 window.resetNotificationCount();
             }
@@ -205,14 +206,7 @@ const NotificationsPage = () => {
                     ))
                 ) : (
                     <div className="notifications-empty">
-                        <div style={{fontSize: '48px', marginBottom: '16px'}}>📭</div>
                         <h3>Уведомлений пока нет</h3>
-                        <p style={{marginTop: '8px', opacity: 0.7}}>
-                            {activeTab === 'all' 
-                                ? "Здесь будут лайки, ответы и упоминания." 
-                                : "Когда кто-нибудь упомянет вас, вы увидите это здесь."
-                            }
-                        </p>
                     </div>
                 )}
             </div>

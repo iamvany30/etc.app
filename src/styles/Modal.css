@@ -1,144 +1,220 @@
- 
+/* ==========================================================================
+   MODAL STYLES (Desktop First + Mobile Bottom Sheet)
+   ========================================================================== */
 
  
 .modal-overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-   
-  background-color: rgba(0, 0, 0, 0.6); 
-   
-  backdrop-filter: blur(4px); 
-  -webkit-backdrop-filter: blur(4px); 
-  
-  z-index: 9999;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  
-   
-  opacity: 0;
-  animation: overlayFadeIn 0.2s forwards;
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+     
+    background-color: rgba(0, 0, 0, 0.65);
+     
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    z-index: 9999;
+    
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    
+    opacity: 0;
+    padding: 20px;
+    animation: overlayFadeIn 0.25s ease-out forwards;
 }
 
  
 .modal-content {
-  background-color: var(--color-background);
-  width: 100%;
-  max-width: 600px;
-  
-   
-  max-height: 90vh; 
-  min-height: 200px;
-  
-  border-radius: 24px;
-  border: 1px solid var(--color-border);
-  box-shadow: 0 8px 40px rgba(0, 0, 0, 0.5);
-  
-  display: flex;
-  flex-direction: column;
-  position: relative;
-  overflow: hidden;
-  
-   
-  transform: scale(0.95);
-  opacity: 0;
-  animation: modalPopIn 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    width: 100%;
+    max-width: 580px;
+    max-height: 85vh;
+    
+    border-radius: 20px;
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    
+     
+    box-shadow: 
+        0 20px 50px rgba(0, 0, 0, 0.5),
+        0 0 0 1px rgba(255, 255, 255, 0.08) inset;
+    
+    transform: scale(0.95);
+    opacity: 0;
+    animation: modalPopIn 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    
+     
+    overflow: hidden; 
 }
 
  
+.modal-content.glass {
+    background-color: var(--color-card);  
+    background: color-mix(in srgb, var(--color-card), transparent 5%);  
+    backdrop-filter: blur(30px) saturate(180%);
+    -webkit-backdrop-filter: blur(30px) saturate(180%);
+    border: 1px solid var(--color-border);
+}
+
+ 
+.modal-content.fullscreen {
+    width: 95vw;
+    height: 95vh;
+    max-width: 1600px;
+    max-height: none;
+    
+    background: transparent;
+    border: none;
+    box-shadow: none;
+    border-radius: 0;
+    overflow: visible;  
+}
+
+ 
+.modal-content.liquid {
+    background: rgba(20, 20, 30, 0.7);
+    backdrop-filter: blur(40px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    overflow: hidden;
+}
+
+.liquid-blob {
+    position: absolute;
+    border-radius: 50%;
+    filter: blur(60px);
+    z-index: -1;
+    opacity: 0.4;
+    animation: floatLiquid 12s infinite ease-in-out alternate;
+}
+.blob-1 { top: -10%; left: -10%; width: 300px; height: 300px; background: var(--color-primary); }
+.blob-2 { bottom: -10%; right: -10%; width: 350px; height: 350px; background: #f91880; }
+
+ 
 .modal-close-btn {
-  position: absolute;
-  top: 12px;
-  left: 12px;
-  
-  width: 36px;
-  height: 36px;
-  border-radius: 50%;
-  border: none;
-  background: transparent;
-  color: var(--color-text);
-  
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  z-index: 20;
-  transition: background-color 0.2s;
+    position: absolute;
+    top: 16px;
+    right: 16px;
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    border: none;
+    background-color: rgba(128, 128, 128, 0.15);
+    color: var(--color-text-secondary);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    z-index: 50; 
+    transition: all 0.2s ease;
 }
 
 .modal-close-btn:hover {
-  background-color: rgba(255, 255, 255, 0.1);
-}
-
-.modal-close-btn svg {
-  width: 20px;
-  height: 20px;
-  stroke-width: 2.5px;
+    background-color: rgba(128, 128, 128, 0.3);
+    color: var(--color-text);
 }
 
  
 .modal-body {
-  flex: 1;
-  overflow-y: auto;
-  padding-top: 0; 
-  display: flex;
-  flex-direction: column;
+    flex: 1;
+    overflow-y: auto;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+     
+    background-color: transparent; 
 }
 
+ 
 .modal-body::-webkit-scrollbar { width: 6px; }
 .modal-body::-webkit-scrollbar-track { background: transparent; }
-.modal-body::-webkit-scrollbar-thumb { background-color: var(--color-border); border-radius: 3px; }
+.modal-body::-webkit-scrollbar-thumb { background: var(--color-border); border-radius: 10px; }
 
  
-@keyframes overlayFadeIn {
-  from { opacity: 0; }
-  to { opacity: 1; }
+@keyframes overlayFadeIn { from { opacity: 0; } to { opacity: 1; } }
+@keyframes modalPopIn { 
+    from { opacity: 0; transform: scale(0.95); } 
+    to { opacity: 1; transform: scale(1); } 
+}
+@keyframes floatLiquid {
+    0% { transform: translate(0, 0) scale(1); }
+    100% { transform: translate(40px, 40px) scale(1.1); }
 }
 
-@keyframes modalPopIn {
-  from { opacity: 0; transform: scale(0.95); }
-  to { opacity: 1; transform: scale(1); }
-}
+/* ==========================================================================
+   MOBILE ADAPTATION (Bottom Sheet / Шторка)
+   ========================================================================== */
 
- 
 @media (max-width: 600px) {
-  .modal-overlay {
-     
-    align-items: flex-end; 
-  }
-  
-  .modal-content {
-    max-width: 100%;
-     
-    height: 85vh; 
-    max-height: 85vh;
-    
-     
-    border-bottom-left-radius: 0;
-    border-bottom-right-radius: 0;
-    border-top-left-radius: 20px;
-    border-top-right-radius: 20px;
-    
-    margin: 0;
-    border: none;
-    border-top: 1px solid var(--color-border);
-    
-     
-    animation: modalSlideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
-  }
-  
-   
-  @keyframes modalSlideUp {
-    from { 
-        transform: translateY(100%); 
-        opacity: 1;  
+    .modal-overlay {
+        align-items: flex-end;  
+        padding: 0;  
     }
-    to { 
-        transform: translateY(0); 
-        opacity: 1; 
+
+     
+    .modal-content:not(.fullscreen) {
+        max-width: 100%;
+        width: 100%;
+        max-height: 88vh;  
+        
+         
+        border-radius: 24px 24px 0 0; 
+        
+         
+        border: none;
+        border-top: 1px solid rgba(255, 255, 255, 0.15);
+        margin: 0;
+        
+        /* ВАЖНО: Задаем сплошной цвет фона (из темы). 
+           Это решает проблему "огузка" / прозрачного верха. */
+        background-color: var(--color-background); 
+        
+         
+        box-shadow: 0 -10px 40px rgba(0, 0, 0, 0.4);
+        
+         
+        transform: translateY(100%);
+        animation: slideUpMobile 0.3s cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
+        
+         
+        padding-bottom: env(safe-area-inset-bottom);
     }
-  }
+
+     
+    .modal-content:not(.fullscreen)::before {
+        content: "";
+        display: block;
+        width: 40px;
+        height: 4px;
+        background-color: var(--color-border);  
+        border-radius: 2px;
+        margin: 12px auto 8px auto;  
+        flex-shrink: 0;
+        opacity: 0.8;
+    }
+
+     
+    .modal-close-btn {
+        top: 12px;
+        right: 12px;
+        background-color: var(--color-item-bg);
+        width: 36px;
+        height: 36px;
+    }
+
+     
+    .modal-content.fullscreen {
+        width: 100vw;
+        height: 100vh;
+        max-height: 100vh;
+        border-radius: 0;
+        padding-bottom: 0;
+        background-color: #000;  
+    }
+
+    @keyframes slideUpMobile {
+        from { transform: translateY(100%); opacity: 0; }
+        to { transform: translateY(0); opacity: 1; }
+    }
 }

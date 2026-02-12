@@ -1,22 +1,45 @@
 const { contextBridge, ipcRenderer } = require('electron');
 
 contextBridge.exposeInMainWorld('api', {
-    
+     
     call: (endpoint, method, body) => ipcRenderer.invoke('api-call', { endpoint, method, body }),
-    openAuth: (type) => ipcRenderer.invoke('open-auth', type),
     getInitUser: () => ipcRenderer.invoke('get-init-user'),
     
+     
+    autoGrabToken: () => ipcRenderer.invoke('auto-grab-token'),
+    openStealthLogin: () => ipcRenderer.invoke('open-stealth-login'),
+    loginWithToken: (token) => ipcRenderer.invoke('login-with-token', token),
     
-    
+     
+    onAuthLog: (callback) => {
+        const subscription = (_event, message) => callback(message);
+        ipcRenderer.on('auth-log', subscription);
+        return () => ipcRenderer.removeListener('auth-log', subscription);
+    },
+
+     
+    compressAudio: (fileData) => ipcRenderer.invoke('compress-audio', fileData),
+    compressVideo: (fileData) => ipcRenderer.invoke('compress-video', fileData),
     openExternalLink: (url) => ipcRenderer.invoke('open-external-link', url),
     downloadFile: (url, filename) => ipcRenderer.invoke('download-file', { url, filename }),
+    
     onNotification: (callback) => {
         const subscription = (_event, data) => callback(data);
         ipcRenderer.on('notification', subscription);
-        
         return {
             removeListener: () => ipcRenderer.removeListener('notification', subscription)
         };
+    },
+    invoke: (channel, data) => ipcRenderer.invoke(channel, data),
+    navigation: {
+        goBack: () => ipcRenderer.send('nav-back'),
+        goForward: () => ipcRenderer.send('nav-forward'),
+        reload: () => ipcRenderer.send('nav-reload'),
+        onNavStateChange: (callback) => {
+            const subscription = (_event, value) => callback(value);
+            ipcRenderer.on('nav-state-change', subscription);
+            return () => ipcRenderer.removeListener('nav-state-change', subscription);
+        },
     },
 
     window: {

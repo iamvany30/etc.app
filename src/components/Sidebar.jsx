@@ -6,6 +6,7 @@ import { apiClient } from '../api/client';
 import { MusicIcon } from './icons/MusicIcon';
 import SettingsModal from './modals/SettingsModal';
 import ProfileMenu from './ProfileMenu';
+import '../styles/Sidebar.css';
 
 import { IconFeed, IconExplore, IconNotifications, IconProfile } from './icons/SidebarIcons';
 
@@ -96,14 +97,15 @@ const Sidebar = () => {
       { }
       <div ref={menuRef} style={{ position: 'relative', width: '100%' }}>
           {isMenuOpen && (
-              <ProfileMenu 
+            <ProfileMenu 
                 user={currentUser}
                 onSettingsClick={() => {
                     openModal(<SettingsModal />);
                     setIsMenuOpen(false);
                 }}
                 onLogoutClick={handleLogout}
-              />
+                onClose={() => setIsMenuOpen(false)}
+            />
           )}
 
           <button className="sidebar-user-profile" onClick={() => setIsMenuOpen(!isMenuOpen)}>

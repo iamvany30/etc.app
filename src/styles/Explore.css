@@ -123,3 +123,30 @@
     background-color: rgba(29, 155, 240, 0.15);
     color: var(--color-primary);
 }
+
+.explore-hashtag-results-header {
+    padding: 8px 0;
+    border-bottom: 1px solid var(--color-border);
+    margin-bottom: 8px;
+    background-color: var(--color-background);
+}
+
+.hashtag-stats-badge {
+    margin: 0 16px 12px 16px;
+    padding: 6px 12px;
+    background-color: var(--color-item-bg);
+    border-radius: 8px;
+    font-size: 14px;
+    color: var(--color-text-secondary);
+    display: inline-block;
+    border: 1px solid var(--color-border);
+}
+
+.hashtag-stats-badge strong {
+    color: var(--color-primary);
+}
+
+ 
+.explore-container .virtuoso-grid {
+    width: 100%;
+}

@@ -1,14 +1,13 @@
-
-
-
 const stealth = () => {
   try {
-    
     const newProto = navigator.__proto__;
     delete newProto.webdriver;
     navigator.__proto__ = newProto;
 
-    
+    Object.defineProperty(navigator, 'webdriver', {
+      get: () => false,
+    });
+
     if (!window.chrome) {
       window.chrome = {
         runtime: {},
@@ -18,61 +17,33 @@ const stealth = () => {
       };
     }
 
-    
-    
-    if (navigator.plugins.length === 0) {
-      const pdfPlugin = {
-        0: {
-          type: "application/x-google-chrome-pdf",
-          suffixes: "pdf",
-          description: "Portable Document Format",
-          enabledPlugin: null 
-        },
-        description: "Portable Document Format",
-        filename: "internal-pdf-viewer",
-        length: 1,
-        name: "Chrome PDF Plugin"
-      };
-
-      
-      const pluginArray = [pdfPlugin, pdfPlugin, pdfPlugin, pdfPlugin, pdfPlugin];
-      
-      
-      Object.setPrototypeOf(pluginArray, PluginArray.prototype);
-      Object.setPrototypeOf(pdfPlugin, Plugin.prototype);
-
-      
-      Object.defineProperty(navigator, 'plugins', {
-        get: () => pluginArray,
-        enumerable: true,
-        configurable: true
-      });
-
-      
-      const mimeType = {
-        type: "application/x-google-chrome-pdf",
-        suffixes: "pdf",
-        description: "Portable Document Format",
-        enabledPlugin: pdfPlugin
-      };
-      Object.setPrototypeOf(mimeType, MimeType.prototype);
-      const mimeTypesArray = [mimeType];
-      Object.setPrototypeOf(mimeTypesArray, MimeTypeArray.prototype);
-
-      Object.defineProperty(navigator, 'mimeTypes', {
-        get: () => mimeTypesArray,
-        enumerable: true,
-        configurable: true
-      });
-    }
-
-    
     Object.defineProperty(navigator, 'languages', {
       get: () => ['ru-RU', 'ru', 'en-US', 'en'],
       configurable: true
     });
 
-    
+    Object.defineProperty(navigator, 'plugins', {
+      get: () => [1, 2, 3, 4, 5],
+      configurable: true
+    });
+
+    Object.defineProperty(navigator, 'hardwareConcurrency', {
+      get: () => 8,
+      configurable: true
+    });
+
+    Object.defineProperty(navigator, 'deviceMemory', {
+      get: () => 8,
+      configurable: true
+    });
+
+    const getParameter = WebGLRenderingContext.prototype.getParameter;
+    WebGLRenderingContext.prototype.getParameter = function(parameter) {
+      if (parameter === 37445) return 'Intel Inc.';
+      if (parameter === 37446) return 'Intel Iris OpenGL Engine';
+      return getParameter.apply(this, arguments);
+    };
+
     const originalQuery = window.navigator.permissions.query;
     window.navigator.permissions.query = (parameters) => (
       parameters.name === 'notifications' ?
@@ -80,13 +51,8 @@ const stealth = () => {
       originalQuery(parameters)
     );
 
-    console.log('Advanced Stealth Applied');
-
-  } catch (e) {
-    console.error('Stealth error:', e);
-  }
+  } catch (e) {}
 };
-
 
 const script = document.createElement('script');
 script.textContent = `(${stealth.toString()})();`;

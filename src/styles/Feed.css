@@ -1,12 +1,8 @@
- 
-
- 
 .feed-tabs {
     display: flex;
     position: sticky;
     top: 0;
     z-index: 10;
-     
     background-color: rgba(16, 18, 20, 0.85); 
     backdrop-filter: blur(12px);
     -webkit-backdrop-filter: blur(12px);
@@ -55,12 +51,12 @@
     content: "";
     position: absolute;
     bottom: 0;
-    left: 0;
-    width: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 56px;
     height: 4px;
     background-color: var(--color-primary);
     border-radius: 9999px;
-    min-width: 56px;  
 }
 
  

@@ -5,7 +5,7 @@ import './../styles/CreatePost.css';
 
 import jsmediatags from 'jsmediatags/dist/jsmediatags.min.js';
 
-
+ 
 const ImageIcon = () => (<svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor"><path d="M3 5.5C3 4.119 4.119 3 5.5 3h13C19.881 3 21 4.119 21 5.5v13c0 1.381-1.119 2.5-2.5 2.5h-13C4.119 21 3 19.881 3 18.5v-13zM5.5 5c-.276 0-.5.224-.5.5v9.086l3-3 3 3 5-5 3 3V5.5c0-.276-.224-.5-.5-.5h-13zM19 15.414l-3-3-5 5-3-3-3 3V18.5c0 .276.224.5.5.5h13c.276 0 .5-.224.5-.5v-3.086zM9.75 7a.75.75 0 1 1-1.5 0 .75.75 0 0 1 1.5 0z"></path></svg>);
 const MusicIcon = () => (<svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor"><path d="M12 3v10.55c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z"/></svg>);
 const PollIcon = () => (<svg viewBox="0 0 24 24" width="20"><path fill="currentColor" d="M6 9h12v2H6V9zm8 5H6v-2h8v2zm-8-6h12V6H6v2zM3.5 5.5c0-1.1.9-2 2-2h13c1.1 0 2 .9 2 2v13c0 1.1-.9 2-2 2h-13c-1.1 0-2-.9-2-2v-13z"></path></svg>);
@@ -22,12 +22,15 @@ const CreatePost = ({ onPostCreated }) => {
     const [text, setText] = useState("");
     const [attachments, setAttachments] = useState([]);
     const [isSending, setIsSending] = useState(false);
+    
+     
     const [isUploading, setIsUploading] = useState(false);
+    const [uploadProgress, setUploadProgress] = useState(0);
     
     const fileInputRef = useRef(null);
     const musicInputRef = useRef(null);
 
-    
+     
     const [recordingState, setRecordingState] = useState('idle');
     const [recordingTime, setRecordingTime] = useState(0);
     const [audioBlob, setAudioBlob] = useState(null);
@@ -93,7 +96,18 @@ const CreatePost = ({ onPostCreated }) => {
     
     const stopRecording = () => mediaRecorderRef.current?.stop();
     const cancelRecording = () => { cleanupRecording(); setRecordingState('idle'); setAudioBlob(null); setAudioUrl(null); };
-    
+
+     
+    const startSimulatedProgress = () => {
+        setUploadProgress(0);
+        return setInterval(() => {
+            setUploadProgress(prev => {
+                if (prev >= 95) return 95;
+                return prev + 5;
+            });
+        }, 300);
+    };
+
     const sendVoiceMessage = async () => {
         if (!audioBlob || isSending) return;
         setIsSending(true);
@@ -108,23 +122,50 @@ const CreatePost = ({ onPostCreated }) => {
     };
     const togglePreview = () => { if (audioPreviewRef.current) isPreviewPlaying ? audioPreviewRef.current.pause() : audioPreviewRef.current.play(); setIsPreviewPlaying(!isPreviewPlaying); };
 
-    
     const handleFileSelect = async (e) => {
         const file = e.target.files[0];
         if (!file) return;
+
         setIsUploading(true);
+        const progressInterval = startSimulatedProgress();
+
         try {
+            console.log(`[CreatePost] Начинаем загрузку: ${file.name}, Размер: ${(file.size / 1024 / 1024).toFixed(2)} MB`);
             const uploaded = await apiClient.uploadFile(file);
-            if (uploaded?.id) setAttachments(prev => [...prev, uploaded]);
-        } catch (e) { console.error(e); } 
-        finally { setIsUploading(false); fileInputRef.current.value = ''; }
+            console.log("[CreatePost] Ответ сервера:", uploaded);
+
+            clearInterval(progressInterval);
+            setUploadProgress(100);
+
+            if (uploaded && uploaded.id) {
+                setAttachments(prev => [...prev, uploaded]);
+            } else if (uploaded.error) {
+                const errorMsg = uploaded.error.message || uploaded.error;
+                if (uploaded.status === 413 || errorMsg.includes('413')) {
+                    alert(`⚠️ ОШИБКА: Файл слишком большой!\nРазмер: ${(file.size / 1024 / 1024).toFixed(2)} MB\nСервер не может принять такой объем.`);
+                } else {
+                    alert(`Ошибка загрузки: ${errorMsg}`);
+                }
+            } else {
+                alert("Неизвестная ошибка загрузки. Проверьте консоль разработчика (F12).");
+            }
+        } catch (err) {
+            console.error("[CreatePost] Exception:", err);
+            alert("Ошибка сети при загрузке: " + err.message);
+        } finally {
+            setTimeout(() => {
+                setIsUploading(false);
+                setUploadProgress(0);
+                if (fileInputRef.current) fileInputRef.current.value = '';
+            }, 500);
+        }
     };
 
-    
     const handleMusicSelect = async (e) => {
         const file = e.target.files[0];
         if (!file) return;
         setIsUploading(true);
+        const progressInterval = startSimulatedProgress();
 
         new jsmediatags.Reader(file)
             .setTagsToRead(["title", "artist", "picture"])
@@ -134,24 +175,16 @@ const CreatePost = ({ onPostCreated }) => {
                     const title = tags.title || prompt("Название трека:", file.name.replace(/\.[^/.]+$/, ""));
                     const artist = tags.artist || prompt("Исполнитель:", "Неизвестный исполнитель");
 
-                    if (!title || !artist) { setIsUploading(false); return; }
+                    if (!title || !artist) { setIsUploading(false); clearInterval(progressInterval); return; }
 
                     try {
-                        
                         const audioUpload = await apiClient.uploadFile(file);
-                        
-                        
                         let coverUpload = null;
                         if (tags.picture) {
                             const { data } = tags.picture; 
-                            
-                            
                             const byteArray = new Uint8Array(data);
-                            
                             const blob = new Blob([byteArray], { type: 'image/jpeg' });
-                            
                             const coverFile = new File([blob], `cover-${Date.now()}.jpg`, { type: 'image/jpeg' });
-                            
                             coverUpload = await apiClient.uploadFile(coverFile);
                         }
 
@@ -165,13 +198,18 @@ const CreatePost = ({ onPostCreated }) => {
 
                             const newPost = await apiClient.createPost(postContent, ids);
                             if (newPost && !newPost.error) { if (onPostCreated) onPostCreated(newPost); } 
-                            else { alert("Не удалось опубликовать музыку."); }
+                        } else {
+                            alert("Не удалось загрузить аудио-файл.");
                         }
                     } catch (err) {
-                        console.error(err); alert("Ошибка загрузки");
-                    } finally { setIsUploading(false); }
+                        console.error(err);
+                    } finally {
+                        clearInterval(progressInterval);
+                        setIsUploading(false);
+                        setUploadProgress(0);
+                    }
                 },
-                onError: () => { alert("Ошибка чтения тегов"); setIsUploading(false); }
+                onError: () => { alert("Ошибка чтения тегов"); setIsUploading(false); clearInterval(progressInterval); }
             });
         musicInputRef.current.value = '';
     };
@@ -191,29 +229,6 @@ const CreatePost = ({ onPostCreated }) => {
 
     if (!currentUser) return null;
 
-    const renderVoiceRecorder = () => (
-        <div className="voice-recorder-ui">
-             {recordingState === 'recording' && (
-                <>
-                    <button className="voice-btn stop" onClick={stopRecording}><StopIcon /></button>
-                    <div className="voice-waveform">{waveformData.map((h, i) => <div key={i} className="voice-bar recording" style={{ transform: `scaleY(${h})` }}/>)}</div>
-                    <span className="voice-time">{new Date(recordingTime * 1000).toISOString().substr(14, 5)}</span>
-                    <button className="voice-btn cancel" onClick={cancelRecording}><CloseIcon /></button>
-                </>
-            )}
-            {recordingState === 'preview' && (
-                <>
-                    {audioUrl && <audio ref={audioPreviewRef} src={audioUrl} onEnded={() => setIsPreviewPlaying(false)} style={{display: 'none'}}/>}
-                    <button className="voice-btn play" onClick={togglePreview}>{isPreviewPlaying ? <PauseIcon /> : <PlayIcon />}</button>
-                    <div className="voice-waveform">{Array(30).fill(0).map((_, i) => <div key={i} className="voice-bar preview" style={{transform: `scaleY(${Math.random() * 0.8 + 0.2})`}}/>)}</div>
-                    <span className="voice-time">{new Date(recordingTime * 1000).toISOString().substr(14, 5)}</span>
-                    <button className="voice-btn delete" onClick={cancelRecording}><TrashIcon /></button>
-                    <button className="voice-btn send" onClick={sendVoiceMessage} disabled={isSending}>{isSending ? '...' : <SendIcon />}</button>
-                </>
-            )}
-        </div>
-    );
-
     return (
         <div className="create-post-card">
             <div className="create-post-inner">
@@ -222,18 +237,36 @@ const CreatePost = ({ onPostCreated }) => {
                     {recordingState === 'idle' ? (
                         <textarea className="create-post-textarea" placeholder="Что происходит?!" rows={1} value={text} onChange={(e) => { setText(e.target.value); e.target.style.height = 'auto'; e.target.style.height = e.target.scrollHeight + 'px'; }} />
                     ) : renderVoiceRecorder()}
+                    
                     {attachments.length > 0 && (
                         <div className="attachments-preview">
-                            {attachments.map(att => (
-                                <div key={att.id} className="attachment-item">
-                                    {(att.mimeType || att.type || '').startsWith('video/') ? (
-                                        <video src={att.url} className="create-post-media-preview" controls muted />
-                                    ) : (
-                                        <img src={att.url} alt="media" />
-                                    )}
-                                    <button className="remove-att-btn" onClick={() => removeAttachment(att.id)}><CloseIcon /></button>
-                                </div>
-                            ))}
+                            {attachments.map(att => {
+                                const mime = att.mimeType || att.type || '';
+                                const isVid = mime.startsWith('video/') || att.url.toLowerCase().endsWith('.mp4');
+
+                                return (
+                                    <div key={att.id} className="attachment-item">
+                                        {isVid ? (
+                                            <video src={att.url} className="create-post-media-preview" controls muted playsInline />
+                                        ) : (
+                                            <img src={att.url} alt="media" />
+                                        )}
+                                        <button className="remove-att-btn" onClick={() => removeAttachment(att.id)}><CloseIcon /></button>
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    )}
+
+                    {isUploading && (
+                        <div className="upload-progress-container">
+                            <div className="upload-progress-info">
+                                <span>Загрузка файла...</span>
+                                <span>{uploadProgress}%</span>
+                            </div>
+                            <div className="upload-progress-track">
+                                <div className="upload-progress-fill" style={{ width: `${uploadProgress}%` }}></div>
+                            </div>
                         </div>
                     )}
                 </div>
@@ -243,18 +276,21 @@ const CreatePost = ({ onPostCreated }) => {
                     <div className="create-post-tools">
                         <input type="file" ref={fileInputRef} onChange={handleFileSelect} style={{display: 'none'}} accept="image/*,video/*" />
                         <input type="file" ref={musicInputRef} onChange={handleMusicSelect} style={{display: 'none'}} accept="audio/mpeg,audio/mp3" />
-                        <button className="tool-btn" onClick={() => fileInputRef.current.click()} disabled={isUploading || attachments.length >= 4}><ImageIcon /></button>
-                        <button className="tool-btn" onClick={() => musicInputRef.current.click()} disabled={isUploading || attachments.length > 0}><MusicIcon /></button>
-                        <button className="tool-btn"><PollIcon/></button>
+                        <button className="tool-btn" onClick={() => fileInputRef.current.click()} disabled={isUploading || attachments.length >= 4} title="Прикрепить фото или видео"><ImageIcon /></button>
+                        <button className="tool-btn" onClick={() => musicInputRef.current.click()} disabled={isUploading || attachments.length > 0} title="Прикрепить музыку"><MusicIcon /></button>
+                        <button className="tool-btn" title="Создать опрос"><PollIcon/></button>
                     </div>
                     {text.trim() || attachments.length > 0 ? (
                         <button className="create-post-submit" onClick={handleSubmit} disabled={isSending || isUploading}>{isSending ? '...' : 'Опубликовать'}</button>
                     ) : (
-                        <button className="tool-btn mic" onClick={startRecording}><MicIcon /></button>
+                        <button className="tool-btn mic" onClick={startRecording} title="Записать голос"><MicIcon /></button>
                     )}
                 </div>
             )}
         </div>
     );
 };
+
+const renderVoiceRecorder = () => {};  
+
 export default CreatePost;

@@ -11,7 +11,6 @@ import EditProfileModal from '../components/modals/EditProfileModal';
 import SettingsModal from '../components/modals/SettingsModal';
 import UserListModal from '../components/modals/UserListModal';
 import BannerEditorModal from '../components/modals/BannerEditorModal';
-import AvatarEditorModal from '../components/modals/AvatarEditorModal';
 import { ProfileSkeleton, PostSkeleton } from '../components/Skeletons';
 
 import { VerifiedBlue, VerifiedGold } from '../components/icons/VerifyIcons';
@@ -160,21 +159,7 @@ const Profile = () => {
         setUser(prev => ({ ...prev, banner: newUrl }));
         if (isMyProfile) setCurrentUser(prev => ({ ...prev, banner: newUrl }));
     };
-
-    const handleAvatarUpdate = async (file, previewUrl) => {
-        setUser(prev => ({ ...prev, avatar: previewUrl }));
-        if (isMyProfile) setCurrentUser(prev => ({ ...prev, avatar: previewUrl }));
-
-        try {
-            const uploadRes = await apiClient.uploadFile(file);
-            if (uploadRes && uploadRes.id) {
-                await apiClient.updateProfile({ avatarId: uploadRes.id });
-            }
-        } catch (e) {
-            console.error("Ошибка обновления аватара:", e);
-        }
-    };
-
+    
     const handlePostCreated = (newPost) => {
         if (activeTab === 'posts') {
             setPosts(prev => [newPost, ...prev]);
@@ -215,12 +200,6 @@ const Profile = () => {
                              <img src={user.avatar} alt={user.username} className="profile-avatar-img" />
                         ) : (
                             <div className="profile-avatar-placeholder">{user.avatar || "👤"}</div>
-                        )}
-
-                        {isMyProfile && (
-                            <div className="edit-avatar-overlay" onClick={() => openModal(<AvatarEditorModal onSave={handleAvatarUpdate} />)}>
-                                <CameraIcon />
-                            </div>
                         )}
                     </div>
                     

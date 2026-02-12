@@ -113,9 +113,9 @@ const CreatePost = ({ onPostCreated }) => {
         setIsSending(true);
         try {
             const voiceFile = new File([audioBlob], `voice-${Date.now()}.webm`, { type: 'audio/webm' });
-            const uploaded = await apiClient.uploadFile(voiceFile);
-            if (uploaded?.id) {
-                const newPost = await apiClient.createPost("", [uploaded.id]);
+            const uploadResult = await apiClient.uploadFile(voiceFile);
+            if (uploadResult?.data?.id) {
+                const newPost = await apiClient.createPost("", [uploadResult.data.id]);
                 if (newPost && !newPost.error) { onPostCreated && onPostCreated(newPost); cancelRecording(); }
             }
         } catch (err) { console.error(err); } finally { setIsSending(false); }
@@ -131,17 +131,17 @@ const CreatePost = ({ onPostCreated }) => {
 
         try {
             console.log(`[CreatePost] Начинаем загрузку: ${file.name}, Размер: ${(file.size / 1024 / 1024).toFixed(2)} MB`);
-            const uploaded = await apiClient.uploadFile(file);
-            console.log("[CreatePost] Ответ сервера:", uploaded);
+            const uploadResult = await apiClient.uploadFile(file);
+            console.log("[CreatePost] Ответ сервера:", uploadResult);
 
             clearInterval(progressInterval);
             setUploadProgress(100);
 
-            if (uploaded && uploaded.id) {
-                setAttachments(prev => [...prev, uploaded]);
-            } else if (uploaded.error) {
-                const errorMsg = uploaded.error.message || uploaded.error;
-                if (uploaded.status === 413 || errorMsg.includes('413')) {
+            if (uploadResult && uploadResult.data && uploadResult.data.id) {  
+                setAttachments(prev => [...prev, uploadResult.data]);  
+            } else if (uploadResult.error) {
+                const errorMsg = uploadResult.error.message || uploadResult.error;
+                if (uploadResult.status === 413 || (typeof errorMsg === 'string' && errorMsg.includes('413'))) {
                     alert(`⚠️ ОШИБКА: Файл слишком большой!\nРазмер: ${(file.size / 1024 / 1024).toFixed(2)} MB\nСервер не может принять такой объем.`);
                 } else {
                     alert(`Ошибка загрузки: ${errorMsg}`);
@@ -178,23 +178,23 @@ const CreatePost = ({ onPostCreated }) => {
                     if (!title || !artist) { setIsUploading(false); clearInterval(progressInterval); return; }
 
                     try {
-                        const audioUpload = await apiClient.uploadFile(file);
-                        let coverUpload = null;
+                        const audioUploadResult = await apiClient.uploadFile(file);
+                        let coverUploadResult = null;
                         if (tags.picture) {
                             const { data } = tags.picture; 
                             const byteArray = new Uint8Array(data);
                             const blob = new Blob([byteArray], { type: 'image/jpeg' });
                             const coverFile = new File([blob], `cover-${Date.now()}.jpg`, { type: 'image/jpeg' });
-                            coverUpload = await apiClient.uploadFile(coverFile);
+                            coverUploadResult = await apiClient.uploadFile(coverFile);
                         }
 
-                        if (audioUpload && audioUpload.id) {
+                        if (audioUploadResult && audioUploadResult.data && audioUploadResult.data.id) {  
                             const artistEncoded = btoa(unescape(encodeURIComponent(artist)));
                             const titleEncoded = btoa(unescape(encodeURIComponent(title)));
                             const postContent = `[artist:${artistEncoded}] [title:${titleEncoded}] #nowkie_music_track`;
                             
-                            const ids = [audioUpload.id];
-                            if (coverUpload && coverUpload.id) ids.push(coverUpload.id);
+                            const ids = [audioUploadResult.data.id];  
+                            if (coverUploadResult && coverUploadResult.data && coverUploadResult.data.id) ids.push(coverUploadResult.data.id);  
 
                             const newPost = await apiClient.createPost(postContent, ids);
                             if (newPost && !newPost.error) { if (onPostCreated) onPostCreated(newPost); } 

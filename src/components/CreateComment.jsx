@@ -25,11 +25,11 @@ const CreateComment = ({ postId, onCommentCreated }) => {
 
         setIsUploading(true);
         try {
-            const uploaded = await apiClient.uploadFile(file);
-            if (uploaded && uploaded.id) {
-                setAttachments([uploaded]);
+            const uploadResult = await apiClient.uploadFile(file);
+            if (uploadResult && uploadResult.data && uploadResult.data.id) {  
+                setAttachments([uploadResult.data]);  
             } else {
-                alert(`Ошибка загрузки: ${uploaded?.error?.message || 'Неизвестная ошибка'}`);
+                alert(`Ошибка загрузки: ${uploadResult?.error?.message || 'Неизвестная ошибка'}`);
             }
         } catch (err) {
             alert("Сетевая ошибка при загрузке: " + err.message);

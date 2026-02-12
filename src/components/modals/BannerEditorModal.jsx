@@ -106,20 +106,20 @@ const BannerEditorModal = ({ onSaveSuccess }) => {
     const uploadAndSave = async (fileToUpload) => {
         const uploadRes = await apiClient.uploadFile(fileToUpload);
         
-        if (uploadRes && uploadRes.id) {
+        if (uploadRes && uploadRes.data && uploadRes.data.id) { 
             const updateRes = await apiClient.updateProfile({ 
-                bannerId: uploadRes.id 
+                bannerId: uploadRes.data.id 
             });
             
             if (updateRes && !updateRes.error) {
-                if (onSaveSuccess) onSaveSuccess(uploadRes.url || updateRes.banner);
+                if (onSaveSuccess) onSaveSuccess(uploadRes.data.url || updateRes.banner); 
                 closeModal();
             } else {
                 alert("Ошибка обновления профиля: " + (updateRes?.error?.message || "Unknown error"));
             }
         } else {
             console.error("Upload failed", uploadRes);
-            alert("Ошибка загрузки файла. " + (uploadRes?.error?.message || uploadRes?.error || "Проверьте консоль"));
+            alert("Ошибка загрузки файла. " + (uploadRes?.error?.message || "Проверьте консоль"));
         }
     };
 

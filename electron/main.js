@@ -1,4 +1,4 @@
-const { app, BrowserWindow } = require('electron');
+const { app, BrowserWindow, session } = require('electron');
 const path = require('path');
 const { autoUpdater } = require('electron-updater');
 const { createMainWindow, getMainWindow } = require('./window');
@@ -127,7 +127,10 @@ if (!gotTheLock) {
     });
 }
 
-app.whenReady().then(createSplash);
+app.whenReady().then(async () => {
+    await session.defaultSession.clearCache();
+    createSplash();
+});
 
 app.on('window-all-closed', () => { 
     if (process.platform !== 'darwin') app.quit(); 

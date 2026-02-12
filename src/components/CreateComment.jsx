@@ -26,8 +26,8 @@ const CreateComment = ({ postId, onCommentCreated }) => {
         setIsUploading(true);
         try {
             const uploadResult = await apiClient.uploadFile(file);
-            if (uploadResult && uploadResult.data && uploadResult.data.id) {  
-                setAttachments([uploadResult.data]);  
+            if (uploadResult && uploadResult.data && uploadResult.data.id) {
+                setAttachments([uploadResult.data]);
             } else {
                 alert(`Ошибка загрузки: ${uploadResult?.error?.message || 'Неизвестная ошибка'}`);
             }
@@ -51,17 +51,32 @@ const CreateComment = ({ postId, onCommentCreated }) => {
         setIsSending(true);
         try {
             const attachmentIds = attachments.map(att => att.id);
-            const newComment = await apiClient.addComment(postId, text, attachmentIds);
+            const result = await apiClient.addComment(postId, text, attachmentIds);
             
-            if (newComment && !newComment.error) {
+            const newComment = result.data || result;
+
+            if (newComment && newComment.id && !result.error) {
                 setText("");
                 setAttachments([]);
-                if (onCommentCreated) onCommentCreated(newComment);
+                if (onCommentCreated) {
+                    onCommentCreated(newComment);
+                }
+            } else {
+                console.error("Failed to add comment:", result?.error?.message || result);
+                alert(`Ошибка: ${result?.error?.message || 'Не удалось отправить комментарий.'}`);
             }
         } catch (err) {
-            console.error(err);
+            console.error("Error submitting comment:", err);
+            alert(`Сетевая ошибка: ${err.message}`);
         } finally {
             setIsSending(false);
+        }
+    };
+    
+    const handleKeyDown = (e) => {
+        if (e.key === 'Enter' && !e.shiftKey) {
+            e.preventDefault();
+            handleSubmit(e);
         }
     };
 
@@ -82,7 +97,8 @@ const CreateComment = ({ postId, onCommentCreated }) => {
                         setText(e.target.value);
                         e.target.style.height = 'auto';
                         e.target.style.height = e.target.scrollHeight + 'px';
-                    }} 
+                    }}
+                    onKeyDown={handleKeyDown}
                 />
                 
                 {attachments.length > 0 && (

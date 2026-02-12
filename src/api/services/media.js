@@ -54,7 +54,7 @@ export const mediaService = {
             }
 
             return request('/files/upload', 'POST', {
-                file: { name: fileName, type: fileType, data: fileData }
+                file: { name: fileName, type: fileType, data: Array.from(fileData) }
             });
 
         } catch (e) {

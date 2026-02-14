@@ -5,7 +5,6 @@ import { PlayIcon, PauseIcon } from '../components/icons/MediaIcons';
 import { TrackSkeleton } from '../components/Skeletons';
 import '../styles/MusicLibrary.css';
 
-
 const SearchIcon = () => (
     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{color: 'var(--color-text-secondary)'}}>
         <circle cx="11" cy="11" r="8"></circle>
@@ -19,18 +18,18 @@ const Music = () => {
     const [loading, setLoading] = useState(true);
     const { currentTrack, isPlaying, playTrack } = useMusic();
 
-        const decodeMeta = (str) => {
+    const decodeMeta = (str) => {
         try {
-            return decodeURIComponent(escape(atob(str)));
+            return decodeURIComponent(escape(window.atob(str)));
         } catch (e) {
+            console.error("Decode error:", e);
             return "Неизвестно";
         }
     };
 
-        const fetchMusic = useCallback(async () => {
+    const fetchMusic = useCallback(async () => {
         setLoading(true);
         try {
-            
             const listRes = await apiClient.getHashtagPosts('#nowkie_music_track', null, 50);
             const postsList = listRes?.data?.posts || listRes?.posts || [];
 
@@ -39,20 +38,11 @@ const Music = () => {
                 setLoading(false);
                 return;
             }
-
             
-            const detailPromises = postsList.map(post => apiClient.getPostDetails(post.id));
-            const detailResults = await Promise.all(detailPromises);
-            
-            const fullPosts = detailResults
-                .map(res => res?.data || res)
-                .filter(post => post && post.id && post.content);
-
             const parsedTracks = [];
 
-            fullPosts.forEach(post => {
+            postsList.forEach(post => {
                 try {
-                    
                     const artistMatch = post.content.match(/\[artist:(.+?)\]/);
                     const titleMatch = post.content.match(/\[title:(.+?)\]/);
                     const albumMatch = post.content.match(/\[album:(.+?)\]/);
@@ -65,19 +55,22 @@ const Music = () => {
 
                     
                     const audioAttachment = post.attachments?.find(a => {
-                         const type = a.mimeType || a.type || '';
-                         const url = a.url || '';
-                         return type.startsWith('audio/') || 
-                                type === 'video/mpeg' || 
-                                url.toLowerCase().endsWith('.mp3') ||
-                                (!type.startsWith('image/') && !type.startsWith('video/'));
+                         const type = (a.mimeType || a.type || '').toLowerCase();
+                         const url = (a.url || '').toLowerCase();
+                         return type.startsWith('audio/') || url.endsWith('.mp3') || url.endsWith('.wav') || url.endsWith('.m4a');
                     });
-
+                    
+                    
                     
                     const coverAttachment = post.attachments?.find(a => {
-                        const type = a.mimeType || a.type || '';
-                        const url = a.url || '';
-                        return type.startsWith('image/') || /\.(jpe?g|png|gif|webp)$/i.test(url);
+                        const type = (a.mimeType || a.type || '').toLowerCase();
+                        const url = (a.url || '').toLowerCase();
+                        return type.startsWith('image/') || 
+                               url.endsWith('.jpg') || 
+                               url.endsWith('.jpeg') || 
+                               url.endsWith('.png') || 
+                               url.endsWith('.webp') ||
+                               url.endsWith('.gif');
                     });
 
                     if (audioAttachment) {
@@ -89,7 +82,6 @@ const Music = () => {
                             src: audioAttachment.url,
                             cover: coverAttachment ? coverAttachment.url : null,
                             createdAt: post.createdAt,
-                            
                             searchStr: `${title} ${artist}`.toLowerCase()
                         });
                     }
@@ -97,7 +89,6 @@ const Music = () => {
                     console.error("Parse error for post:", post.id, e);
                 }
             });
-            
             
             parsedTracks.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
             setAllTracks(parsedTracks);
@@ -111,16 +102,14 @@ const Music = () => {
 
     useEffect(() => { fetchMusic(); }, [fetchMusic]);
 
-        const content = useMemo(() => {
+    const content = useMemo(() => {
         const query = searchQuery.toLowerCase().trim();
-        
         
         if (query) {
             const filtered = allTracks.filter(t => t.searchStr.includes(query));
             return { type: 'list', data: filtered };
         }
 
-        
         const grouped = {};
         allTracks.forEach(track => {
             if (!grouped[track.album]) grouped[track.album] = [];
@@ -130,7 +119,7 @@ const Music = () => {
 
     }, [allTracks, searchQuery]);
 
-        const TrackRow = ({ track, listContext }) => {
+    const TrackRow = ({ track, listContext }) => {
         const isCurrent = currentTrack?.id === track.id;
         
         return (
@@ -165,7 +154,6 @@ const Music = () => {
 
     return (
         <div className="music-page-container">
-            
             <div className="music-header-sticky">
                 <h2 className="music-page-title">Музыка</h2>
                 <div className="music-search-wrapper">
@@ -189,7 +177,6 @@ const Music = () => {
                     </div>
                 ) : (
                     <>
-                        
                         {content.type === 'list' && (
                             <div className="flat-track-list">
                                 {content.data.length === 0 ? (
@@ -206,7 +193,6 @@ const Music = () => {
                             </div>
                         )}
 
-                        
                         {content.type === 'albums' && (
                             Object.keys(content.data).length === 0 ? (
                                 <div className="empty-state">

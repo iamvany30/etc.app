@@ -10,6 +10,7 @@ contextBridge.exposeInMainWorld('api', {
     checkInternetQuick: () => ipcRenderer.invoke('app:quick-check'),
     
 
+
     autoGrabToken: () => ipcRenderer.invoke('auto-grab-token'),
     openStealthLogin: () => ipcRenderer.invoke('open-stealth-login'),
     loginWithToken: (token) => ipcRenderer.invoke('login-with-token', token),
@@ -45,7 +46,11 @@ contextBridge.exposeInMainWorld('api', {
             return () => ipcRenderer.removeListener('nav-state-change', subscription);
         },
     },
-
+    on: (channel, callback) => {
+        const subscription = (_event, ...args) => callback(...args);
+        ipcRenderer.on(channel, subscription);
+        return () => ipcRenderer.removeListener(channel, subscription);
+    },
     window: {
         minimize: () => ipcRenderer.send('window-minimize'),
         maximize: () => ipcRenderer.send('window-maximize'),

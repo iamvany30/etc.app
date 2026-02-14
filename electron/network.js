@@ -1,6 +1,13 @@
+const { net } = require('electron');
 const { SITE_DOMAIN, API_BASE, USER_AGENT } = require('./config');
 const store = require('./store');
 const { logDebug } = require('./logger');
+
+
+let activeStreamRequest = null;
+let reconnectTimer = null;
+let isStreamExpected = false; 
+
 
 async function rawFetch(endpoint, options = {}) {
     const url = endpoint.startsWith('http') ? endpoint : `${API_BASE}${endpoint}`;
@@ -9,7 +16,10 @@ async function rawFetch(endpoint, options = {}) {
         'Accept': 'application/json', 'User-Agent': USER_AGENT,
         ...options.headers 
     };
+    
+    
     if (options.body instanceof FormData) delete headers['Content-Type'];
+    
     const accessToken = store.getAccessToken();
     if (accessToken) headers['Authorization'] = `Bearer ${accessToken}`;
 
@@ -19,10 +29,17 @@ async function rawFetch(endpoint, options = {}) {
     try {
         const response = await fetch(url, { ...options, headers, signal: controller.signal });
         clearTimeout(timeoutId);
+        
         if (response.status === 204) return { ok: true, data: { success: true } };
+        
         const text = await response.text();
         let data;
-        try { data = JSON.parse(text); } catch (e) { data = { error: { message: `Server Error (${response.status})` } }; }
+        try { 
+            data = JSON.parse(text); 
+        } catch (e) { 
+            data = { error: { message: `Server Error (${response.status})` } }; 
+        }
+        
         return { ok: response.ok, status: response.status, data, headers: response.headers };
     } catch (e) {
         clearTimeout(timeoutId);
@@ -30,41 +47,218 @@ async function rawFetch(endpoint, options = {}) {
     }
 }
 
+
 async function refreshSession() {
     logDebug(">>> НАЧАЛО refreshSession");
     const token = store.loadRefreshToken();
     if (!token) return { success: false, reason: 'no_token' };
-    const headers = { 'Content-Type': 'application/json', 'Cookie': `refresh_token=${token}` };
+    
+    
+    const headers = { 'Cookie': `refresh_token=${token}` };
+    
     const res = await rawFetch('/v1/auth/refresh', {
-        method: 'POST', headers, body: JSON.stringify({ refreshToken: token })
+        method: 'POST', headers
     });
+
     if (res.ok && res.data?.accessToken) {
         store.setAccessToken(res.data.accessToken);
+        
+        
         const setCookie = res.headers?.get('set-cookie');
         const newToken = setCookie?.match(/refresh_token=([^;]+)/)?.[1] || res.data.refreshToken;
+        
         if (newToken) store.saveRefreshToken(newToken);
         store.resetFailureCount();
+        
+        
+        if (isStreamExpected) {
+            logDebug("[Refresh] Токен обновлен, перезапуск стрима...");
+            
+            setTimeout(() => startStreamConnection(), 500);
+        }
+
         return { success: true };
     }
-    if (res.status === 429 || res.code === 'NETWORK_ERROR' || res.status === 0) return { success: false, reason: 'network_error' };
+    
+    if (res.status === 429 || res.code === 'NETWORK_ERROR' || res.status === 0) {
+        return { success: false, reason: 'network_error' };
+    }
+    
     if (res.status === 401 || res.status === 403) {
         store.incrementFailureCount();
-        if (store.getFailureCount() >= 5) { store.clearRefreshToken(); return { success: false, reason: 'token_invalid_permanent' }; }
+        if (store.getFailureCount() >= 5) { 
+            store.clearRefreshToken(); 
+            stopStreamConnection(); 
+            return { success: false, reason: 'token_invalid_permanent' }; 
+        }
     }
     return { success: false, reason: 'token_invalid_temporary' };
 }
 
+
 async function apiCall(endpoint, method = 'GET', body = null) {
-    if (endpoint.includes('/logout')) { await rawFetch(endpoint, { method: 'POST' }); store.clearRefreshToken(); return { success: true }; }
+    if (endpoint.includes('/logout')) { 
+        stopStreamConnection(); 
+        await rawFetch(endpoint, { method: 'POST' }); 
+        store.clearRefreshToken(); 
+        return { success: true }; 
+    }
+    
     let options = { method };
-    if (body) { options.headers = { 'Content-Type': 'application/json' }; options.body = JSON.stringify(body); }
+    if (body) { 
+        options.headers = { 'Content-Type': 'application/json' }; 
+        options.body = JSON.stringify(body); 
+    }
+    
     let res = await rawFetch(endpoint, options);
+    
+    
     if (res.status === 401 && endpoint !== '/v1/auth/refresh') {
         const refreshed = await refreshSession();
-        if (refreshed.success) res = await rawFetch(endpoint, options);
+        if (refreshed.success) {
+            res = await rawFetch(endpoint, options);
+        }
     }
+    
     return res.data || { error: { message: 'Server error' } };
 }
+
+
+
+
+
+
+
+function stopStreamConnection() {
+    logDebug("[Stream] Останавливаю соединение...");
+    isStreamExpected = false;
+    
+    if (reconnectTimer) {
+        clearTimeout(reconnectTimer);
+        reconnectTimer = null;
+    }
+    
+    if (activeStreamRequest) {
+        try {
+            activeStreamRequest.abort();
+        } catch(e) {}
+        activeStreamRequest = null;
+    }
+}
+
+function startStreamConnection() {
+    
+    
+    
+    const token = store.getAccessToken();
+    if (activeStreamRequest || !token) {
+        if (!token) logDebug("[Stream] Нет токена, отмена старта.");
+        return;
+    }
+
+    logDebug("[Stream] Инициализация подключения (Native Net)...");
+    isStreamExpected = true;
+    
+    if (reconnectTimer) {
+        clearTimeout(reconnectTimer);
+        reconnectTimer = null;
+    }
+
+    
+    
+    const request = net.request({
+        method: 'GET',
+        url: `${API_BASE}/notifications/stream`,
+        useSessionCookies: true, 
+    });
+
+    
+    request.setHeader('Accept', 'text/event-stream');
+    request.setHeader('Cache-Control', 'no-cache');
+    request.setHeader('Authorization', `Bearer ${token}`);
+    
+    
+    
+
+    request.on('response', (response) => {
+        logDebug(`[Stream] Ответ сервера: ${response.statusCode}`);
+
+        if (response.statusCode === 200) {
+            logDebug("[Stream] ✅ Соединение УСТАНОВЛЕНО (Статус: Онлайн)");
+            
+            
+            response.on('data', (chunk) => {
+                
+                
+                
+            });
+            
+            response.on('end', () => {
+                logDebug("[Stream] Сервер закрыл соединение (End).");
+                activeStreamRequest = null;
+                
+                if (isStreamExpected) retryStream();
+            });
+
+            response.on('error', (e) => {
+                logDebug(`[Stream] Ошибка чтения ответа: ${e.message}`);
+                activeStreamRequest = null;
+            });
+        } 
+        else if (response.statusCode === 401 || response.statusCode === 403) {
+            logDebug("[Stream] Ошибка авторизации (401). Пробую обновить токен...");
+            activeStreamRequest = null;
+            
+            
+            refreshSession().then(res => {
+                if (res.success) {
+                    
+                    retryStream(1000);
+                } else {
+                    logDebug("[Stream] Не удалось обновить сессию. Останавливаю попытки.");
+                    isStreamExpected = false;
+                }
+            });
+        }
+        else {
+            
+            logDebug(`[Stream] Ошибка сервера. Код: ${response.statusCode}`);
+            activeStreamRequest = null;
+            if (isStreamExpected) retryStream();
+        }
+    });
+
+    
+    request.on('error', (error) => {
+        if (error.message !== 'net::ERR_ABORTED') { 
+            logDebug(`[Stream] Ошибка сети: ${error.message}`);
+            activeStreamRequest = null;
+            if (isStreamExpected) retryStream();
+        }
+    });
+
+    
+    request.end();
+    activeStreamRequest = request;
+}
+
+function retryStream(delay = 5000) {
+    if (!isStreamExpected) return;
+    
+    if (reconnectTimer) clearTimeout(reconnectTimer);
+    
+    logDebug(`[Stream] Переподключение через ${delay}мс...`);
+    
+    reconnectTimer = setTimeout(() => {
+        
+        if (activeStreamRequest) {
+             try { activeStreamRequest.abort(); } catch(e) {}
+             activeStreamRequest = null;
+        }
+        startStreamConnection();
+    }, delay);
+}
+
 
 
 async function checkApiStatus() {
@@ -77,7 +271,6 @@ async function checkApiStatus() {
     } catch { return false; }
 }
 
-
 async function quickInternetCheck() {
     const hosts = ['https://8.8.8.8', 'https://1.1.1.1', 'https://www.google.com'];
     const controller = new AbortController();
@@ -88,7 +281,6 @@ async function quickInternetCheck() {
         return true;
     } catch { return false; }
 }
-
 
 async function runDetailedDiagnostics() {
     const checks = [
@@ -113,4 +305,13 @@ async function runDetailedDiagnostics() {
     }));
 }
 
-module.exports = { rawFetch, refreshSession, apiCall, quickInternetCheck, runDetailedDiagnostics, checkApiStatus };
+module.exports = { 
+    rawFetch, 
+    refreshSession, 
+    apiCall, 
+    quickInternetCheck, 
+    runDetailedDiagnostics, 
+    checkApiStatus,
+    startStreamConnection, 
+    stopStreamConnection   
+};

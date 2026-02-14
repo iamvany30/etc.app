@@ -3,7 +3,6 @@ import { Link } from 'react-router-dom';
 import { apiClient } from '../api/client';
 import '../styles/Notifications.css';
 
- 
 import { 
     IconLikeFilled, 
     IconCommentFilled, 
@@ -59,23 +58,19 @@ const NotificationItem = ({ notif }) => {
     const { icon, badgeClass, text } = getNotificationTypeInfo(type);
     const itemRef = useRef(null);
 
-     
     const getNotificationLink = () => {
         if (type === 'follow' || type === 'mention_user') {
             return `/profile/${actor.username}`;
         }
         if (targetId) {
-             
             if ((type === 'comment' || type === 'reply') && context?.commentId) {
                 return `/post/${targetId}#comment-${context.commentId}`;
             }
-             
             return `/post/${targetId}`;
         }
-        return `/profile/${actor.username}`;  
+        return `/profile/${actor.username}`;
     };
 
-     
     useEffect(() => {
         if (read || !itemRef.current) return;
 
@@ -123,30 +118,104 @@ const NotificationItem = ({ notif }) => {
 const NotificationsPage = () => {
     const [notifications, setNotifications] = useState([]);
     const [activeTab, setActiveTab] = useState('all');
+    const LIMIT = 20;
+    
+    
     const [loading, setLoading] = useState(true);
+    const [loadingMore, setLoadingMore] = useState(false);
 
-    const fetchNotifications = useCallback(async () => {
-        setLoading(true);
+    
+    const hasMoreRef = useRef(true);
+    const isFetchingRef = useRef(false);
+    
+    
+    const observerRef = useRef(null);
+    const sentinelRef = useRef(null);
+    const listRef = useRef(null); 
+
+    const loadNotifications = useCallback(async (isInitial = false) => {
+        if (isFetchingRef.current || (!isInitial && !hasMoreRef.current)) return;
+
+        isFetchingRef.current = true;
+        
+        if (isInitial) {
+            setLoading(true);
+        } else {
+            setLoadingMore(true);
+        }
+
         try {
-            const apiTab = activeTab === 'mentions' ? 'mention' : 'all';
-            const res = await apiClient.getNotifications(apiTab);
-            const list = res?.notifications || res?.data?.notifications || [];
-            setNotifications(list);
             
-             
-            if (window.resetNotificationCount) {
+            
+            
+            const currentOffset = isInitial ? 0 : notifications.length;
+            const apiTab = activeTab === 'mentions' ? 'mention' : 'all';
+            
+            
+            const res = await apiClient.getNotifications(apiTab, currentOffset, LIMIT);
+            
+            const responseData = res?.data || res;
+            
+            const list = Array.isArray(responseData) ? responseData : (responseData?.notifications || []);
+
+            if (isInitial) {
+                setNotifications(list);
+            } else {
+                setNotifications(prev => [...prev, ...list]);
+            }
+
+            
+            if (list.length < LIMIT) {
+                hasMoreRef.current = false;
+            } else {
+                hasMoreRef.current = true;
+            }
+
+            if (isInitial && window.resetNotificationCount) {
                 window.resetNotificationCount();
             }
+
         } catch (error) {
             console.error("Failed to load notifications", error);
         } finally {
             setLoading(false);
+            setLoadingMore(false);
+            isFetchingRef.current = false;
         }
-    }, [activeTab]);
+    }, [activeTab, notifications.length]); 
 
+    
     useEffect(() => {
-        fetchNotifications();
-    }, [fetchNotifications]);
+        hasMoreRef.current = true;
+        setNotifications([]);
+        loadNotifications(true);
+    }, [activeTab]); 
+
+    
+    useEffect(() => {
+        if (loading) return;
+
+        const options = {
+            root: listRef.current, 
+            rootMargin: '400px',
+            threshold: 0.1
+        };
+
+        const observer = new IntersectionObserver((entries) => {
+            if (entries[0].isIntersecting && hasMoreRef.current && !isFetchingRef.current) {
+                loadNotifications(false);
+            }
+        }, options);
+
+        if (sentinelRef.current) {
+            observer.observe(sentinelRef.current);
+        }
+        observerRef.current = observer;
+
+        return () => {
+            if (observerRef.current) observerRef.current.disconnect();
+        };
+    }, [loading, loadNotifications, notifications.length]); 
 
     const handleMarkAllRead = async () => {
         try {
@@ -185,13 +254,32 @@ const NotificationsPage = () => {
                 </div>
             </header>
 
-            <div className="notifications-list">
-                {loading ? (
+            <div className="notifications-list" ref={listRef}>
+                {loading && notifications.length === 0 ? (
                     <div className="notifications-loading">Загрузка...</div>
                 ) : notifications.length > 0 ? (
-                    notifications.map((notif) => (
-                        <NotificationItem key={notif.id} notif={notif} />
-                    ))
+                    <>
+                        {notifications.map((notif) => (
+                            <NotificationItem key={notif.id} notif={notif} />
+                        ))}
+                        
+                        
+                        <div 
+                            ref={sentinelRef} 
+                            style={{ height: '40px', width: '100%', flexShrink: 0 }} 
+                        >
+                            {loadingMore && (
+                                <div style={{ 
+                                    textAlign: 'center', 
+                                    padding: '10px', 
+                                    color: 'var(--color-text-secondary)',
+                                    fontSize: '13px' 
+                                }}>
+                                    Загрузка...
+                                </div>
+                            )}
+                        </div>
+                    </>
                 ) : (
                     <div className="notifications-empty">
                         <h3>Уведомлений пока нет</h3>

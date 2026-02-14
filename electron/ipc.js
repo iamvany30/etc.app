@@ -11,10 +11,10 @@ const { getMainWindow } = require('./window');
 const themes = require('./themes');
 const { API_BASE, SITE_DOMAIN, USER_AGENT } = require('./config');
 
-
 async function withTempFiles(inputData, extension, callback) {
+    
     const tempDir = app.getPath('temp');
-    const uniqueId = `itd-app-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
+    const uniqueId = `etc-app-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
     const tempInputPath = path.join(tempDir, `${uniqueId}.${extension}`);
     const tempOutputPath = path.join(tempDir, `${uniqueId}_out`);
 
@@ -28,7 +28,6 @@ async function withTempFiles(inputData, extension, callback) {
         console.error(error);
         return { success: false, error: error.message };
     } finally {
-        
         await fs.unlink(tempInputPath).catch(() => {});
         await fs.unlink(tempOutputPath).catch(() => {}); 
         await fs.unlink(tempOutputPath + '.mp3').catch(() => {});
@@ -37,10 +36,8 @@ async function withTempFiles(inputData, extension, callback) {
 }
 
 function registerHandlers() {
-    
     ipcMain.handle('app:get-version', () => app.getVersion());
 
-    
     ipcMain.handle('open-stealth-login', async (event) => {
         return auth.handleStealthLogin(event);
     });
@@ -51,7 +48,6 @@ function registerHandlers() {
 
     ipcMain.handle('get-init-user', async () => {
         logDebug(">>> ЗАПРОС: get-init-user (Кто я?)");
-        
         const token = store.loadRefreshToken();
         if (!token) {
             logDebug("Нет токена при старте.");
@@ -70,41 +66,31 @@ function registerHandlers() {
         
         if (profileResponse && profileResponse.user && profileResponse.user.id) {
             logDebug(`Профиль получен: ${profileResponse.user.username}`);
+            
+            network.startStreamConnection(); 
             return profileResponse.user; 
         } else {
-            logDebug("!!! ОШИБКА: /profile вернул неожиданную структуру:", profileResponse);
             return null;
         }
     });
 
-    
     ipcMain.handle('login-with-token', async (e, t) => {
         logDebug("Ручной вход по токену...");
         store.saveRefreshToken(t);
-        
         const r = await network.refreshSession();
-        logDebug(`Результат проверки токена: ${r.success}`);
-
         if (r.success) {
-            logDebug("Токен валиден, запрашиваю профиль...");
             const profileResponse = await network.apiCall('/profile');
-            
             if (profileResponse && profileResponse.user && profileResponse.user.id) {
-                logDebug(`Профиль получен: ${profileResponse.user.username}`);
                 
+                network.startStreamConnection();
                 return { success: true, user: profileResponse.user };
-            } else {
-                logDebug("!!! ОШИБКА: Не удалось получить профиль после ручного входа.");
-                return { success: false, error: "Failed to fetch profile" };
             }
+            return { success: false, error: "Failed to fetch profile" };
         }
-        
         return { success: false };
     });
 
-    
     ipcMain.handle('api-call', (e, a) => network.apiCall(a.endpoint, a.method, a.body));
-    
     ipcMain.handle('open-external-link', (e, u) => shell.openExternal(u));
     
     ipcMain.handle('download-file', (e, { url }) => {
@@ -112,23 +98,27 @@ function registerHandlers() {
         if(win) win.webContents.downloadURL(url);
     });
     
-    
-    ipcMain.handle('app:quick-check', async () => {
-        return await network.quickInternetCheck();
-    });
-    
-    ipcMain.handle('app:diagnostics', async () => {
-        return await network.runDetailedDiagnostics();
-    });
-
+    ipcMain.handle('app:quick-check', async () => network.quickInternetCheck());
+    ipcMain.handle('app:diagnostics', async () => network.runDetailedDiagnostics());
     ipcMain.handle('app:check-connectivity', async () => {
         const res = await network.runDetailedDiagnostics();
         return res.filter(r => r.name !== 'API Сервер' && r.status === 'ok').length;
     });
-    
 
     
+    ipcMain.handle('presence:start', () => {
+        network.startStreamConnection();
+        return true;
+    });
+
+    ipcMain.handle('presence:stop', () => {
+        network.stopStreamConnection();
+        return true;
+    });
+    
+
     ipcMain.handle('compress-audio', async (event, { data, name }) => {
+        
         logDebug(`[IPC] Запрос на сжатие аудио: ${name}`);
         const extension = path.extname(name) || '.tmp';
         const result = await withTempFiles(data, extension, (inputPath, outputPath) => {
@@ -138,14 +128,8 @@ function registerHandlers() {
                     .audioCodec('libmp3lame')
                     .audioBitrate('128k')
                     .toFormat('mp3')
-                    .on('error', (err) => {
-                        logDebug(`[FFMPEG-AUDIO] Ошибка: ${err.message}`);
-                        reject(err);
-                    })
-                    .on('end', () => {
-                        logDebug(`[FFMPEG-AUDIO] Сжатие завершено для ${name}`);
-                        resolve(finalPath);
-                    })
+                    .on('error', (err) => reject(err))
+                    .on('end', () => resolve(finalPath))
                     .save(finalPath);
             });
         });
@@ -158,7 +142,8 @@ function registerHandlers() {
     });
     
     ipcMain.handle('compress-video', async (event, { data, name, useGpu }) => {
-        logDebug(`[IPC] Запрос на сжатие видео: ${name} (useGpu: ${useGpu})`);
+        
+        logDebug(`[IPC] Запрос на сжатие видео: ${name}`);
         const extension = path.extname(name) || '.tmp';
         const result = await withTempFiles(data, extension, (inputPath, outputPath) => {
              const finalPath = outputPath + '.mp4';
@@ -166,23 +151,11 @@ function registerHandlers() {
                 const command = ffmpeg(inputPath)
                     .videoCodec('libx264')
                     .audioCodec('aac')
-                    .outputOptions([
-                        '-pix_fmt yuv420p',
-                        '-crf 28',
-                        '-preset medium',
-                        '-movflags +faststart'
-                    ])
+                    .outputOptions(['-pix_fmt yuv420p', '-crf 28', '-preset medium', '-movflags +faststart'])
                     .videoFilters('scale=w=-2:h=720:force_original_aspect_ratio=decrease')
                     .toFormat('mp4')
-                    .on('error', (err) => {
-                        logDebug(`[FFMPEG-VIDEO] Ошибка: ${err.message}`);
-                        reject(err);
-                    })
-                    .on('end', () => {
-                        logDebug(`[FFMPEG-VIDEO] Сжатие завершено для ${name}`);
-                        resolve(finalPath);
-                    });
-
+                    .on('error', (err) => reject(err))
+                    .on('end', () => resolve(finalPath));
                 command.save(finalPath);
             });
         });
@@ -195,7 +168,6 @@ function registerHandlers() {
     });
 
     ipcMain.handle('upload-file', async (e, { fileBuffer, fileName, fileType }) => {
-        logDebug(`[IPC-UPLOAD] Загрузка файла: ${fileName}`);
         
         const blob = new Blob([Buffer.from(fileBuffer)], { type: fileType });
         const formData = new FormData();
@@ -217,23 +189,16 @@ function registerHandlers() {
                 headers: headers,
                 body: formData
             });
-
             const data = await response.json();
-
-            if (!response.ok) {
-                 return { error: data.error || { message: data.message || `Ошибка загрузки (${response.status})` } };
-            }
+            if (!response.ok) return { error: data.error || { message: data.message } };
             return { data: data };
         } catch (err) {
-            logDebug(`[IPC-UPLOAD] Ошибка сети: ${err.message}`);
-            return { error: { message: err.message || 'Ошибка сети при загрузке' } };
+            return { error: { message: err.message } };
         }
     });
 
-    ipcMain.handle('app:check-api-status', async () => {
-    return await network.checkApiStatus();
-    });
-
+    ipcMain.handle('app:check-api-status', async () => network.checkApiStatus());
+    
     
     ipcMain.handle('themes:fetch-remote', () => themes.fetchRemoteList());
     ipcMain.handle('themes:get-local', () => themes.getLocalList());

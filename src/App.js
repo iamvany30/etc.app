@@ -1,16 +1,21 @@
 import React, { useEffect, useState, useCallback } from 'react';
-import { Routes, Route, Navigate, useLocation } from 'react-router-dom';  
+import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { DynamicComponent } from './core/ComponentRegistry';
+
 
 import Sidebar from './components/Sidebar';
 import RightSidebar from './components/RightSidebar';
 import MobileNav from './components/MobileNav';
 import GlobalPlayer from './components/GlobalPlayer';
-import AuthFlow from './components/AuthFlow';
 import TitleBar from './components/TitleBar';
 import ErrorBoundary from './components/ErrorBoundary';
-import NotificationWatcher from './components/NotificationWatcher';
 import Snowfall from './components/Snowfall';
+
+
+import AuthFlow from './components/AuthFlow';
+import NotificationWatcher from './components/NotificationWatcher';
+import PresenceManager from './components/PresenceManager'; 
+
 
 import Feed from './pages/Feed';
 import Explore from './pages/Explore';
@@ -39,12 +44,8 @@ const DefaultLayout = ({ children }) => {
     );
 };
 
- 
- 
 const AnimatedPage = ({ children }) => {
-     
     const location = useLocation();
-    
     return (
         <div 
             key={location.pathname} 
@@ -55,7 +56,6 @@ const AnimatedPage = ({ children }) => {
     );
 };
 
- 
 const RouteEl = ({ name, fallback }) => (
     <AnimatedPage>
         <DynamicComponent name={name} fallback={fallback} />
@@ -90,20 +90,22 @@ function App() {
 
             <AuthFlow>
                 <NotificationWatcher />
+                <PresenceManager />
                 
                 <DynamicComponent name="Layout.MainWrapper" fallback={DefaultLayout}>
                     <Routes>
-                          
                         <Route path="/" element={<RouteEl name="Page.Feed" fallback={Feed} />} />
                         <Route path="/explore" element={<RouteEl name="Page.Explore" fallback={Explore} />} />
                         <Route path="/notifications" element={<RouteEl name="Page.Notifications" fallback={Notifications} />} />
                         <Route path="/music" element={<RouteEl name="Page.Music" fallback={Music} />} />
-                          
+                        
                         <Route path="/profile/:username" element={<RouteEl name="Page.Profile" fallback={Profile} />} />
                         <Route path="/post/:id" element={<RouteEl name="Page.PostDetails" fallback={PostDetails} />} />
+                        
                         <Route path="/status" element={<StatusPage />} />
                         <Route path="/login" element={<Login />} />
                         <Route path="/offline" element={<OfflinePage />} />
+                        
                         <Route path="*" element={<Navigate to="/" replace />} />
                     </Routes>
                 </DynamicComponent>

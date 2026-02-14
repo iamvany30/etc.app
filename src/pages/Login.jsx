@@ -43,18 +43,16 @@ const Login = ({ onLoginSuccess }) => {
             setStatusMessage(`Критическая ошибка: ${e.message}`);
         }
     };
-
     
     const handleManualLogin = async () => {
         if (!tokenInput.trim()) return;
         
         
+        
+        
         const res = await window.api.loginWithToken(tokenInput.trim());
         
-        if (res.success && res.user) {
-            
-            localStorage.setItem('nowkie_user', JSON.stringify(res.user));
-            
+        if (res.success) {
             onLoginSuccess();
         } else {
             alert('Неверный или просроченный токен. Попробуйте скопировать его заново.');

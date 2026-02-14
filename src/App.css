@@ -1,22 +1,14 @@
- 
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&display=swap'); 
 
- 
- 
 :root {
-   
   --color-primary: #1d9bf0;
-  
-   
   --color-primary-hover: color-mix(in srgb, var(--color-primary), black 10%);
   --color-primary-alpha: color-mix(in srgb, var(--color-primary), transparent 90%);
-
-   
   --color-like: #f91880;
   --color-repost: #00ba7c;
   --color-white: #ffffff;
   
-   
   --sidebar-width: 275px;
   --right-sidebar-width: 350px;
   --border-radius-card: 16px;
@@ -24,7 +16,6 @@
   --border-radius-btn: 9999px;
 }
 
- 
 :root, :root[data-bg='light'] {
   --color-background: #ffffff;
   --color-card: #ffffff;
@@ -38,9 +29,13 @@
   --color-text-muted: #8899a6;
   
   --shadow-card: 0 0 10px rgba(0,0,0,0.05);
+  
+  
+  --color-spoiler-bg: #0f1419;
+  --color-code-bg: #f7f9fa;
+  --color-code-border: #cfd9de;
 }
 
- 
 :root[data-bg='dim'] {
   --color-background: #15202b;
   --color-card: #15202b;           
@@ -54,9 +49,13 @@
   --color-text-muted: #6a6f76;
   
   --shadow-card: none;
+
+  
+  --color-spoiler-bg: #f7f9f9;
+  --color-code-bg: #1e2732;
+  --color-code-border: #38444d;
 }
 
- 
 :root[data-bg='black'] {
   --color-background: #000000;
   --color-card: #000000;
@@ -70,9 +69,13 @@
   --color-text-muted: #555a5f;
   
   --shadow-card: none;
+
+  
+  --color-spoiler-bg: #e7e9ea;
+  --color-code-bg: #202327;
+  --color-code-border: #2f3336;
 }
 
- 
 html, body {
   height: 100vh;
   margin: 0;
@@ -84,7 +87,6 @@ html, body {
   transition: background-color 0.3s ease, color 0.3s ease;  
 }
 
- 
 #root {
   height: 100vh;
   display: flex;
@@ -105,7 +107,6 @@ button, input, textarea {
   -webkit-app-region: no-drag;
 }
 
- 
 ::-webkit-scrollbar { width: 8px; }
 ::-webkit-scrollbar-track { background: var(--color-background); }
 ::-webkit-scrollbar-thumb { 
@@ -118,39 +119,6 @@ button, input, textarea {
   padding: 40px;
   text-align: center;
   color: var(--color-text-secondary);
-}
-
-.post-external-link {
-    color: var(--color-primary);
-    text-decoration: none;
-    word-break: break-all;
-}
-
-.post-external-link:hover {
-    text-decoration: underline;
-}
-
-.post-hashtag {
-    color: var(--color-primary);
-    text-decoration: none;
-    font-weight: 400;
-}
-
-.post-hashtag:hover {
-    text-decoration: underline;
-}
-
-.post-external-link, .post-hashtag, .post-mention {
-    color: var(--color-primary);
-    text-decoration: none;
-}
-
-.post-external-link:hover, .post-hashtag:hover, .post-mention:hover {
-    text-decoration: underline;
-}
-
-.post-external-link {
-    word-break: break-all;
 }
 
 .viewed-status-dot {
@@ -172,11 +140,9 @@ button, input, textarea {
     text-transform: lowercase;
 }
 
- 
 .page-enter-active {
   width: 100%;
   height: 100%;
-   
   animation: pageFadeSlideUp 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards;
   will-change: opacity, transform;
 }
@@ -192,11 +158,56 @@ button, input, textarea {
   }
 }
 
- 
 @media (prefers-reduced-motion: reduce) {
   .page-enter-active {
     animation: none;
     opacity: 1;
     transform: none;
   }
+}
+
+
+
+.md-link, .md-tag, .md-mention {
+  color: var(--color-primary);
+  text-decoration: none;
+  cursor: pointer;
+  word-break: break-all;
+}
+
+.md-link:hover, .md-tag:hover, .md-mention:hover {
+  text-decoration: underline;
+}
+
+.md-bold { font-weight: 800; color: var(--color-text); }
+.md-italic { font-style: italic; }
+.md-underline { text-decoration: underline; text-decoration-thickness: 1px; }
+.md-strike { text-decoration: line-through; opacity: 0.7; }
+
+.md-code {
+  font-family: 'Consolas', 'Monaco', monospace;
+  font-size: 0.9em;
+  background-color: rgba(128, 128, 128, 0.15);
+  color: var(--color-primary);
+  padding: 2px 4px;
+  border-radius: 4px;
+  border: 1px solid var(--color-border);
+  margin: 0 2px;
+}
+
+.md-spoiler {
+  background-color: var(--color-text);
+  color: transparent;
+  border-radius: 4px;
+  padding: 0 4px;
+  cursor: pointer;
+  user-select: none;
+  transition: all 0.2s;
+}
+
+.md-spoiler.revealed {
+  background-color: rgba(29, 155, 240, 0.1);
+  color: var(--color-text);
+  user-select: text;
+  cursor: text;
 }

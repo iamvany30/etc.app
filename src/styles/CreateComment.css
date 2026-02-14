@@ -91,3 +91,38 @@
     cursor: pointer;
 }
 .comment-submit-btn:disabled { opacity: 0.5; }
+
+.create-comment-container {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+}
+
+.reply-indicator {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background-color: var(--color-item-bg);
+    padding: 6px 12px;
+    border-radius: 12px 12px 0 0;
+    font-size: 13px;
+    color: var(--color-text-secondary);
+    border: 1px solid var(--color-border);
+    border-bottom: none;
+    margin-bottom: -1px;
+}
+
+.cancel-reply-btn {
+    background: none;
+    border: none;
+    color: var(--color-primary);
+    cursor: pointer;
+    padding: 2px;
+    display: flex;
+    align-items: center;
+}
+
+
+.reply-indicator + .create-comment-form {
+    border-radius: 0 0 20px 20px;
+}

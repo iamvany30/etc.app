@@ -4,70 +4,50 @@ import { apiClient } from '../../../api/client';
 
 const PrivacySettings = ({ setStatus }) => {
     const { currentUser, setCurrentUser } = useUser();
+    const [loading, setLoading] = useState(false);
 
-     
-    const [settings, setSettings] = useState({
-        wallClosed: false,
-        onlinePrivacy: 'everyone',
-        showLastSeen: true  
-    });
     
-    const [loading, setLoading] = useState(true);
+    const [settings, setSettings] = useState({
+        isPrivate: false,
+        wallAccess: "everyone", 
+        likesVisibility: "everyone",
+        showLastSeen: true
+    });
 
-     
+    
     useEffect(() => {
-        setLoading(true);
-        apiClient.getPrivacySettings().then(res => {
-            const fetchedSettings = res?.data || res;
-            if (fetchedSettings && !fetchedSettings.error) {
-                 
-                setSettings({
-                    wallClosed: fetchedSettings.wallClosed ?? false,
-                    onlinePrivacy: fetchedSettings.onlinePrivacy ?? 'everyone',
-                    showLastSeen: fetchedSettings.showLastSeen ?? true,
-                });
-                 
-                setCurrentUser(prev => ({...prev, privacySettings: fetchedSettings}));
-            }
-        }).catch(e => {
-            console.error("Failed to fetch privacy settings", e);
-            setStatus({ type: 'error', msg: 'Не удалось загрузить настройки' });
-        }).finally(() => setLoading(false));
-    }, [setCurrentUser, setStatus]);
+        if (currentUser?.privacySettings) {
+            setSettings({
+                isPrivate: currentUser.privacySettings.isPrivate ?? false,
+                wallAccess: currentUser.privacySettings.wallAccess ?? "everyone",
+                likesVisibility: currentUser.privacySettings.likesVisibility ?? "everyone",
+                showLastSeen: currentUser.privacySettings.showLastSeen ?? true
+            });
+        }
+    }, [currentUser]);
 
-     
-    const handleSettingChange = async (key, value) => {
-        if (loading) return;
-
-        const oldSettings = { ...settings };
-        
-         
-        setSettings(prev => ({ ...prev, [key]: value }));
+    const handleSave = async (key, value) => {
+        const newSettings = { ...settings, [key]: value };
+        setSettings(newSettings); 
         setLoading(true);
-        setStatus({ type: '', msg: '' });
 
         try {
-            const payload = { [key]: value };
-            const res = await apiClient.updatePrivacySettings(payload);
+            
+            const res = await apiClient.updatePrivacy(newSettings);
 
             if (res && !res.error) {
-                 
-                setCurrentUser(prevUser => ({
-                    ...prevUser,
-                    privacySettings: {
-                        ...(prevUser?.privacySettings || {}),
-                        ...payload
-                    }
+                
+                setCurrentUser(prev => ({
+                    ...prev,
+                    privacySettings: { ...prev.privacySettings, ...newSettings }
                 }));
-                setStatus({ type: 'success', msg: 'Сохранено' });
+                setStatus({ type: 'success', msg: 'Настройки обновлены' });
             } else {
-                throw new Error(res?.error?.message || 'Ошибка сервера');
+                throw new Error('Ошибка сохранения');
             }
         } catch (e) {
-             
-            setSettings(oldSettings);
+            setSettings(settings); 
             setStatus({ type: 'error', msg: 'Не удалось сохранить' });
-            console.error(e);
         } finally {
             setLoading(false);
         }
@@ -75,49 +55,45 @@ const PrivacySettings = ({ setStatus }) => {
 
     return (
         <div className="settings-content">
-              
-            <div className="settings-section-title">Стена и профиль</div>
-            <div className="settings-option" onClick={() => handleSettingChange('wallClosed', !settings.wallClosed)}>
+            
+            <div className="settings-option" onClick={() => handleSave('showLastSeen', !settings.showLastSeen)}>
                 <div className="settings-option-info">
-                    <span className="settings-option-name">Закрытая стена</span>
+                    <span className="settings-option-name">Показывать статус "В сети"</span>
                     <span className="settings-option-desc">
-                        Публиковать посты сможете только вы.
+                        Если выключено, другие не увидят, когда вы онлайн.
                     </span>
                 </div>
-                <button className={`toggle-switch ${settings.wallClosed ? 'active' : ''}`} disabled={loading}>
+                <button className={`toggle-switch ${settings.showLastSeen ? 'active' : ''}`} disabled={loading}>
                     <span className="toggle-thumb" />
                 </button>
             </div>
 
-              
-            <div className="settings-section-title">Статус "В сети"</div>
-            <div className="settings-option" style={{ cursor: 'default' }}>
+            
+            <div className="settings-option" style={{cursor: 'default'}}>
                 <div className="settings-option-info">
-                    <span className="settings-option-name">Кто видит мой онлайн</span>
-                    <span className="settings-option-desc">Настройка отображения статуса</span>
+                    <span className="settings-option-name">Кто может писать на стене</span>
                 </div>
-                
                 <select 
                     className="settings-select"
-                    value={settings.onlinePrivacy}
-                    onChange={(e) => handleSettingChange('onlinePrivacy', e.target.value)}
+                    value={settings.wallAccess}
+                    onChange={(e) => handleSave('wallAccess', e.target.value)}
                     disabled={loading}
                 >
-                    <option value="everyone">Все видят (точное время)</option>
-                    <option value="hide_time">Все (без точного времени)</option>
-                    <option value="nobody">Никто (Я оффлайн)</option>
+                    <option value="everyone">Все</option>
+                    <option value="followers">Подписчики</option>
+                    <option value="nobody">Только я</option>
                 </select>
             </div>
 
-              
-            <div className="settings-option" onClick={() => handleSettingChange('showLastSeen', !settings.showLastSeen)}>
+            
+            <div className="settings-option" onClick={() => handleSave('isPrivate', !settings.isPrivate)}>
                 <div className="settings-option-info">
-                    <span className="settings-option-name">Время последнего визита</span>
+                    <span className="settings-option-name">Закрытый аккаунт</span>
                     <span className="settings-option-desc">
-                        Показывать точное время, когда вы были в сети.
+                        Только одобренные подписчики увидят ваши посты.
                     </span>
                 </div>
-                <button className={`toggle-switch ${settings.showLastSeen ? 'active' : ''}`} disabled={loading}>
+                <button className={`toggle-switch ${settings.isPrivate ? 'active' : ''}`} disabled={loading}>
                     <span className="toggle-thumb" />
                 </button>
             </div>

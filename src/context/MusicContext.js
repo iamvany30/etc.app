@@ -11,10 +11,11 @@ export const MusicProvider = ({ children }) => {
     const audioRef = useRef(new Audio());
 
     const togglePlay = useCallback(() => {
+        if (!audioRef.current.src) return; 
         if (isPlaying) {
             audioRef.current.pause();
         } else {
-            if (audioRef.current.src) audioRef.current.play();
+            audioRef.current.play().catch(e => console.error("Play error:", e));
         }
         setIsPlaying(!isPlaying);
     }, [isPlaying]);
@@ -29,21 +30,21 @@ export const MusicProvider = ({ children }) => {
         
         setCurrentTrack(track);
         audioRef.current.src = track.src;
-        audioRef.current.play();
+        audioRef.current.play().catch(e => console.error("Play error:", e));
         setIsPlaying(true);
     }, [currentTrack, togglePlay]);
 
     const nextTrack = useCallback(() => {
         const index = playlist.findIndex(t => t.id === currentTrack?.id);
         if (index !== -1 && index < playlist.length - 1) {
-            playTrack(playlist[index + 1]);
+            playTrack(playlist[index + 1], playlist);
         }
     }, [playlist, currentTrack, playTrack]);
 
     const prevTrack = useCallback(() => {
         const index = playlist.findIndex(t => t.id === currentTrack?.id);
         if (index > 0) {
-            playTrack(playlist[index - 1]);
+            playTrack(playlist[index - 1], playlist);
         }
     }, [playlist, currentTrack, playTrack]);
 
@@ -63,6 +64,31 @@ export const MusicProvider = ({ children }) => {
             audio.removeEventListener('ended', handleEnd);
         };
     }, [nextTrack]);
+
+    
+    useEffect(() => {
+        if (!window.api?.on) return;
+
+        const unsubscribe = window.api.on('media-control', (command) => {
+            console.log(`Media command received: ${command}`);
+            switch (command) {
+                case 'play-pause':
+                    togglePlay();
+                    break;
+                case 'next':
+                    nextTrack();
+                    break;
+                case 'prev':
+                    prevTrack();
+                    break;
+                default:
+                    break;
+            }
+        });
+        
+        return () => unsubscribe();
+    }, [togglePlay, nextTrack, prevTrack]);
+    
 
     return (
         <MusicContext.Provider value={{

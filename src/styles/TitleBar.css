@@ -142,3 +142,26 @@
 @media (max-width: 400px) {
     .nav-controls { display: none; }
 }
+
+
+.download-progress-bar-container {
+    position: absolute;
+    bottom: -1px; 
+    left: 0;
+    right: 0;
+    height: 3px;
+    background-color: transparent;
+    pointer-events: none; 
+}
+
+.download-progress-bar {
+    height: 100%;
+    background-color: var(--color-primary);
+    transition: width 0.2s ease-out;
+    box-shadow: 0 0 10px var(--color-primary);
+}
+
+.download-progress-bar.completed {
+    background-color: #00ba7c; 
+    box-shadow: 0 0 10px #00ba7c;
+}

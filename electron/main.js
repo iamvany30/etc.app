@@ -1,15 +1,20 @@
-const { app, BrowserWindow, session, shell } = require('electron');
+const { app, BrowserWindow, session, shell, globalShortcut } = require('electron');
 const path = require('path');
 const { autoUpdater } = require('electron-updater');
 const { createMainWindow, getMainWindow } = require('./window');
 const { registerHandlers } = require('./ipc');
 const themes = require('./themes');
 const { PATHS } = require('./config');
+const fs = require('fs');
 
 const ffmpeg = require('fluent-ffmpeg');
 const ffmpegPath = require('ffmpeg-static');
 ffmpeg.setFfmpegPath(ffmpegPath);
 
+
+if (process.platform === 'win32') {
+    app.setAppUserModelId('com.etc.app');
+}
  
 app.commandLine.appendSwitch('disable-site-isolation-trials');
 app.commandLine.appendSwitch('disable-features', 'OutOfBlinkCors,SameSiteByDefaultCookies,CookiesWithoutSameSiteMustBeSecure,IsolateOrigins,site-per-process');
@@ -107,16 +112,14 @@ function launchApp() {
         }, 800);
     });
 }
-
  
 if (process.defaultApp) {
     if (process.argv.length >= 2) {
-        app.setAsDefaultProtocolClient('itd-app', process.execPath, [path.resolve(process.argv[1])]);
+        app.setAsDefaultProtocolClient('etc-app', process.execPath, [path.resolve(process.argv[1])]);
     }
 } else {
-    app.setAsDefaultProtocolClient('itd-app');
+    app.setAsDefaultProtocolClient('etc-app');
 }
-
  
 const gotTheLock = app.requestSingleInstanceLock();
 if (!gotTheLock) {
@@ -132,11 +135,53 @@ if (!gotTheLock) {
 }
 
 app.whenReady().then(async () => {
+    
+    const sendMediaControl = (command) => {
+        const win = getMainWindow();
+        if (win) {
+            win.webContents.send('media-control', command);
+        }
+    };
+
+    globalShortcut.register('MediaPlayPause', () => sendMediaControl('play-pause'));
+    globalShortcut.register('MediaNextTrack', () => sendMediaControl('next'));
+    globalShortcut.register('MediaPreviousTrack', () => sendMediaControl('prev'));
      
     await session.defaultSession.clearCache();
+     
+    
+    
+    
+    const filter = {
+        urls: ['https://xn--d1ah4a.com/*', 'https://*.xn--d1ah4a.com/*']
+    };
 
-     
-     
+    session.defaultSession.webRequest.onBeforeSendHeaders(filter, (details, callback) => {
+        const headers = details.requestHeaders;
+
+        
+        headers['Origin'] = 'https://xn--d1ah4a.com';
+        headers['Referer'] = 'https://xn--d1ah4a.com/';
+        headers['Authority'] = 'xn--d1ah4a.com';
+        
+        
+        headers['sec-ch-ua'] = '"Chromium";v="124", "Google Chrome";v="124", "Not-A.Brand";v="99"';
+        headers['sec-ch-ua-mobile'] = '?0';
+        headers['sec-ch-ua-platform'] = '"Windows"';
+        headers['sec-fetch-dest'] = 'empty';
+        headers['sec-fetch-mode'] = 'cors';
+        headers['sec-fetch-site'] = 'same-origin';
+
+        
+        headers['User-Agent'] = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36';
+
+        
+        delete headers['Electron'];
+
+        callback({ requestHeaders: headers });
+    });
+    
+
     session.defaultSession.webRequest.onHeadersReceived((details, callback) => {
         callback({
             responseHeaders: {
@@ -147,9 +192,13 @@ app.whenReady().then(async () => {
             }
         });
     });
-
      
     createSplash();
+});
+
+
+app.on('will-quit', () => {
+    globalShortcut.unregisterAll();
 });
 
 app.on('window-all-closed', () => { 

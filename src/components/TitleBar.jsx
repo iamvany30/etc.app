@@ -11,6 +11,9 @@ const TitleBar = () => {
     const location = useLocation();
     const [networkStatus, setNetworkStatus] = useState('online');
     const [canGoBack, setCanGoBack] = useState(false);
+    
+    
+    const [download, setDownload] = useState({ percent: null });
 
     const pageTitle = useMemo(() => {
         const path = location.pathname;
@@ -33,8 +36,35 @@ const TitleBar = () => {
         return () => window.removeEventListener('app-network-status', handleStatusChange);
     }, []);
 
+    
+    useEffect(() => {
+        if (!window.api?.on) return;
+
+        const unsubscribe = window.api.on('download-progress', (data) => {
+            setDownload(data);
+
+            
+            if (data.status === 'completed' || data.status === 'cancelled' || data.status === 'failed') {
+                setTimeout(() => {
+                    setDownload({ percent: null });
+                }, 2000);
+            }
+        });
+        return () => unsubscribe();
+    }, []);
+
     return (
         <header className={`modern-titlebar status-${networkStatus}`}>
+            
+            {download.percent !== null && (
+                <div className="download-progress-bar-container">
+                    <div 
+                        className={`download-progress-bar ${download.status || ''}`}
+                        style={{ width: `${download.percent}%` }}
+                    />
+                </div>
+            )}
+
             <div className="nav-controls">
                 <button className="tb-btn" onClick={() => navigate(-1)} disabled={!canGoBack} title="Назад">
                     <NavBackIcon />

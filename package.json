@@ -1,8 +1,11 @@
 {
   "name": "etc.app",
-  "version": "0.3.5",
-  "description": "etc.app",
-  "author": "iamvany",
+  "version": "0.4.0",
+  "description": "Социальная сеть нового поколения. Делитесь моментами, музыкой и мыслями.",
+  "author": {
+    "name": "iamvany",
+    "email": "mrvanvany@gmail.com"
+  },
   "private": true,
   "main": "electron/main.js",
   "homepage": "./",
@@ -36,6 +39,7 @@
   "build": {
     "appId": "com.etc.app",
     "productName": "итд.app",
+    "copyright": "Copyright © 2026 iamvany",
     "artifactName": "${name}-setup-${version}.${ext}",
     "publish": {
       "provider": "github",
@@ -58,7 +62,8 @@
     },
     "win": {
       "target": "nsis",
-      "icon": "public/favicon.ico"
+      "icon": "public/favicon.ico",
+      "legalTrademarks": "итд.app"
     },
     "mac": {
       "target": "dmg",

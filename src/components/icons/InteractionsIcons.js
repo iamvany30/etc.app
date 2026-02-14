@@ -1,13 +1,5 @@
 import React from 'react';
 
-/*
-  Этот файл содержит SVG-иконки, извлеченные из исходного кода проекта "итд".
-  Все пути (path) и атрибуты скопированы идентично оригиналу.
-*/
-
-/**
- * Иконка Комментария
- */
 export const CommentIcon = (props) => (
   <svg viewBox="0 0 24 24" fill="none" width="20" height="20" {...props}>
     <path
@@ -20,9 +12,6 @@ export const CommentIcon = (props) => (
   </svg>
 );
 
-/**
- * Иконка Репоста
- */
 export const RepostIcon = (props) => (
   <svg viewBox="0 0 24 24" fill="none" width="20" height="20" {...props}>
     <path stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="m2 9 3-3 3 3" />
@@ -31,10 +20,6 @@ export const RepostIcon = (props) => (
   </svg>
 );
 
-/**
- * Иконка Лайка (Сердце)
- * @param {boolean} active - Состояние лайка
- */
 export const LikeIcon = ({ active = false, ...props }) => (
   <svg viewBox="0 0 24 24" fill="none" width="20" height="20" {...props}>
     {active ? (
@@ -56,9 +41,6 @@ export const LikeIcon = ({ active = false, ...props }) => (
   </svg>
 );
 
-/**
- * Иконка Просмотров
- */
 export const ViewIcon = (props) => (
   <svg viewBox="0 0 24 24" fill="none" width="18" height="18" stroke="currentColor" strokeWidth="2" {...props}>
     <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
@@ -66,9 +48,6 @@ export const ViewIcon = (props) => (
   </svg>
 );
 
-/**
- * Иконка Отправить (из комментариев)
- */
 export const SendIcon = (props) => (
   <svg viewBox="0 0 24 24" fill="none" width="18" height="18" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" {...props}>
     <line x1="5" y1="12" x2="19" y2="12" />

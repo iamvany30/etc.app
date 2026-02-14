@@ -4,9 +4,6 @@ import { Link } from 'react-router-dom';
 import { apiClient } from '../api/client';
 import '../styles/RightSidebar.css';
 
-/**
- * Вспомогательный компонент для обертки блоков в сайдбаре
- */
 const WidgetBox = ({ title, children, showMoreLink }) => (
     <div className="widget-box">
         <h2 className="widget-title">{title}</h2>

@@ -1,7 +1,3 @@
-/* ==========================================================================
-   MODAL STYLES (Desktop First + Mobile Bottom Sheet)
-   ========================================================================== */
-
  
 .modal-overlay {
     position: fixed;
@@ -32,9 +28,7 @@
 .modal-content {
     width: 100%;
     max-width: 580px;  
-    /* Максимальная высота теперь контролируется JS и CSS (через modal-body-wrapper)
-       или переопределяется для fullscreen/mobile */
-    max-height: 85vh; 
+        max-height: 85vh; 
     
     border-radius: 20px;
     position: relative;
@@ -59,9 +53,7 @@
     transition: height 0.35s cubic-bezier(0.25, 0.8, 0.25, 1), 
                 width 0.35s cubic-bezier(0.25, 0.8, 0.25, 1),
                 max-width 0.35s cubic-bezier(0.25, 0.8, 0.25, 1);
-    /* Важно для корректной работы transition height, чтобы padding/border 
-       включались в общую высоту/ширину */
-    box-sizing: border-box; 
+        box-sizing: border-box; 
 }
 
  
@@ -166,10 +158,6 @@
     0% { transform: translate(0, 0) scale(1); }
     100% { transform: translate(40px, 40px) scale(1.1); }
 }
-
-/* ==========================================================================
-   MOBILE ADAPTATION (Bottom Sheet / Шторка)
-   ========================================================================== */
 
 @media (max-width: 600px) {
     .modal-overlay {

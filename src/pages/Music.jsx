@@ -19,10 +19,7 @@ const Music = () => {
     const [loading, setLoading] = useState(true);
     const { currentTrack, isPlaying, playTrack } = useMusic();
 
-    /**
-     * Безопасное декодирование Base64 (Unicode/Кириллица)
-     */
-    const decodeMeta = (str) => {
+        const decodeMeta = (str) => {
         try {
             return decodeURIComponent(escape(atob(str)));
         } catch (e) {
@@ -30,10 +27,7 @@ const Music = () => {
         }
     };
 
-    /**
-     * Основная функция загрузки библиотеки
-     */
-    const fetchMusic = useCallback(async () => {
+        const fetchMusic = useCallback(async () => {
         setLoading(true);
         try {
             
@@ -117,10 +111,7 @@ const Music = () => {
 
     useEffect(() => { fetchMusic(); }, [fetchMusic]);
 
-    /**
-     * Фильтрация и группировка данных
-     */
-    const content = useMemo(() => {
+        const content = useMemo(() => {
         const query = searchQuery.toLowerCase().trim();
         
         
@@ -139,10 +130,7 @@ const Music = () => {
 
     }, [allTracks, searchQuery]);
 
-    /**
-     * Компонент строки трека
-     */
-    const TrackRow = ({ track, listContext }) => {
+        const TrackRow = ({ track, listContext }) => {
         const isCurrent = currentTrack?.id === track.id;
         
         return (

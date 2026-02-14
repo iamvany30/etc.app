@@ -38,12 +38,7 @@ class MediaProcessor {
         };
     }
 
-    /**
-     * Отправляет файл на обработку в воркер.
-     * @param {File} file 
-     * @returns {Promise<File>}
-     */
-    process(file) {
+        process(file) {
         return new Promise((resolve, reject) => {
             const id = crypto.randomUUID();
             

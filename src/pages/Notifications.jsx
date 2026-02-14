@@ -13,9 +13,6 @@ import {
     IconWallPost 
 } from '../components/icons/NotificationIcons';
 
-/**
- * Вспомогательная функция для получения данных по типу уведомления.
- */
 const getNotificationTypeInfo = (type) => {
     switch (type) {
         case 'like':
@@ -37,9 +34,6 @@ const getNotificationTypeInfo = (type) => {
     }
 };
 
-/**
- * Компонент для отображения относительного времени.
- */
 const TimeAgo = ({ dateStr }) => {
     const [time, setTime] = useState('');
     useEffect(() => {
@@ -60,9 +54,6 @@ const TimeAgo = ({ dateStr }) => {
     return <span className="notif-time">{time}</span>;
 };
 
-/**
- * Компонент одного элемента уведомления с логикой генерации ссылок.
- */
 const NotificationItem = ({ notif }) => {
     const { actor, type, preview, createdAt, read, targetId, context } = notif;
     const { icon, badgeClass, text } = getNotificationTypeInfo(type);
@@ -129,9 +120,6 @@ const NotificationItem = ({ notif }) => {
     );
 };
 
-/**
- * Основной компонент страницы Уведомлений.
- */
 const NotificationsPage = () => {
     const [notifications, setNotifications] = useState([]);
     const [activeTab, setActiveTab] = useState('all');

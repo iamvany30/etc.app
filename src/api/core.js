@@ -1,9 +1,5 @@
  
 
-/**
- * Базовая функция запроса к Electron API.
- * Обертывает window.api.call и обрабатывает ошибки транспорта.
- */
 export const request = async (endpoint, method = 'GET', body = null) => {
     try {
         if (!window.api || typeof window.api.call !== 'function') {

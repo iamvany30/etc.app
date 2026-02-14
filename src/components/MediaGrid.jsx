@@ -4,9 +4,6 @@ import ImageModal from './modals/ImageModal';
 import VoicePlayer from './VoicePlayer';
 import '../styles/MediaGrid.css';
 
-/**
- * Вспомогательная функция для определения, является ли файл видео
- */
 const isVideoFile = (attachment) => {
     const type = (attachment.mimeType || attachment.type || '').toLowerCase();
     const url = (attachment.url || '').toLowerCase();
@@ -15,9 +12,6 @@ const isVideoFile = (attachment) => {
     return /\.(mp4|webm|ogg|mov|qt)(?:\?|$)/i.test(url);
 };
 
-/**
- * Иконка скачивания (SVG)
- */
 const DownloadIcon = () => (
     <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
         <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
@@ -42,10 +36,7 @@ const MediaGrid = ({ attachments }) => {
         return mime.startsWith('audio/');
     });
 
-    /**
-     * Открытие галереи в полноэкранном режиме
-     */
-    const handleOpenModal = (e, index) => {
+        const handleOpenModal = (e, index) => {
          
         if (e.target.closest('.media-download-overlay-btn') || e.target.tagName === 'VIDEO') return;
         
@@ -59,10 +50,7 @@ const MediaGrid = ({ attachments }) => {
         );
     };
 
-    /**
-     * Обработка скачивания файла
-     */
-    const handleDownload = (e, media) => {
+        const handleDownload = (e, media) => {
         e.preventDefault();
         e.stopPropagation(); 
 

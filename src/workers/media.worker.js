@@ -5,9 +5,7 @@ const MAX_IMAGE_SIZE = 2560;
 const WEBP_QUALITY = 0.8;     
 const ALLOWED_VIDEO_TYPES = ['video/mp4', 'video/webm', 'video/quicktime'];
 
-/**
- * Обработчик сообщений от основного потока
- */
+
 self.onmessage = async (e) => {
     const { id, file } = e.data;
 

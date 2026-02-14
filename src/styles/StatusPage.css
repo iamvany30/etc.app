@@ -1,0 +1,94 @@
+.status-page {
+    height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background-color: var(--color-background);
+    padding: 20px;
+}
+
+.status-card {
+    width: 100%;
+    max-width: 500px;
+    background-color: var(--color-card);
+    border: 1px solid var(--color-border);
+    border-radius: 16px;
+    padding: 24px;
+    box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+}
+
+.status-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 24px;
+}
+
+.status-header h2 { margin: 0; font-size: 20px; }
+
+.close-btn {
+    background: none;
+    border: none;
+    color: var(--color-text-secondary);
+    cursor: pointer;
+    font-weight: 600;
+}
+
+.status-summary {
+    text-align: center;
+    margin-bottom: 30px;
+}
+
+.status-badge {
+    display: inline-block;
+    padding: 8px 16px;
+    border-radius: 8px;
+    font-weight: 800;
+    font-size: 14px;
+    letter-spacing: 1px;
+}
+.status-badge.ok { background: rgba(0, 186, 124, 0.1); color: #00ba7c; }
+.status-badge.offline { background: rgba(244, 33, 46, 0.1); color: #f4212e; }
+.status-badge.server_down { background: rgba(255, 173, 31, 0.1); color: #ffad1f; }
+
+.diagnostic-row {
+    display: flex;
+    align-items: center;
+    padding: 12px 0;
+    border-bottom: 1px solid var(--color-border);
+    font-family: monospace;
+    font-size: 13px;
+}
+
+.d-name { font-weight: 600; }
+.d-line { flex: 1; border-bottom: 1px dashed var(--color-border); margin: 0 12px; opacity: 0.5; }
+.d-meta { color: var(--color-text-secondary); margin-right: 12px; font-size: 11px; }
+.d-error { color: #f4212e; }
+
+.status-recommendation {
+    margin-top: 24px;
+    padding: 16px;
+    background-color: var(--color-item-bg);
+    border-radius: 8px;
+    font-size: 13px;
+    line-height: 1.5;
+}
+
+.status-actions {
+    margin-top: 24px;
+    display: flex;
+    gap: 12px;
+}
+
+.action-btn {
+    flex: 1;
+    padding: 12px;
+    border-radius: 99px;
+    border: 1px solid var(--color-border);
+    background: transparent;
+    color: var(--color-text);
+    font-weight: 700;
+    cursor: pointer;
+}
+.action-btn.primary { background: var(--color-text); color: var(--color-background); border-color: transparent; }
+.action-btn:disabled { opacity: 0.5; }

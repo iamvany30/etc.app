@@ -1,7 +1,6 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react'; 
 import '../styles/Auth.css';
 
- 
 const ChromeIcon = () => <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"></circle><circle cx="12" cy="12" r="4"></circle><line x1="21.17" y1="8" x2="12" y2="8"></line><line x1="3.95" y1="6.06" x2="8.54" y2="14"></line><line x1="10.88" y1="21.94" x2="15.46" y2="14"></line></svg>;
 const InfoIcon = () => <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" style={{marginTop: '2px'}}><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>;
 
@@ -11,7 +10,6 @@ const Login = ({ onLoginSuccess }) => {
     const [showManual, setShowManual] = useState(false);
     const [tokenInput, setTokenInput] = useState('');
     
-     
     const updateStatusFromLog = (rawLog) => {
         const msg = rawLog.toLowerCase();
         if (msg.includes('запуск')) setStatusMessage('Запускаю службы авторизации...');
@@ -22,25 +20,20 @@ const Login = ({ onLoginSuccess }) => {
         else if (msg.includes('ошибка') || msg.includes('неудача')) setStatusMessage('Ошибка. Пожалуйста, попробуйте еще раз.');
     };
 
-     
     useEffect(() => {
         if (!window.api || !isProcessing) return;
-        
-        const cleanup = window.api.onAuthLog((msg) => {
-            updateStatusFromLog(msg);
-        });
-        
+        const cleanup = window.api.onAuthLog(updateStatusFromLog);
         return cleanup;
     }, [isProcessing]);
 
     const handleExternalLogin = async () => {
         setIsProcessing(true);
         setStatusMessage('Инициализация...');
-        
         try {
             const res = await window.api.openStealthLogin();
             if (res.success) {
-                 
+                
+                onLoginSuccess();
             } else {
                 setIsProcessing(false);
                 setStatusMessage('Не удалось войти. Попробуйте снова или введите токен вручную.');
@@ -51,17 +44,23 @@ const Login = ({ onLoginSuccess }) => {
         }
     };
 
+    
     const handleManualLogin = async () => {
         if (!tokenInput.trim()) return;
+        
+        
         const res = await window.api.loginWithToken(tokenInput.trim());
-        if (res.success) {
+        
+        if (res.success && res.user) {
+            
+            localStorage.setItem('nowkie_user', JSON.stringify(res.user));
+            
             onLoginSuccess();
         } else {
             alert('Неверный или просроченный токен. Попробуйте скопировать его заново.');
         }
     };
     
-     
     const renderContent = () => {
         if (isProcessing) {
             return (

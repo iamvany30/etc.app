@@ -1,12 +1,13 @@
 {
   "name": "etc.app",
-  "version": "0.3.2",
+  "version": "0.3.4",
   "description": "etc.app",
   "author": "iamvany",
   "private": true,
   "main": "electron/main.js",
   "homepage": "./",
   "dependencies": {
+    "@babel/standalone": "^7.29.1",
     "@testing-library/dom": "^10.4.1",
     "@testing-library/jest-dom": "^6.9.1",
     "@testing-library/react": "^16.3.2",

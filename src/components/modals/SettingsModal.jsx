@@ -12,6 +12,7 @@ import {
  
 import AccountSettings from './sections/AccountSettings';
 import SecuritySettings from './sections/SecuritySettings';
+import PrivacySettings from './sections/PrivacySettings';
 import AppearanceSettings from './sections/AppearanceSettings';
 import MediaSettings from './sections/MediaSettings';
 import InfoSettings from './sections/InfoSettings';
@@ -36,8 +37,9 @@ const SettingsModal = () => {
         main: 'Настройки',
         account: 'Ваш аккаунт',
         security: 'Безопасность',
+        private: 'Приватность',
         appearance: 'Внешний вид',
-        themes: 'Темы',
+        themes: 'Оболочки',
         media: 'Медиа и ресурсы',
         info: 'Информация' 
     };
@@ -57,7 +59,7 @@ const SettingsModal = () => {
 
     return (
         <div className="settings-modal">
-            { }
+              
             <div className="settings-header">
                 {view !== 'main' && (
                     <button className="settings-back-btn" onClick={() => { setView('main'); setStatus({type:'', msg:''}); }}>
@@ -67,25 +69,26 @@ const SettingsModal = () => {
                 <h2 className="settings-title">{titles[view]}</h2>
             </div>
 
-            { }
+              
             {status.msg && (
                 <div style={{padding: '0 24px'}}>
                     <div className={`status-message ${status.type}`}>{status.msg}</div>
                 </div>
             )}
 
-            { }
+              
             {view === 'main' && (
                 <div className="settings-content">
                     <div className="settings-section-title">Учетная запись</div>
                     <MenuItem id="account" icon={<IconUser />} label="Личная информация" desc="Имя, юзернейм, био" />
                     <MenuItem id="security" icon={<IconLock />} label="Пароль" desc="Изменить пароль" />
+                    <MenuItem id="private" icon={<IconLock />} label="Приватность" desc="Настройки приватности" />
                     
                     <div className="settings-section-title">Приложение</div>
                     <MenuItem id="appearance" icon={<IconPalette />} label="Внешний вид" desc="Темы и цвета" />
-                    <MenuItem id="themes" icon={<IconPalette />} label="Темы" desc="Пользовательские стили" />
+                    <MenuItem id="themes" icon={<IconPalette />} label="Оболочки" desc="Пользовательские настройки" />
                     <MenuItem id="media" icon={<IconMedia />} label="Медиа и данные" desc="Сжатие, GPU" />
-                    <MenuItem id="info" icon={<IconInfo />} label="Информация" desc="О приложении и команде" /> { }
+                    <MenuItem id="info" icon={<IconInfo />} label="Информация" desc="О приложении и команде" />   
 
                     <div style={{marginTop: 20}}>
                         <button className="settings-option" onClick={handleLogout}>
@@ -102,13 +105,14 @@ const SettingsModal = () => {
                 </div>
             )}
 
-            { }
+              
             {view === 'account' && <AccountSettings user={currentUser} setCurrentUser={setCurrentUser} setStatus={setStatus} />}
             {view === 'security' && <SecuritySettings setStatus={setStatus} />}
+            {view === 'private' && <PrivacySettings setStatus={setStatus} />}
             {view === 'appearance' && <AppearanceSettings />}
             {view === 'themes' && <ThemeSettings setStatus={setStatus} />}
             {view === 'media' && <MediaSettings />}
-            {view === 'info' && <InfoSettings />} { }
+            {view === 'info' && <InfoSettings />}   
         </div>
     );
 };

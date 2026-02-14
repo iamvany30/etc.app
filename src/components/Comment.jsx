@@ -58,12 +58,43 @@ const Comment = ({ comment, postId, onReply, onCommentAdded, highlightCommentId 
         if (shouldExpand) setShowReplies(true);
     }, [shouldExpand]);
     
-    const handleLinkClick = (e, url) => {
-        e.preventDefault();
-        e.stopPropagation();
-        if (isTrustedLink(url)) window.api.openExternalLink(url);
-        else openModal(<ExternalLinkModal url={url} />);
-    };
+const handleLinkClick = (e, url) => {
+    e.preventDefault();
+    e.stopPropagation();
+
+    try {
+        const urlObj = new URL(url);
+        const isInternalDomain = urlObj.hostname.endsWith('итд.com') || urlObj.hostname.endsWith('xn--d1ah4a.com');
+
+        if (isInternalDomain) {
+            const path = urlObj.pathname;
+
+            
+            const postMatch = path.match(/^\/@[^/]+\/post\/([^/]+)/);
+            if (postMatch) {
+                window.location.hash = `#/post/${postMatch[1]}`;
+                return;
+            }
+
+            
+            const staticPages = { '/feed': '#/', '/explore': '#/explore', '/notifications': '#/notifications', '/music': '#/music' };
+            if (staticPages[path]) {
+                window.location.hash = staticPages[path];
+                return;
+            }
+
+            
+            if (path.length > 1) {
+                const username = path.startsWith('/@') ? path.substring(2) : path.substring(1);
+                window.location.hash = `#/profile/${username}`;
+                return;
+            }
+        }
+    } catch (err) {}
+
+    if (isTrustedLink(url)) window.api.openExternalLink(url);
+    else openModal(<ExternalLinkModal url={url} />);
+};
     
     if (!comment || !comment.author) return null;
 

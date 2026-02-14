@@ -23,7 +23,7 @@ const Layout = ({ children }) => {
         <div className="layout">
             <Sidebar />
             
-            { }
+              
             <main className="content" key={contentKey}>
                 {children}
             </main>

@@ -3,7 +3,8 @@ import { Link } from 'react-router-dom';
 import { Virtuoso } from 'react-virtuoso';
 import { apiClient } from '../api/client';
 import PostCard from '../components/PostCard';
-import CreatePost from '../components/CreatePost';
+ import { DynamicComponent } from '../core/ComponentRegistry';
+import CreatePostFallback from '../components/CreatePost';
 import { PostSkeleton } from '../components/Skeletons';
 import '../styles/Feed.css';
 
@@ -92,16 +93,16 @@ const Feed = () => {
                     <span className="tab-content">Подписки</span>
                 </button>
             </header>
-            <CreatePost onPostCreated={handlePostCreated} />
+            <DynamicComponent name="Components.CreatePost" fallback={CreatePostFallback} onPostCreated={handlePostCreated} />
             
-            { }
+              
             {loading && posts.length === 0 && (
                 <div className="skeleton-list">
                     {[1, 2, 3].map(i => <PostSkeleton key={i} />)}
                 </div>
             )}
 
-            { }
+              
             {!loading && posts.length === 0 && !error && (
                 <div className="empty-state">
                     <h3>Здесь пока пусто</h3>

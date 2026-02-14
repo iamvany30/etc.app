@@ -172,4 +172,31 @@ button, input, textarea {
     text-transform: lowercase;
 }
 
+ 
+.page-enter-active {
+  width: 100%;
+  height: 100%;
+   
+  animation: pageFadeSlideUp 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  will-change: opacity, transform;
+}
 
+@keyframes pageFadeSlideUp {
+  0% {
+    opacity: 0;
+    transform: translateY(12px) scale(0.99);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+ 
+@media (prefers-reduced-motion: reduce) {
+  .page-enter-active {
+    animation: none;
+    opacity: 1;
+    transform: none;
+  }
+}

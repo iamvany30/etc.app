@@ -85,7 +85,7 @@ const MediaGrid = ({ attachments }) => {
     return (
         <div className="media-content-wrapper" onClick={e => e.stopPropagation()}>
             
-            { }
+              
             {audioMedia.length > 0 && (
                 <div className="audio-list">
                     {audioMedia.map(track => (
@@ -98,7 +98,7 @@ const MediaGrid = ({ attachments }) => {
                 </div>
             )}
 
-            { }
+              
             {visualMedia.length > 0 && (
                 <div className={`media-grid count-${Math.min(visualMedia.length, 4)}`}>
                     {visualMedia.slice(0, 4).map((media, index) => {
@@ -110,7 +110,7 @@ const MediaGrid = ({ attachments }) => {
                                 className="media-item"
                                 onClick={(e) => handleOpenModal(e, index)}
                             >
-                                { }
+                                  
                                 <button 
                                     className="media-download-overlay-btn" 
                                     onClick={(e) => handleDownload(e, media)}
@@ -119,7 +119,7 @@ const MediaGrid = ({ attachments }) => {
                                     <DownloadIcon />
                                 </button>
 
-                                { }
+                                  
                                 {isVid ? (
                                     <div className="video-container">
                                         <video 
@@ -138,7 +138,7 @@ const MediaGrid = ({ attachments }) => {
                                     />
                                 )}
 
-                                { }
+                                  
                                 {index === 3 && visualMedia.length > 4 && (
                                     <div className="more-overlay">
                                         <span>+{visualMedia.length - 4}</span>

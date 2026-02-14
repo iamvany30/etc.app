@@ -18,8 +18,11 @@ async function handleStealthLogin(event) {
         const child = spawn(PATHS.BROWSER_HELPER);
         let stdoutBuffer = '';
         
+        child.stdout.setEncoding('utf8');
+        child.stderr.setEncoding('utf8');
+
         child.stderr.on('data', (data) => {
-            const lines = data.toString('utf-8').split('\n');
+            const lines = data.split('\n');
             lines.forEach(l => {
                 if (l.trim()) {
                     console.log(`[PYTHON] ${l.trim()}`);
@@ -29,51 +32,50 @@ async function handleStealthLogin(event) {
         });
 
         child.stdout.on('data', (data) => {
-            stdoutBuffer += data.toString('utf-8');
+            stdoutBuffer += data;
         });
 
         child.on('close', (code) => {
             logDebug(`Python процесс завершился. Код: ${code}`);
-            logDebug("Полученный STDOUT (Raw):", stdoutBuffer);
-
+            
             try {
-                let cleanJson = stdoutBuffer.trim();
-                const match = cleanJson.match(/(\{.*"success".*\})/s);
-                if (match) cleanJson = match[1];
+                const firstBrace = stdoutBuffer.indexOf('{');
+                const lastBrace = stdoutBuffer.lastIndexOf('}');
+                
+                if (firstBrace === -1 || lastBrace === -1) {
+                    throw new Error("JSON not found in output");
+                }
 
-                logDebug("Очищенный JSON:", cleanJson);
+                const cleanJson = stdoutBuffer.substring(firstBrace, lastBrace + 1);
+                logDebug("Парсинг JSON:", cleanJson);
 
-                if (!cleanJson) throw new Error("Empty JSON");
                 const result = JSON.parse(cleanJson);
 
                 if (result.success && result.token) {
-                    logDebug("Токен распознан. Запускаю процедуру сохранения...");
-                    
+                    logDebug("Токен распознан. Сохранение...");
                     store.saveRefreshToken(result.token);
                     
-                    logDebug("Вызываю refreshSession для проверки...");
                     network.refreshSession().then(r => {
-                        const win = getMainWindow();
                         if (r.success) {
-                            logDebug("refreshSession вернул SUCCESS! Перезагружаю окно...");
+                            
+                            
+                            logDebug("refreshSession вернул SUCCESS! Отправляю сигнал в приложение.");
                             event.sender.send('auth-log', '✅ ВХОД ВЫПОЛНЕН! ЗАГРУЗКА...');
-                            setTimeout(() => {
-                                if(win) win.reload();
-                                resolve({ success: true });
-                            }, 1000);
+                            resolve({ success: true });
                         } else {
                             logDebug(`refreshSession вернул FAIL. Причина: ${r.reason}`);
-                            event.sender.send('auth-log', `❌ Сервер не принял токен: ${r.reason}`);
+                            event.sender.send('auth-log', `❌ Токен отклонен сервером: ${r.reason}`);
                             resolve({ success: false, error: 'Token rejected' });
                         }
                     });
                 } else {
-                    logDebug("В JSON нет токена или success=false");
+                    logDebug("Ошибка в JSON ответе:", result.error);
                     resolve({ success: false, error: result.error });
                 }
             } catch (e) {
-                logDebug("JSON Parse Error:", e.message);
-                event.sender.send('auth-log', 'Ошибка обработки ответа');
+                logDebug("Ошибка обработки данных:", e.message);
+                logDebug("Raw Buffer:", stdoutBuffer);
+                event.sender.send('auth-log', 'Ошибка чтения данных от помощника');
                 resolve({ success: false });
             }
         });

@@ -1,80 +1,114 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { useUser } from '../context/UserContext';
 import Login from '../pages/Login';
 import OfflinePage from '../pages/OfflinePage';
 
 const AuthFlow = ({ children }) => {
-    const { currentUser, setCurrentUser } = useUser();
-    const [status, setStatus] = useState('loading');  
+    const { setCurrentUser } = useUser();
+    const [status, setStatus] = useState('pending');
+    const isChecking = useRef(false);
 
-    const checkSession = useCallback(async () => {
-         
-        if (currentUser) {
-            setStatus('auth');
+    const emitStatus = (type) => {
+        window.dispatchEvent(new CustomEvent('app-network-status', { detail: type }));
+    };
+
+    const checkNetworkHealth = useCallback(async () => {
+        if (isChecking.current) return;
+        isChecking.current = true;
+
+        if (!navigator.onLine) {
+            emitStatus('browser_offline');
+            isChecking.current = false;
             return;
         }
 
-        setStatus('loading');
-        
         try {
-             
-            const user = await window.api.getInitUser();
-            console.log("[AuthFlow] Result:", user);
+            
+            const [apiAlive, internetAlive] = await Promise.all([
+                window.api.invoke('app:check-api-status'),
+                window.api.invoke('app:quick-check') 
+            ]);
 
-            if (user && user.error?.code === 'NETWORK_ERROR') {
-                setStatus('offline');
-            } else if (user && user.id) {
-                 
-                setCurrentUser(user);
-                localStorage.setItem('nowkie_user', JSON.stringify(user));  
-                setStatus('auth');
+            
+            
+            
+            if (!internetAlive) {
+                emitStatus('internet_issue');
+            } else if (!apiAlive) {
+                emitStatus('server_down');
             } else {
-                 
-                setCurrentUser(null);
-                localStorage.removeItem('nowkie_user');
-                setStatus('guest');
+                emitStatus('online');
             }
         } catch (e) {
-            console.error("[AuthFlow] Error:", e);
-            setStatus('guest');
+            
+            emitStatus('internet_issue');
+        } finally {
+            isChecking.current = false;
         }
-    }, [currentUser, setCurrentUser]);
+    }, []);
+
+    const checkSession = useCallback(async () => {
+        const cachedUserRaw = localStorage.getItem('nowkie_user');
+        
+        
+        checkNetworkHealth();
+
+        if (!cachedUserRaw) {
+            setStatus('guest');
+            return;
+        }
+
+        try {
+            setCurrentUser(JSON.parse(cachedUserRaw));
+            setStatus('auth');
+
+            
+            const verifiedUser = await Promise.race([
+                window.api.getInitUser(),
+                new Promise((_, reject) => setTimeout(() => reject('timeout'), 5000))
+            ]);
+
+            if (!verifiedUser || verifiedUser === 'timeout' || verifiedUser.error) {
+                
+                checkNetworkHealth();
+                if (verifiedUser?.error && verifiedUser.error.code !== 'NETWORK_ERROR') {
+                    handleLogout();
+                }
+            } else {
+                emitStatus('online');
+                localStorage.setItem('nowkie_user', JSON.stringify(verifiedUser));
+                setCurrentUser(verifiedUser);
+            }
+        } catch (e) {
+            checkNetworkHealth();
+        }
+    }, [setCurrentUser, checkNetworkHealth]);
+
+    const handleLogout = () => {
+        setCurrentUser(null);
+        localStorage.removeItem('nowkie_user');
+        setStatus('guest');
+    };
 
     useEffect(() => {
         checkSession();
-    }, []);  
 
-    const handleLoginSuccess = () => {
-        console.log("[AuthFlow] Login success signal received");
-        checkSession();  
-    };
+        
+        const interval = setInterval(checkNetworkHealth, 10000); 
 
-    if (status === 'loading') {
-        return (
-            <div style={{
-                display: 'flex', 
-                flexDirection: 'column', 
-                alignItems: 'center', 
-                justifyContent: 'center', 
-                height: '100vh',
-                backgroundColor: 'var(--color-background)',
-                color: 'var(--color-text-secondary)'
-            }}>
-                <div className="spinner" style={{marginBottom: 20}}></div>
-                <p>Загрузка профиля...</p>
-            </div>
-        );
-    }
+        window.addEventListener('online', checkNetworkHealth);
+        window.addEventListener('offline', () => emitStatus('browser_offline'));
 
-    if (status === 'offline') {
-        return <OfflinePage onRetry={checkSession} />;
-    }
+        return () => {
+            clearInterval(interval);
+            window.removeEventListener('online', checkNetworkHealth);
+        };
+    }, [checkSession, checkNetworkHealth]);
 
-    if (status === 'guest') {
-        return <Login onLoginSuccess={handleLoginSuccess} />;
-    }
+    if (status === 'pending') return <div style={{ height: '100vh', backgroundColor: '#101214' }} />;
+    if (status === 'guest' && !navigator.onLine) return <OfflinePage onRetry={() => window.location.reload()} />;
+    if (status === 'guest') return <Login onLoginSuccess={() => window.location.reload()} />;
 
-     
     return children;
 };
 

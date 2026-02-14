@@ -88,7 +88,7 @@ const ImageModal = ({ images, initialIndex = 0 }) => {
 
     return (
         <div className="img-modal-overlay" onWheel={handleWheel} onMouseUp={onMouseUp}>
-            { }
+              
             <div className="img-modal-toolbar">
                 <div className="img-info">
                     {images.length > 1 && <span>{currentIndex + 1} / {images.length}</span>}
@@ -100,7 +100,7 @@ const ImageModal = ({ images, initialIndex = 0 }) => {
                 </div>
             </div>
 
-            { }
+              
             {images.length > 1 && currentIndex > 0 && (
                 <button className="nav-btn prev" onClick={(e) => { e.stopPropagation(); setCurrentIndex(v => v - 1); resetZoom(); }}>❮</button>
             )}
@@ -108,7 +108,7 @@ const ImageModal = ({ images, initialIndex = 0 }) => {
                 <button className="nav-btn next" onClick={(e) => { e.stopPropagation(); setCurrentIndex(v => v + 1); resetZoom(); }}>❯</button>
             )}
 
-            { }
+              
             <div 
                 className="img-viewport"
                 onMouseDown={onMouseDown}
@@ -143,7 +143,7 @@ const ImageModal = ({ images, initialIndex = 0 }) => {
                 </div>
             </div>
 
-            { }
+              
             <div className="img-modal-footer">
                 Ctrl + Wheel для масштаба • Перетаскивайте зажатой мышкой
             </div>

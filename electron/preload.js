@@ -5,7 +5,11 @@ contextBridge.exposeInMainWorld('api', {
     call: (endpoint, method, body) => ipcRenderer.invoke('api-call', { endpoint, method, body }),
     getInitUser: () => ipcRenderer.invoke('get-init-user'),
     
-     
+    
+    runDiagnostics: () => ipcRenderer.invoke('app:diagnostics'),
+    checkInternetQuick: () => ipcRenderer.invoke('app:quick-check'),
+    
+
     autoGrabToken: () => ipcRenderer.invoke('auto-grab-token'),
     openStealthLogin: () => ipcRenderer.invoke('open-stealth-login'),
     loginWithToken: (token) => ipcRenderer.invoke('login-with-token', token),

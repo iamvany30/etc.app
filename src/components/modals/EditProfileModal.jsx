@@ -40,7 +40,7 @@ const EditProfileModal = () => {
         <div style={{ padding: '20px' }}>
             <h2 style={{ margin: '0 0 20px 0', fontSize: '20px' }}>Редактировать профиль</h2>
             
-            { }
+              
             <div style={{ marginBottom: '20px' }}>
                 <label style={{ display: 'block', color: 'var(--color-text-secondary)', fontSize: '13px', marginBottom: '4px' }}>Имя</label>
                 <input 
@@ -59,7 +59,7 @@ const EditProfileModal = () => {
                 />
             </div>
 
-            { }
+              
             <div style={{ marginBottom: '20px' }}>
                 <label style={{ display: 'block', color: 'var(--color-text-secondary)', fontSize: '13px', marginBottom: '4px' }}>О себе</label>
                 <textarea 
@@ -79,7 +79,7 @@ const EditProfileModal = () => {
                 />
             </div>
 
-            { }
+              
             <button 
                 onClick={handleSave} 
                 disabled={isLoading}

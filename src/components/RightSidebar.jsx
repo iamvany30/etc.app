@@ -59,7 +59,7 @@ const RightSidebar = () => {
 
     return (
         <aside className="right-sidebar">
-            { }
+              
             {trends.length > 0 && (
                 <WidgetBox title="Актуальные темы" showMoreLink="/explore">
                     {trends.map((item) => (
@@ -76,7 +76,7 @@ const RightSidebar = () => {
                 </WidgetBox>
             )}
 
-            { }
+              
             {clans.length > 0 && (
                 <WidgetBox title="Топ кланов">
                     <div className="top-clans__list">
@@ -96,7 +96,7 @@ const RightSidebar = () => {
                 </WidgetBox>
             )}
 
-            { }
+              
             {users.length > 0 && (
                 <WidgetBox title="Кого читать" showMoreLink="/explore">
                     {users.map((user) => (
@@ -117,7 +117,7 @@ const RightSidebar = () => {
                 </WidgetBox>
             )}
 
-            { }
+              
             <div className="sidebar-footer-copy">
                 © 2026 итд.app (by Ванёк)
             </div>

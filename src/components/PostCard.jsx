@@ -1,11 +1,11 @@
-import React, { useState, useEffect, useRef, useLayoutEffect, memo } from 'react';
+import React, { useState, useEffect, useRef, useLayoutEffect, memo, useMemo, useCallback } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { apiClient } from '../api/client';
+
 import { useUser } from '../context/UserContext';
 import { useModal } from '../context/ModalContext';
 import '../styles/PostCard.css';
 
- 
+
 import ConfirmDeleteModal from './modals/ConfirmDeleteModal';
 import ExternalLinkModal, { isTrustedLink } from './modals/ExternalLinkModal';
 import Comment from './Comment';
@@ -13,8 +13,8 @@ import CreateComment from './CreateComment';
 import MusicPlayer from './MusicPlayer';
 import MediaGrid from './MediaGrid';
 
- 
-import { LikeIcon, CommentIcon, RepostIcon, ViewIcon, SendIcon } from './icons/InteractionsIcons';
+
+import { LikeIcon, CommentIcon, RepostIcon, ViewIcon } from './icons/InteractionsIcons';
 import { MoreIcon, ShareIcon, EditIcon, DeleteIcon, PinIcon } from './icons/MenuIcons';
 
 const renderParsedText = (text, onLinkClick) => {
@@ -53,12 +53,15 @@ const TimeAgo = ({ dateStr }) => {
 const RepostQuote = ({ post }) => {
     const { openModal } = useModal();
     const navigate = useNavigate();
+    
     const handleLinkClick = (e, url) => {
         e.preventDefault(); e.stopPropagation();
         if (isTrustedLink(url)) window.api.openExternalLink(url);
         else openModal(<ExternalLinkModal url={url} />);
     };
+
     if (!post) return null;
+    
     return (
         <div className="repost-quote" onClick={(e) => { e.stopPropagation(); navigate(`/post/${post.id}`); }} style={{ cursor: 'pointer' }}>
             <div className="post-author-info">
@@ -88,7 +91,6 @@ const PostCardComponent = ({ post, initialShowComments = false, highlightComment
     const [isPinned, setIsPinned] = useState(post.isPinned || false);
     const [wasViewed, setWasViewed] = useState(post.isViewed || false);
     
-     
     const [showComments, setShowComments] = useState(initialShowComments || !!highlightCommentId);
     
     const [comments, setComments] = useState([]);
@@ -103,7 +105,6 @@ const PostCardComponent = ({ post, initialShowComments = false, highlightComment
 
     const isOwner = currentUser?.id === post.author?.id || post.isOwner;
 
-     
     useEffect(() => {
         setLocalPost(post);
         setLiked(post.isLiked);
@@ -111,13 +112,11 @@ const PostCardComponent = ({ post, initialShowComments = false, highlightComment
         setIsPinned(post.isPinned || false);
         setCommentsCount(post.commentsCount);
         
-         
         if (highlightCommentId) {
             setShowComments(true);
         }
     }, [post, highlightCommentId]);
 
-     
     useEffect(() => {
         if (wasViewed) return;
         const observer = new IntersectionObserver((entries) => {
@@ -131,7 +130,6 @@ const PostCardComponent = ({ post, initialShowComments = false, highlightComment
         return () => observer.disconnect();
     }, [localPost.id, wasViewed]);
 
-     
     useEffect(() => {
         const handleClickOutside = (e) => {
             if (menuRef.current && !menuRef.current.contains(e.target)) setShowMenu(false);
@@ -147,13 +145,70 @@ const PostCardComponent = ({ post, initialShowComments = false, highlightComment
             textareaRef.current.focus();
         }
     }, [isEditing]);
+    
+const handleLinkClick = useCallback((e, url) => {
+    e.preventDefault();
+    e.stopPropagation();
 
-     
-    const handleLinkClick = (e, url) => {
-        e.preventDefault(); e.stopPropagation();
-        if (isTrustedLink(url)) window.api.openExternalLink(url);
-        else openModal(<ExternalLinkModal url={url} />);
-    };
+    try {
+        const urlObj = new URL(url);
+        
+        const isInternalDomain = urlObj.hostname.endsWith('итд.com') || urlObj.hostname.endsWith('xn--d1ah4a.com');
+
+        if (isInternalDomain) {
+            const path = urlObj.pathname;
+
+            
+            const postMatch = path.match(/^\/@[^/]+\/post\/([^/]+)/);
+            if (postMatch) {
+                navigate(`/post/${postMatch[1]}`);
+                return;
+            }
+
+            
+            if (path === '/feed' || path === '/') {
+                navigate('/');
+                return;
+            }
+            if (path === '/explore') {
+                navigate('/explore');
+                return;
+            }
+            if (path === '/notifications') {
+                navigate('/notifications');
+                return;
+            }
+            if (path === '/music') {
+                navigate('/music');
+                return;
+            }
+
+            
+            if (path.length > 1) {
+                const username = path.startsWith('/@') ? path.substring(2) : path.substring(1);
+                
+                if (!['settings', 'about', 'legal'].includes(username)) {
+                    navigate(`/profile/${username}`);
+                    return;
+                }
+            }
+        }
+    } catch (err) {
+        console.error("Link parsing error", err);
+    }
+
+    
+    if (isTrustedLink(url)) {
+        window.api.openExternalLink(url);
+    } else {
+        openModal(<ExternalLinkModal url={url} />);
+    }
+}, [navigate, openModal]);
+    
+    const parsedContent = useMemo(() => {
+        return renderParsedText(localPost.content, handleLinkClick);
+    }, [localPost.content, handleLinkClick]);
+
     const handleLike = async (e) => {
         e.stopPropagation();
         const prevLiked = liked;
@@ -162,12 +217,14 @@ const PostCardComponent = ({ post, initialShowComments = false, highlightComment
         try { await window.api.call(`/posts/${localPost.id}/like`, 'POST'); } 
         catch { setLiked(prevLiked); setLikesCount(prev => prevLiked ? prev + 1 : prev - 1); }
     };
+
     const handleShare = (e) => {
         e.stopPropagation();
         const url = `https://xn--d1ah4a.com/@${localPost.author?.username}/post/${localPost.id}`;
         navigator.clipboard.writeText(url).then(() => alert("Ссылка скопирована!")).catch(() => {});
         setShowMenu(false);
     };
+
     const handlePin = async (e) => {
         e.stopPropagation();
         const prevState = isPinned;
@@ -176,6 +233,7 @@ const PostCardComponent = ({ post, initialShowComments = false, highlightComment
         try { prevState ? await window.api.call(`/posts/${localPost.id}/pin`, 'DELETE') : await window.api.call(`/posts/${localPost.id}/pin`, 'POST'); } 
         catch { setIsPinned(prevState); }
     };
+
     const handleDelete = (e) => {
         e.stopPropagation();
         setShowMenu(false);
@@ -184,6 +242,7 @@ const PostCardComponent = ({ post, initialShowComments = false, highlightComment
             catch (err) { console.error(err); }
         }} />);
     };
+
     const handleEditSave = async (e) => {
         e.stopPropagation();
         if (!editContent.trim()) return;
@@ -193,14 +252,11 @@ const PostCardComponent = ({ post, initialShowComments = false, highlightComment
         } catch (e) { console.error(e); }
     };
 
-     
-
-    const loadComments = async (isMore = false) => {
+    const loadComments = useCallback(async (isMore = false) => {
         if (loadingComments) return;
         setLoadingComments(true);
         try {
             const cursor = isMore ? commentsCursor : null;
-             
             const limit = highlightCommentId ? 50 : 20; 
             const res = await window.api.call(
                 `/posts/${localPost.id}/comments?limit=${limit}${cursor ? `&cursor=${cursor}` : ''}`, 
@@ -223,66 +279,53 @@ const PostCardComponent = ({ post, initialShowComments = false, highlightComment
         } finally {
             setLoadingComments(false);
         }
-    };
+    }, [loadingComments, commentsCursor, highlightCommentId, localPost.id]);
 
-     
+    
     useEffect(() => {
         if (showComments && comments.length === 0) {
             loadComments();
         }
-    }, [showComments]);
+    }, [showComments, comments.length, loadComments]);
 
-     
+    
     useEffect(() => {
         if (!highlightCommentId || !showComments) return;
         if (comments.length === 0 && !loadingComments) {
-             
             loadComments();
             return;
         }
 
         let attempts = 0;
-        const maxAttempts = 50;  
+        const maxAttempts = 50; 
 
         const scrollInterval = setInterval(() => {
             const element = document.getElementById(`comment-${highlightCommentId}`);
-            
             if (element) {
-                 
                 clearInterval(scrollInterval);
-                
-                 
                 element.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                
-                 
                 element.classList.add('highlighted');
-                
-                 
                 setTimeout(() => {
                     element.classList.remove('highlighted');
                 }, 2500);
             } else {
                 attempts++;
-                if (attempts >= maxAttempts) {
-                    clearInterval(scrollInterval);  
-                }
+                if (attempts >= maxAttempts) clearInterval(scrollInterval);
             }
-        }, 100);  
+        }, 100);
 
         return () => clearInterval(scrollInterval);
-    }, [highlightCommentId, showComments, comments.length]);  
+    }, [highlightCommentId, showComments, comments.length, loadingComments, loadComments]);
 
     const toggleComments = (e) => {
         e.stopPropagation();
-        const nextState = !showComments;
-        setShowComments(nextState);
+        setShowComments(!showComments);
     };
 
     const handlePostClick = () => navigate(`/post/${localPost.id}`);
 
     if (isDeleted || !localPost) return null;
     
-     
     const isMusicPost = localPost.content?.includes('#nowkie_music_track');
     let musicData = null;
     if (isMusicPost) {
@@ -356,8 +399,14 @@ const PostCardComponent = ({ post, initialShowComments = false, highlightComment
                     </div>
                 ) : (
                     <div>
-                        {localPost.content && <p className="post-content">{renderParsedText(localPost.content, handleLinkClick)}</p>}
-                        {localPost.originalPost && <div style={{ marginTop: localPost.content ? '12px' : '0' }}><RepostQuote post={localPost.originalPost} /></div>}
+                        {localPost.content && <p className="post-content">{parsedContent}</p>}
+                        
+                        {localPost.originalPost && (
+                            <div style={{ marginTop: localPost.content ? '12px' : '0' }}>
+                                <RepostQuote post={localPost.originalPost} />
+                            </div>
+                        )}
+                        
                         {localPost.attachments && localPost.attachments.length > 0 && (
                             <div style={{ marginTop: (localPost.content || localPost.originalPost) ? '12px' : '0' }}>
                                 <MediaGrid attachments={localPost.attachments} />
@@ -391,7 +440,6 @@ const PostCardComponent = ({ post, initialShowComments = false, highlightComment
                                     comment={c} 
                                     postId={localPost.id}
                                     onCommentAdded={(newReply) => { setComments(prev => [newReply, ...prev]); setCommentsCount(prev => prev + 1); }}
-                                     
                                     highlightCommentId={highlightCommentId} 
                                 />
                             ))}

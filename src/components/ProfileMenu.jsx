@@ -19,11 +19,11 @@ const ProfileMenu = ({ user, onSettingsClick, onLogoutClick, onClose }) => {
 
     return (
         <>
-            { }
+              
             <div className="profile-menu-backdrop" onClick={onClose}></div>
 
             <div className="profile-menu">
-                { }
+                  
                 <Link to={`/profile/${user.username}`} className="profile-menu-header" onClick={onClose}>
                     <div className="avatar" style={{width: 44, height: 44, fontSize: 20}}>
                         {user.avatar}
@@ -34,7 +34,7 @@ const ProfileMenu = ({ user, onSettingsClick, onLogoutClick, onClose }) => {
                     </div>
                 </Link>
 
-                { }
+                  
                 <div className="profile-menu-items">
                     <button className="profile-menu-item" onClick={onSettingsClick}>
                         <IconSettings />

@@ -1,3 +1,4 @@
+/* @source CreatePost.css */
 .create-post-card {
     padding: 16px;
     border-bottom: 1px solid var(--color-border);
@@ -15,89 +16,111 @@
 }
 
 .create-post-textarea {
+    font-size: 19px;
+    line-height: 1.4;
+    padding: 4px 0;
     width: 100%;
     border: none;
     background: transparent;
     color: var(--color-text);
-    font-size: 20px;
     font-family: inherit;
     resize: none;
     outline: none;
     min-height: 28px;
-    line-height: 24px;
 }
 
 .create-post-textarea::placeholder {
     color: var(--color-text-secondary);
 }
 
- 
 .create-post-footer {
     display: flex;
     justify-content: space-between;
     align-items: center;
     margin-top: 12px;
-    padding-left: 52px;  
+    padding-top: 12px;
+    border-top: 1px solid var(--color-border-light);
+    padding-left: 52px;
 }
 
 .create-post-tools {
     display: flex;
-    gap: 4px;
-    margin-left: -8px;  
+    gap: 8px;
 }
 
 .tool-btn {
-    width: 36px;
-    height: 36px;
-    border-radius: 50%;
+    width: 38px;
+    height: 38px;
+    border-radius: 10px;
     border: none;
-    background: none;
+    background: transparent;
     color: var(--color-primary);
     cursor: pointer;
     display: flex;
     align-items: center;
     justify-content: center;
-    transition: background-color 0.2s;
+    transition: all 0.2s ease;
 }
 
-.tool-btn:hover {
-    background-color: rgba(29, 155, 240, 0.1);
+.tool-btn:hover:not(:disabled) {
+    background-color: var(--color-primary-alpha);
+    transform: translateY(-2px);
 }
 
-.tool-btn svg {
-    fill: currentColor;
-}
-
-.create-post-submit, .tool-btn.mic {
-    min-width: 40px;
-    background-color: var(--color-primary);
-    color: #ffffff;
-    border: none;
-    border-radius: 9999px;
-    font-weight: 700;
-    font-size: 15px;
-    cursor: pointer;
-    transition: background-color 0.2s, opacity 0.2s;
-}
-
-.create-post-submit {
-     padding: 8px 16px;
-}
-
-.create-post-submit:hover:not(:disabled) {
-    background-color: var(--color-primary-hover);
-}
-
-.create-post-submit:disabled {
-    opacity: 0.5;
+.tool-btn:disabled {
+    opacity: 0.3;
     cursor: default;
 }
 
-.tool-btn.mic:hover {
+.create-post-actions {
+    display: flex;
+}
+
+.tool-btn-accent {
+    width: 42px;
+    height: 42px;
+    border-radius: 50%;
+    border: none;
+    background-color: var(--color-primary);
+    color: white;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    box-shadow: 0 4px 10px var(--color-primary-alpha);
+}
+
+.tool-btn-accent:hover {
+    transform: scale(1.1);
     background-color: var(--color-primary-hover);
 }
 
- 
+.create-post-submit-btn {
+    padding: 8px 20px;
+    background-color: var(--color-primary);
+    color: white;
+    border: none;
+    border-radius: 99px;
+    font-weight: 700;
+    font-size: 15px;
+    cursor: pointer;
+    transition: all 0.2s;
+    box-shadow: 0 4px 12px var(--color-primary-alpha);
+}
+
+.create-post-submit-btn:hover:not(:disabled) {
+    background-color: var(--color-primary-hover);
+    box-shadow: 0 6px 16px var(--color-primary-alpha);
+}
+
+.create-post-submit-btn:disabled {
+    opacity: 0.5;
+    background-color: var(--color-text-muted);
+    box-shadow: none;
+    cursor: default;
+}
+
 .attachments-preview {
     display: flex;
     gap: 8px;
@@ -138,8 +161,6 @@
     background-color: rgba(0, 0, 0, 0.9);
 }
 
- 
-
 .voice-recorder-ui {
     display: flex;
     align-items: center;
@@ -148,7 +169,7 @@
     background-color: var(--color-item-bg);
     border-radius: 99px;
     padding: 6px 10px;
-    min-height: 52px;  
+    min-height: 52px;
 }
 
 .voice-btn {
@@ -207,6 +228,7 @@
     border: 1px solid var(--color-border);
     object-fit: cover;
     background-color: #000;
+    display: block;
 }
 
 .upload-progress-container {
@@ -239,11 +261,4 @@
     background-color: var(--color-primary);
     transition: width 0.3s ease-out;
     box-shadow: 0 0 10px rgba(29, 155, 240, 0.3);
-}
-
-.create-post-media-preview {
-    max-height: 200px;
-    border-radius: 16px;
-    background-color: #000;
-    display: block;
 }

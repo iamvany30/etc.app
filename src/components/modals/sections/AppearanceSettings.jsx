@@ -32,7 +32,7 @@ const AppearanceSettings = () => {
 
     return (
         <div className="settings-content">
-            { }
+              
             <div className="settings-section-title">Цвет акцента</div>
             <div className="color-picker-grid">
                 {colors.map(c => (
@@ -47,7 +47,7 @@ const AppearanceSettings = () => {
                 ))}
             </div>
 
-            { }
+              
             <div className="settings-section-title">Фон</div>
             <div style={{ 
                 display: 'flex', 
@@ -55,7 +55,7 @@ const AppearanceSettings = () => {
                 padding: '0 24px', 
                 marginBottom: '24px' 
             }}>
-                { }
+                  
                 <div 
                     onClick={() => handleBgChange('light')}
                     style={{
@@ -80,7 +80,7 @@ const AppearanceSettings = () => {
                     {bg === 'light' && <div style={{marginLeft: 6, color: accent}}>●</div>}
                 </div>
 
-                { }
+                  
                 <div 
                     onClick={() => handleBgChange('dim')}
                     style={{
@@ -104,7 +104,7 @@ const AppearanceSettings = () => {
                     {bg === 'dim' && <div style={{marginLeft: 6, color: accent}}>●</div>}
                 </div>
 
-                { }
+                  
                 <div 
                     onClick={() => handleBgChange('black')}
                     style={{
@@ -129,7 +129,7 @@ const AppearanceSettings = () => {
                 </div>
             </div>
 
-            { }
+              
             <div className="settings-section-title">Эффекты</div>
             <div className="settings-option" onClick={handleSnow}>
                 <div className="settings-option-left">

@@ -9,50 +9,65 @@
     left: 0;
     right: 0;
     bottom: 0;
+    
      
     background-color: rgba(0, 0, 0, 0.65);
      
     backdrop-filter: blur(8px);
-    -webkit-backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);  
     z-index: 9999;
     
+     
     display: flex;
     align-items: center;
     justify-content: center;
     
+     
     opacity: 0;
-    padding: 20px;
+    padding: 20px;  
     animation: overlayFadeIn 0.25s ease-out forwards;
 }
 
  
 .modal-content {
     width: 100%;
-    max-width: 580px;
-    max-height: 85vh;
+    max-width: 580px;  
+    /* Максимальная высота теперь контролируется JS и CSS (через modal-body-wrapper)
+       или переопределяется для fullscreen/mobile */
+    max-height: 85vh; 
     
     border-radius: 20px;
     position: relative;
     display: flex;
-    flex-direction: column;
+    flex-direction: column;  
     
      
     box-shadow: 
         0 20px 50px rgba(0, 0, 0, 0.5),
         0 0 0 1px rgba(255, 255, 255, 0.08) inset;
     
+     
     transform: scale(0.95);
     opacity: 0;
     animation: modalPopIn 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
     
      
     overflow: hidden; 
+
+     
+     
+    transition: height 0.35s cubic-bezier(0.25, 0.8, 0.25, 1), 
+                width 0.35s cubic-bezier(0.25, 0.8, 0.25, 1),
+                max-width 0.35s cubic-bezier(0.25, 0.8, 0.25, 1);
+    /* Важно для корректной работы transition height, чтобы padding/border 
+       включались в общую высоту/ширину */
+    box-sizing: border-box; 
 }
 
  
 .modal-content.glass {
     background-color: var(--color-card);  
-    background: color-mix(in srgb, var(--color-card), transparent 5%);  
+    background: color-mix(in srgb, var(--color-card), transparent 5%);   
     backdrop-filter: blur(30px) saturate(180%);
     -webkit-backdrop-filter: blur(30px) saturate(180%);
     border: 1px solid var(--color-border);
@@ -63,7 +78,7 @@
     width: 95vw;
     height: 95vh;
     max-width: 1600px;
-    max-height: none;
+    max-height: none;  
     
     background: transparent;
     border: none;
@@ -80,11 +95,12 @@
     overflow: hidden;
 }
 
+ 
 .liquid-blob {
     position: absolute;
     border-radius: 50%;
     filter: blur(60px);
-    z-index: -1;
+    z-index: -1;  
     opacity: 0.4;
     animation: floatLiquid 12s infinite ease-in-out alternate;
 }
@@ -106,7 +122,7 @@
     align-items: center;
     justify-content: center;
     cursor: pointer;
-    z-index: 50; 
+    z-index: 50;  
     transition: all 0.2s ease;
 }
 
@@ -116,14 +132,23 @@
 }
 
  
-.modal-body {
-    flex: 1;
-    overflow-y: auto;
-    padding: 0;
+.modal-body-wrapper {
+    width: 100%;
+    height: auto;  
     display: flex;
     flex-direction: column;
      
-    background-color: transparent; 
+}
+
+ 
+.modal-body {
+    flex: 1;  
+    overflow-y: auto;  
+    overflow-x: hidden;  
+    padding: 0;  
+    display: flex;
+    flex-direction: column;
+    background-color: transparent;  
 }
 
  
@@ -159,19 +184,18 @@
         max-height: 88vh;  
         
          
-        border-radius: 24px 24px 0 0; 
-        
+        height: auto !important;  
          
+        
+        border-radius: 24px 24px 0 0;  
         border: none;
-        border-top: 1px solid rgba(255, 255, 255, 0.15);
+        border-top: 1px solid rgba(255, 255, 255, 0.15);  
         margin: 0;
         
-        /* ВАЖНО: Задаем сплошной цвет фона (из темы). 
-           Это решает проблему "огузка" / прозрачного верха. */
+         
         background-color: var(--color-background); 
         
-         
-        box-shadow: 0 -10px 40px rgba(0, 0, 0, 0.4);
+        box-shadow: 0 -10px 40px rgba(0, 0, 0, 0.4);  
         
          
         transform: translateY(100%);
@@ -179,6 +203,7 @@
         
          
         padding-bottom: env(safe-area-inset-bottom);
+        margin-bottom: 0;
     }
 
      
@@ -213,6 +238,7 @@
         background-color: #000;  
     }
 
+     
     @keyframes slideUpMobile {
         from { transform: translateY(100%); opacity: 0; }
         to { transform: translateY(0); opacity: 1; }

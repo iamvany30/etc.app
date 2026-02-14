@@ -1,9 +1,7 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { IconExternalLink, IconChevron } from '../SettingsIcons';
 
- 
- 
 const contributors = [
     { 
         name: 'iamvany', 
@@ -20,13 +18,12 @@ const contributors = [
         linkType: 'internal' 
     },
 ];
+
 const legalLinks = [
     { href: "https://xn--d1ah4a.com/legal/terms", text: "Условия использования" },
     { href: "https://xn--d1ah4a.com/legal/privacy", text: "Политика конфиденциальности" },
     { href: "https://xn--d1ah4a.com/legal/cookies", text: "Использование Cookie" }
 ];
-
- 
 
 const InfoLink = ({ href, text }) => (
     <a href={href} 
@@ -58,7 +55,6 @@ const ContributorItem = ({ person }) => {
         return <Link to={person.link} className="contributor-item clickable">{content}</Link>;
     }
     
-     
     return (
         <button className="contributor-item clickable" onClick={() => window.api.openExternalLink(person.link)}>
             {content}
@@ -66,10 +62,15 @@ const ContributorItem = ({ person }) => {
     );
 };
 
-
- 
-
 const InfoSettings = () => {
+    const [version, setVersion] = useState('');
+
+    useEffect(() => {
+        if (window.api) {
+            window.api.invoke('app:get-version').then(setVersion);
+        }
+    }, []);
+
     return (
         <div className="settings-content">
             <div className="settings-section-title">Команда проекта</div>
@@ -79,16 +80,14 @@ const InfoSettings = () => {
                 ))}
             </div>
 
-            { }
             <div className="settings-section-title">Правовая информация</div>
             {legalLinks.map(link => (
                 <InfoLink key={link.href} {...link} />
             ))}
 
-            { }
             <div className="settings-footer">
                 <span className="app-icon">💡</span>
-                итд.app v0.2.0
+                итд.app v{version || '...'}
             </div>
         </div>
     );

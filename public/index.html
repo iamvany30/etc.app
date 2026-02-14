@@ -6,20 +6,15 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="theme-color" content="#000000" />
     
-    <!-- ОБНОВЛЕННЫЙ CSP: Добавлена поддержка *.bckt.ru для медиа -->
+    <!-- ВАЖНО: Добавлено 'unsafe-eval' в script-src -->
     <meta
       http-equiv="Content-Security-Policy"
-      content="
-        default-src 'self';
-        script-src 'self' 'unsafe-inline';
-        style-src 'self' 'unsafe-inline' https://fonts.googleapis.com;
-        font-src 'self' https://fonts.gstatic.com;
-        img-src 'self' data: blob: https://xn--d1ah4a.com https://*.bckt.ru;
-        media-src 'self' data: blob: https://xn--d1ah4a.com https://*.bckt.ru;
-        connect-src 'self' https://xn--d1ah4a.com https://*.bckt.ru;
-      "
+      content="default-src 'self' 'unsafe-inline' 'unsafe-eval' data: blob: https: ws:; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline' https:; img-src 'self' data: blob: https:; media-src 'self' data: blob: https:; connect-src 'self' https: ws: localhost:*;"
     />
 
+    <meta name="description" content="итд.app" />
+    <link rel="apple-touch-icon" href="%PUBLIC_URL%/logo192.png" />
+    <link rel="manifest" href="%PUBLIC_URL%/manifest.json" />
     <title>итд.app</title>
   </head>
   <body>

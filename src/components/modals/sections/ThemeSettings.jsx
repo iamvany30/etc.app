@@ -1,62 +1,59 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import { ThemeLoader } from '../../../core/ThemeLoader';
+import { IconInfo, IconCheck } from '../SettingsIcons';
+
+ 
+const IconDownload = () => <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>;
+const IconTrash = () => <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>;
+const IconRefresh = () => <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M23 4v6h-6"></path><path d="M1 20v-6h6"></path><path d="M3.51 9a9 9 0 0 1 14.85-3.36L20.5 10"></path><path d="M20.49 15a9 9 0 0 1-14.85 3.36L3.5 14"></path></svg>;
+const IconSearch = () => <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>;
+const IconPalette = () => <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="13.5" cy="6.5" r=".5"/><circle cx="17.5" cy="10.5" r=".5"/><circle cx="8.5" cy="7.5" r=".5"/><circle cx="6.5" cy="12.5" r=".5"/><path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.926 0 1.648-.746 1.648-1.688 0-.437-.18-.835-.437-1.125-.29-.289-.438-.652-.438-1.125a1.64 1.64 0 0 1 1.668-1.668h1.996c3.051 0 5.555-2.503 5.555-5.554C21.965 6.012 17.461 2 12 2z"/></svg>;
 
 const ThemeSettings = ({ setStatus }) => {
     const [themes, setThemes] = useState([]);
     const [isLoading, setIsLoading] = useState(true);
     const [activeTheme, setActiveTheme] = useState(localStorage.getItem('itd_current_theme_folder') || 'default');
     const [processingTheme, setProcessingTheme] = useState(null);
-
-     
-    const extractErrorMessage = (err) => {
-        if (!err) return 'Неизвестная ошибка';
-        if (typeof err === 'string') return err;
-        if (err.message) return err.message;
-        if (err.error) return typeof err.error === 'string' ? err.error : (err.error.message || JSON.stringify(err.error));
-        return JSON.stringify(err);
-    };
+    const [tab, setTab] = useState('installed');
+    const [searchQuery, setSearchQuery] = useState('');
 
     const loadThemes = useCallback(async () => {
         setIsLoading(true);
         setStatus({ type: '', msg: '' });
         
         try {
-             
+            if (!window.api) return;
             const remoteResult = await window.api.invoke('themes:fetch-remote');
             const localResult = await window.api.invoke('themes:get-local');
 
-            let remoteList = [];
-            let localList = [];
-
-            if (Array.isArray(remoteResult)) {
-                remoteList = remoteResult;
-            } else if (remoteResult && remoteResult.error) {
-                setStatus({ type: 'error', msg: `GitHub: ${extractErrorMessage(remoteResult.error)}` });
-            }
-
-            if (Array.isArray(localResult)) {
-                localList = localResult;
-            }
+            let remoteList = Array.isArray(remoteResult) ? remoteResult : [];
+            let localList = Array.isArray(localResult) ? localResult : [];
 
             const mergedThemes = remoteList.map(remote => {
                 const local = localList.find(l => l.name === remote.name);
+                 
+                const hasCustomColors = remote.colors && (remote.colors.accent || remote.colors.background);
+                
                 return {
                     ...remote,
                     isInstalled: !!local,
                     localVersion: local?.version || null,
-                    isUpdateAvailable: local && String(local.version) !== String(remote.version)
+                    isUpdateAvailable: local && String(local.version) !== String(remote.version),
+                    hasCustomColors: hasCustomColors
                 };
             });
 
             localList.forEach(local => {
                 if (!mergedThemes.some(t => t.name === local.name)) {
-                    mergedThemes.push({ ...local, isInstalled: true, isOrphaned: true });
+                    const hasCustomColors = local.colors && (local.colors.accent || local.colors.background);
+                    mergedThemes.push({ ...local, isInstalled: true, isOrphaned: true, hasCustomColors });
                 }
             });
 
             setThemes(mergedThemes);
         } catch (err) {
             console.error(err);
-            setStatus({ type: 'error', msg: 'Ошибка связи с системным модулем' });
+            setStatus({ type: 'error', msg: 'Ошибка связи с сервером тем' });
         } finally {
             setIsLoading(false);
         }
@@ -65,38 +62,43 @@ const ThemeSettings = ({ setStatus }) => {
     useEffect(() => {
         loadThemes();
     }, [loadThemes]);
-    
+
     const applyTheme = async (folderName) => {
-        if (folderName === 'default') {
-            const styleTag = document.getElementById('dynamic-theme-style');
-            if (styleTag) styleTag.textContent = '';
-            localStorage.removeItem('itd_current_theme_folder');
-            setActiveTheme('default');
-            return;
-        }
-        
+        setProcessingTheme(folderName);
+        setStatus({ type: '', msg: 'Применение оболочки...' });
+
         try {
-            const res = await window.api.invoke('themes:read-content', folderName);
-            if (res && res.content) {
-                let styleTag = document.getElementById('dynamic-theme-style');
-                if (!styleTag) {
-                    styleTag = document.createElement('style');
-                    styleTag.id = 'dynamic-theme-style';
-                    document.head.appendChild(styleTag);
-                }
-                styleTag.textContent = res.content;
-                localStorage.setItem('itd_current_theme_folder', folderName);
-                setActiveTheme(folderName);
+            if (folderName === 'default') {
+                localStorage.removeItem('itd_current_theme_folder');
             } else {
-                setStatus({ type: 'error', msg: extractErrorMessage(res) });
+                localStorage.setItem('itd_current_theme_folder', folderName);
             }
+
+             
+            await ThemeLoader.init();
+
+             
+            window.dispatchEvent(new Event('settingsUpdate')); 
+            window.dispatchEvent(new Event('content-refresh'));
+            window.dispatchEvent(new Event('app-soft-reload'));
+
+            setActiveTheme(folderName);
+            setStatus({ type: 'success', msg: 'Оболочка успешно применена!' });
+
         } catch (e) {
-            setStatus({ type: 'error', msg: 'Не удалось применить файл темы' });
+            console.error("Theme apply error:", e);
+            setStatus({ type: 'error', msg: 'Ошибка применения' });
+            if (folderName !== 'default') {
+                applyTheme('default');
+            }
+        } finally {
+            setProcessingTheme(null);
         }
     };
 
     const handleDownload = async (theme) => {
         setProcessingTheme(theme.name);
+        setStatus({ type: '', msg: `Загрузка: ${theme.name}...` });
         try {
             const res = await window.api.invoke('themes:download', theme);
             if (res && res.success) {
@@ -104,77 +106,142 @@ const ThemeSettings = ({ setStatus }) => {
                 if (activeTheme === theme.folderName) {
                     await applyTheme(theme.folderName);
                 }
+                setStatus({ type: 'success', msg: 'Установлено' });
             } else {
-                setStatus({ type: 'error', msg: extractErrorMessage(res) });
+                setStatus({ type: 'error', msg: res?.error || 'Ошибка загрузки' });
             }
         } catch (e) {
-            setStatus({ type: 'error', msg: 'Ошибка при скачивании' });
+            setStatus({ type: 'error', msg: 'Сбой сети' });
         }
         setProcessingTheme(null);
     };
 
     const handleDelete = async (theme) => {
-        if (window.confirm(`Вы уверены, что хотите удалить тему "${theme.name}"?`)) {
-            setProcessingTheme(theme.name);
-            if (activeTheme === theme.folderName) {
-                await applyTheme('default');
-            }
-            await window.api.invoke('themes:delete', theme.folderName);
-            await loadThemes();
-            setProcessingTheme(null);
+        if (!window.confirm(`Удалить тему "${theme.name}" с диска?`)) return;
+        setProcessingTheme(theme.name);
+        if (activeTheme === theme.folderName) {
+            await applyTheme('default');
         }
+        await window.api.invoke('themes:delete', theme.folderName);
+        await loadThemes();
+        setProcessingTheme(null);
     };
 
+    const filteredThemes = useMemo(() => {
+        let result = themes;
+        if (tab === 'installed') result = result.filter(t => t.isInstalled);
+        if (searchQuery.trim()) {
+            const q = searchQuery.toLowerCase();
+            result = result.filter(t => (t.name || '').toLowerCase().includes(q) || (t.description || '').toLowerCase().includes(q));
+        }
+        return result;
+    }, [themes, tab, searchQuery]);
+
     return (
-        <div className="settings-content theme-settings">
-            <div className={`theme-item ${activeTheme === 'default' ? 'active-row' : ''}`} onClick={() => applyTheme('default')}>
-                <div className="theme-info">
-                    <span className="theme-name">Стандартная тема</span>
-                    <span className="theme-desc">Оригинальный вид итд.app</span>
+        <div className="settings-content theme-settings-container">
+            <div style={{ padding: '0 24px', marginBottom: 16 }}>
+                <div style={{ display: 'flex', gap: 8, marginBottom: 12 }}>
+                    <button className={`theme-tab ${tab === 'installed' ? 'active' : ''}`} onClick={() => setTab('installed')}>Установленные</button>
+                    <button className={`theme-tab ${tab === 'catalog' ? 'active' : ''}`} onClick={() => setTab('catalog')}>Каталог</button>
                 </div>
-                {activeTheme === 'default' && <span className="theme-status active">Активна</span>}
+                <div className="theme-search-bar">
+                    <IconSearch />
+                    <input placeholder="Найти тему..." value={searchQuery} onChange={e => setSearchQuery(e.target.value)} />
+                </div>
             </div>
 
-            {isLoading ? (
-                <div style={{textAlign: 'center', padding: 20}}>Загрузка...</div>
-            ) : themes.length === 0 ? (
-                <div style={{textAlign: 'center', padding: 20, opacity: 0.5}}>Нет доступных тем</div>
-            ) : (
-                themes.map(theme => (
-                    <div key={theme.name} className="theme-item">
-                        <div className="theme-info">
-                            <span className="theme-name">{theme.name}</span>
-                            <span className="theme-desc">{theme.description}</span>
-                            {theme.isInstalled && (
-                                <span className="theme-version">
-                                    v{theme.localVersion}
-                                    {theme.isUpdateAvailable && <span style={{color: '#ff9800'}}> (Доступна v{theme.version})</span>}
-                                </span>
-                            )}
+            <div className="themes-list">
+                {tab === 'installed' && !searchQuery && (
+                    <div className={`theme-card ${activeTheme === 'default' ? 'active' : ''}`}>
+                        <div className="theme-card-content" onClick={() => applyTheme('default')}>
+                            <div className="theme-header">
+                                <span className="theme-title">Стандартная (Default)</span>
+                                {activeTheme === 'default' && <span className="badge-active"><IconCheck /></span>}
+                            </div>
+                            <p className="theme-desc">Оригинальный интерфейс итд.app</p>
                         </div>
-                        
-                        <div className="theme-actions">
-                            {activeTheme === theme.folderName ? (
-                                <span className="theme-status active">Активна</span>
+                        <div className="theme-card-actions">
+                            {activeTheme !== 'default' && <button className="theme-action-btn primary" onClick={() => applyTheme('default')}>Применить</button>}
+                        </div>
+                    </div>
+                )}
+
+                {isLoading ? <div className="loading-state">Загрузка списка...</div> : 
+                 filteredThemes.length === 0 ? <div className="empty-state">Ничего не найдено</div> : 
+                 filteredThemes.map(theme => (
+                    <div key={theme.name} className={`theme-card ${activeTheme === theme.folderName ? 'active' : ''}`}>
+                        <div className="theme-card-content" onClick={() => theme.isInstalled && applyTheme(theme.folderName)}>
+                            <div className="theme-header">
+                                <span className="theme-title">{theme.name}</span>
+                                <div style={{display: 'flex', gap: 6}}>
+                                      
+                                    {theme.hasCustomColors && (
+                                        <span className="badge-colors" title="Меняет цвета интерфейса">
+                                            <IconPalette />
+                                        </span>
+                                    )}
+                                    {activeTheme === theme.folderName && <span className="badge-active"><IconCheck /></span>}
+                                    {theme.isUpdateAvailable && <span className="badge-update">Обновление</span>}
+                                </div>
+                            </div>
+                            <p className="theme-desc">{theme.description || 'Нет описания'}</p>
+                            <div className="theme-meta">
+                                <span>v{theme.version}</span>
+                                {theme.author && <span>by {theme.author}</span>}
+                            </div>
+                        </div>
+
+                        <div className="theme-card-actions">
+                            {processingTheme === theme.name ? (
+                                <span style={{fontSize: 12, opacity: 0.7}}>Обработка...</span>
                             ) : (
                                 <>
-                                    {theme.isInstalled && (
-                                        <button className="theme-btn delete" onClick={() => handleDelete(theme)} disabled={processingTheme === theme.name}>Удалить</button>
+                                    {!theme.isInstalled ? (
+                                        <button className="theme-action-btn primary" onClick={(e) => {e.stopPropagation(); handleDownload(theme)}}><IconDownload /> Скачать</button>
+                                    ) : theme.isUpdateAvailable ? (
+                                        <button className="theme-action-btn update" onClick={(e) => {e.stopPropagation(); handleDownload(theme)}}><IconRefresh /> Обновить</button>
+                                    ) : activeTheme !== theme.folderName ? (
+                                        <button className="theme-action-btn primary" onClick={(e) => {e.stopPropagation(); applyTheme(theme.folderName)}}>Применить</button>
+                                    ) : (
+                                        <span style={{fontSize: 12, color: 'var(--color-primary)', fontWeight: 'bold'}}>Активна</span>
                                     )}
-                                    {theme.isUpdateAvailable ? (
-                                        <button className="theme-btn update" onClick={() => handleDownload(theme)} disabled={processingTheme === theme.name}>Обновить</button>
-                                    ) : !theme.isInstalled ? (
-                                        <button className="theme-btn download" onClick={() => handleDownload(theme)} disabled={processingTheme === theme.name}>Загрузить</button>
-                                    ) : null}
                                     {theme.isInstalled && (
-                                        <button className="theme-btn apply" onClick={() => applyTheme(theme.folderName)}>Применить</button>
+                                        <button className="theme-action-btn danger icon-only" onClick={(e) => {e.stopPropagation(); handleDelete(theme)}} title="Удалить"><IconTrash /></button>
                                     )}
                                 </>
                             )}
                         </div>
                     </div>
-                ))
-            )}
+                ))}
+            </div>
+
+            <style>{`
+                .theme-settings-container { display: flex; flex-direction: column; }
+                .theme-tab { flex: 1; padding: 8px; border-radius: 8px; border: 1px solid var(--color-border); background: transparent; color: var(--color-text-secondary); cursor: pointer; font-weight: 600; font-size: 13px; transition: all 0.2s; }
+                .theme-tab.active { background: var(--color-text); color: var(--color-background); border-color: var(--color-text); }
+                .theme-search-bar { display: flex; align-items: center; background: var(--color-input-bg); padding: 8px 12px; border-radius: 8px; border: 1px solid transparent; }
+                .theme-search-bar:focus-within { border-color: var(--color-primary); background: var(--color-background); }
+                .theme-search-bar input { background: transparent; border: none; outline: none; margin-left: 8px; width: 100%; color: var(--color-text); }
+                .themes-list { display: flex; flex-direction: column; gap: 12px; padding: 0 24px; }
+                .theme-card { background: var(--color-item-bg); border: 1px solid var(--color-border); border-radius: 12px; padding: 14px; display: flex; flex-direction: column; gap: 12px; transition: all 0.2s; }
+                .theme-card.active { border-color: var(--color-primary); background: rgba(29, 155, 240, 0.05); }
+                .theme-card-content { cursor: pointer; }
+                .theme-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 4px; }
+                .theme-title { font-weight: 700; font-size: 15px; color: var(--color-text); }
+                .theme-desc { font-size: 13px; color: var(--color-text-secondary); margin: 0; line-height: 1.4; }
+                .theme-meta { font-size: 11px; color: var(--color-text-muted); margin-top: 6px; display: flex; gap: 8px; }
+                .theme-card-actions { display: flex; align-items: center; justify-content: flex-end; gap: 8px; border-top: 1px solid var(--color-border-light); padding-top: 10px; }
+                .theme-action-btn { padding: 6px 14px; border-radius: 99px; border: none; font-size: 13px; font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 6px; transition: opacity 0.2s; }
+                .theme-action-btn:hover { opacity: 0.8; }
+                .theme-action-btn.primary { background: var(--color-text); color: var(--color-background); }
+                .theme-action-btn.update { background: #ff9800; color: #000; }
+                .theme-action-btn.danger { background: rgba(244, 33, 46, 0.1); color: #f4212e; }
+                .theme-action-btn.icon-only { padding: 6px; border-radius: 8px; }
+                .badge-active { color: var(--color-primary); display: flex; }
+                .badge-update { font-size: 10px; font-weight: bold; background: #ff9800; color: black; padding: 2px 6px; border-radius: 4px; }
+                .badge-colors { color: var(--color-text); background: var(--color-border); padding: 2px 4px; border-radius: 4px; display: flex; align-items: center; justify-content: center; }
+                .loading-state, .empty-state { text-align: center; padding: 20px; color: var(--color-text-secondary); }
+            `}</style>
         </div>
     );
 };

@@ -2,7 +2,7 @@ import { mediaProcessor } from '../mediaProcessor';
 export const mediaService = {
   uploadFile: async (file) => {
     const compressEnabled = localStorage.getItem('itd_compress_files') !== 'false';
-    const useGpu = localStorage.getItem('itd_use_gpu') === 'true'; // Флаг сохраняется для будущих улучшений
+    const useGpu = localStorage.getItem('itd_use_gpu') === 'true';  
 
     try {
       let fileToUpload = file;

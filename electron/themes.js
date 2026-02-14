@@ -71,14 +71,33 @@ const deleteTheme = async (folderName) => {
 const readThemeContent = async (folderName) => {
     try {
         const themePath = path.join(THEMES_DIR, folderName);
-        const manifest = JSON.parse(await fs.readFile(path.join(themePath, 'theme.json'), 'utf-8'));
-        let combinedCss = '';
-        if (manifest.files) {
-            for (const file of manifest.files) {
-                try { combinedCss += await fs.readFile(path.join(themePath, file), 'utf-8') + '\n'; } catch {}
+        const files = await fs.readdir(themePath);
+        
+        const result = {
+            cssFiles: [],
+            jsFiles: [],
+            manifest: null
+        };
+
+        for (const file of files) {
+            const filePath = path.join(themePath, file);
+            const content = await fs.readFile(filePath, 'utf-8');
+            
+            if (file === 'theme.json') {
+                try {
+                    result.manifest = JSON.parse(content);
+                } catch {}
+                continue;
+            }
+
+            if (file.endsWith('.css')) {
+                result.cssFiles.push({ name: file, content });
+            } else if (file.endsWith('.js')) {
+                result.jsFiles.push({ name: file, content });
             }
         }
-        return { content: combinedCss };
+
+        return result;
     } catch (error) {
         return { error: error.message };
     }
@@ -103,7 +122,7 @@ const checkAndSyncThemes = async (onProgress) => {
             }
             processed++;
         }
-        onProgress('Темы обновлены', 'Готово', 100);
+        onProgress('Оболочки обновлены', 'Готово', 100);
     } catch (e) {
         console.error(e);
     }

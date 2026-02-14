@@ -94,7 +94,7 @@ const Sidebar = () => {
             </nav>
         </div>
 
-      { }
+        
       <div ref={menuRef} style={{ position: 'relative', width: '100%' }}>
           {isMenuOpen && (
             <ProfileMenu 

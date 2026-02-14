@@ -1,4 +1,4 @@
-const { app, BrowserWindow, session } = require('electron');
+const { app, BrowserWindow, session, shell } = require('electron');
 const path = require('path');
 const { autoUpdater } = require('electron-updater');
 const { createMainWindow, getMainWindow } = require('./window');
@@ -10,6 +10,7 @@ const ffmpeg = require('fluent-ffmpeg');
 const ffmpegPath = require('ffmpeg-static');
 ffmpeg.setFfmpegPath(ffmpegPath);
 
+ 
 app.commandLine.appendSwitch('disable-site-isolation-trials');
 app.commandLine.appendSwitch('disable-features', 'OutOfBlinkCors,SameSiteByDefaultCookies,CookiesWithoutSameSiteMustBeSecure,IsolateOrigins,site-per-process');
 app.commandLine.appendSwitch('ignore-certificate-errors');
@@ -35,7 +36,8 @@ function createSplash() {
         icon: PATHS.ICON,
         webPreferences: {
             nodeIntegration: true,
-            contextIsolation: false
+            contextIsolation: false,
+            webSecurity: false 
         }
     });
 
@@ -106,6 +108,7 @@ function launchApp() {
     });
 }
 
+ 
 if (process.defaultApp) {
     if (process.argv.length >= 2) {
         app.setAsDefaultProtocolClient('itd-app', process.execPath, [path.resolve(process.argv[1])]);
@@ -114,6 +117,7 @@ if (process.defaultApp) {
     app.setAsDefaultProtocolClient('itd-app');
 }
 
+ 
 const gotTheLock = app.requestSingleInstanceLock();
 if (!gotTheLock) {
     app.quit();
@@ -128,7 +132,23 @@ if (!gotTheLock) {
 }
 
 app.whenReady().then(async () => {
+     
     await session.defaultSession.clearCache();
+
+     
+     
+    session.defaultSession.webRequest.onHeadersReceived((details, callback) => {
+        callback({
+            responseHeaders: {
+                ...details.responseHeaders,
+                'Content-Security-Policy': [
+                    "default-src 'self' 'unsafe-inline' 'unsafe-eval' data: blob: https: ws: localhost:*; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline' https:; img-src 'self' data: blob: https:; connect-src 'self' https: ws: localhost:*;"
+                ]
+            }
+        });
+    });
+
+     
     createSplash();
 });
 

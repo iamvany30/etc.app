@@ -12,7 +12,6 @@ module.exports = {
     PATHS: {
         STORE: path.join(app.getPath('userData'), 'session.secure'),
         RESOURCES: RESOURCES_PATH,
-        COOKIE_HELPER: path.join(RESOURCES_PATH, 'cookie_helper.exe'),
         BROWSER_HELPER: path.join(RESOURCES_PATH, 'browser_helper.exe'),
         ICON: path.join(__dirname, '../public/favicon.ico'),
         PRELOAD: path.join(__dirname, 'preload.js'),

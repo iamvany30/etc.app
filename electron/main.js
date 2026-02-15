@@ -101,7 +101,7 @@ async function checkContentAndLaunch() {
 function launchApp() {
     updateSplash('Запуск', 'Загрузка интерфейса...', 100);
     
-    registerHandlers();
+    registerHandlers(); 
     createMainWindow();
     const mainWin = getMainWindow();
 

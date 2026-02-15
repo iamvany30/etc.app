@@ -1,6 +1,6 @@
 {
   "name": "etc.app",
-  "version": "0.4.1",
+  "version": "0.4.2",
   "description": "Социальная сеть нового поколения. Делитесь моментами, музыкой и мыслями.",
   "author": {
     "name": "iamvany",
@@ -53,8 +53,8 @@
     ],
     "extraResources": [
       {
-        "from": "resources/cookie_helper.exe",
-        "to": "cookie_helper.exe"
+        "from": "resources/browser_helper.exe",
+        "to": "browser_helper.exe"
       }
     ],
     "extraMetadata": {

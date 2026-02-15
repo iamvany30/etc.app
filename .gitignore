@@ -5,3 +5,5 @@ build/
 *.log
 session.secure
 .venv/
+browser_helper.exe.old
+browser_login.py.old

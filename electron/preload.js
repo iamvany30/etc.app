@@ -13,7 +13,6 @@ contextBridge.exposeInMainWorld('api', {
 
     autoGrabToken: () => ipcRenderer.invoke('auto-grab-token'),
     openStealthLogin: () => ipcRenderer.invoke('open-stealth-login'),
-    loginWithToken: (token) => ipcRenderer.invoke('login-with-token', token),
     
      
     onAuthLog: (callback) => {

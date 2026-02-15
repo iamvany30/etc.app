@@ -405,3 +405,24 @@
     font-size: 18px;
     font-weight: 700;
 }
+
+.upload-spinner-mini {
+    width: 12px;
+    height: 12px;
+    border: 2px solid var(--color-primary);
+    border-top-color: transparent;
+    border-radius: 50%;
+    animation: spin 0.6s linear infinite;
+}
+
+.upload-progress-fill-infinite {
+    height: 100%;
+    width: 30%;
+    background-color: var(--color-primary);
+    animation: loading-bar 1.5s infinite linear;
+}
+
+@keyframes loading-bar {
+    0% { transform: translateX(-100%); }
+    100% { transform: translateX(400%); }
+}

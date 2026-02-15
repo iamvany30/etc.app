@@ -1,69 +1,77 @@
 import { mediaProcessor } from '../mediaProcessor';
+
 export const mediaService = {
-  uploadFile: async (file) => {
-    const compressEnabled = localStorage.getItem('itd_compress_files') !== 'false';
-    const useGpu = localStorage.getItem('itd_use_gpu') === 'true';  
+  uploadFile: async (file, onStatusChange) => {
+    const isCompress = localStorage.getItem('itd_compress_files') !== 'false';
+    const useGpu = localStorage.getItem('itd_use_gpu') !== 'false';
+    const start = Date.now();
 
     try {
-      let fileToUpload = file;
       let fileName = file.name;
-      let fileType = file.type;
+      const isGif = fileName.toLowerCase().endsWith('.gif');
+      let fileType = isGif ? 'image/gif' : (file.type || 'application/octet-stream');
+      
+      const isImg = fileType.startsWith('image/') && !isGif;
+      const isVid = fileType.startsWith('video/');
+      const isAud = fileType.startsWith('audio/');
 
-      if (compressEnabled) {
-        const isImage = file.type.startsWith('image/') && file.type !== 'image/gif';
-        const isVideo = file.type.startsWith('video/');
-        const isAudio = file.type.startsWith('audio/');
-
-        if (isImage) {
-          console.log('[MediaService] Сжатие изображения через Worker...');
-          fileToUpload = await mediaProcessor.process(file);
-          fileName = fileToUpload.name;
-          fileType = fileToUpload.type;
-        } 
-        else if ((isAudio || isVideo) && window.api) {
-          console.log(`[MediaService] Сжатие ${isAudio ? 'аудио' : 'видео'} через Electron...`);
-          const arrayBuffer = await file.arrayBuffer();
-          const uint8Array = new Uint8Array(arrayBuffer);
-          let result = null;
-
-          if (isAudio) {
-            result = await window.api.invoke('compress-audio', { data: uint8Array, name: file.name });
-            fileType = 'audio/mpeg';
-          } else {
-            result = await window.api.invoke('compress-video', { data: uint8Array, name: file.name, useGpu });
-            fileType = 'video/mp4';
-          }
-
-          if (result && !result.error && result.data) {
-            console.log('[MediaService] Сжатие успешно. Новый размер:', (result.data.length / 1024 / 1024).toFixed(2), 'MB');
-            fileToUpload = new Blob([result.data], { type: fileType });
-            fileName = result.name;
-          } else {
-            console.warn('[MediaService] Сжатие не удалось, будет загружен оригинальный файл. Причина:', result?.error);
-          }
-        }
+      const shouldSkipCompression = isGif || !isCompress || (isImg && file.size < 2 * 1024 * 1024);
+      
+      if (shouldSkipCompression) {
+        if (onStatusChange) onStatusChange('Отправка...');
+        
+        const buffer = await file.arrayBuffer();
+        
+        return await window.api.invoke('upload-file', { 
+            fileBuffer: new Uint8Array(buffer),
+            fileName: fileName,
+            fileType: fileType
+        });
       }
 
-      console.log(`[MediaService] Отправка файла на загрузку: ${fileName}`);
-      const fileBuffer = await fileToUpload.arrayBuffer();
+      let compressedFileBlob;
+      let newFileName = fileName;
+      let newFileType = fileType;
       
-      const result = await window.api.invoke('upload-file', {
-        fileBuffer: new Uint8Array(fileBuffer),
-        fileName: fileName,
-        fileType: fileType,
+      if (isImg) {
+        if (onStatusChange) onStatusChange('Оптимизация...');
+        compressedFileBlob = await mediaProcessor.process(file);
+        newFileName = compressedFileBlob.name;
+        newFileType = compressedFileBlob.type;
+      } else if (isAud || isVid) {
+        if (onStatusChange) onStatusChange(isVid ? 'Обработка видео...' : 'Обработка аудио...');
+        const fileDataBuffer = new Uint8Array(await file.arrayBuffer());
+        const result = await window.api.invoke(isAud ? 'compress-audio' : 'compress-video', { 
+            data: fileDataBuffer, name: fileName, useGpu 
+        });
+
+        if (result?.data) {
+          compressedFileBlob = new Blob([result.data], { type: isAud ? 'audio/mpeg' : 'video/mp4' });
+          newFileName = result.name;
+          newFileType = compressedFileBlob.type;
+        } else {
+            throw new Error(result?.error || "Ошибка сжатия медиа");
+        }
+      } else {
+        compressedFileBlob = file; 
+      }
+
+      if (onStatusChange) onStatusChange('Отправка сжатого файла...');
+      
+      const compressedBuffer = await compressedFileBlob.arrayBuffer();
+      const uploadRes = await window.api.invoke('upload-file', {
+        fileBuffer: new Uint8Array(compressedBuffer),
+        fileName: newFileName,
+        fileType: newFileType
       });
 
-      if (result.error) {
-        console.error('[MediaService] Ошибка загрузки через Electron:', result.error.message);
-        return { error: { message: result.error.message } };
-      }
-
-      console.log('[MediaService] Загрузка успешна:', result.data);
-      return { data: result.data };
+      console.log(`[Media] ${newFileName} (compressed) готов за ${Date.now() - start}ms`);
+      return uploadRes;
 
     } catch (e) {
-      console.error('[MediaService] Критическая ошибка при загрузке файла:', e);
-      return { error: { message: e.message || "Не удалось загрузить файл" } };
+      console.error('[Media] Критическая ошибка:', e);
+      alert(`Ошибка загрузки: ${e.message}`);
+      return { error: { message: e.message } };
     }
   },
 

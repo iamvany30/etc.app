@@ -3,6 +3,7 @@ import { renderTextWithSpans } from '../../utils/markdownUtils';
 import MediaGrid from '../MediaGrid';
 import MusicPlayer from '../MusicPlayer';
 import QuotedPost from './QuotedPost';
+import Poll from './Poll';
 
 const PostContent = ({ 
     post, 
@@ -20,7 +21,6 @@ const PostContent = ({
         return renderTextWithSpans(post.content, post.spans || [], onLinkClick);
     }, [post.content, post.spans, onLinkClick]);
 
-    
     if (isEditing) {
         return (
             <div className="post-main-content">
@@ -49,7 +49,6 @@ const PostContent = ({
 
     return (
         <div className="post-main-content">
-            
             {isMusicPost ? (
                 <div className="music-post-container" onClick={e => e.stopPropagation()}>
                     <MusicPlayer 
@@ -62,23 +61,16 @@ const PostContent = ({
                 </div>
             ) : (
                 <div>
-                    
                     {post.content && <div className="post-content">{parsedContent}</div>}
-                    
                     
                     {post.originalPost && (
                         <QuotedPost post={post.originalPost} onLinkClick={onLinkClick} />
                     )}
 
-                    
                     {post.poll && (
-                        <div className="post-poll">
-                            <div className="poll-question">{post.poll.question}</div>
-                            
-                        </div>
+                        <Poll poll={post.poll} postId={post.id} />
                     )}
 
-                    
                     {post.attachments && post.attachments.length > 0 && (
                         <div style={{ marginTop: '12px' }}>
                             <MediaGrid attachments={post.attachments} />

@@ -7,8 +7,6 @@ const InfoIcon = () => <svg width="18" height="18" viewBox="0 0 24 24" fill="non
 const Login = ({ onLoginSuccess }) => {
     const [isProcessing, setIsProcessing] = useState(false);
     const [statusMessage, setStatusMessage] = useState('');
-    const [showManual, setShowManual] = useState(false);
-    const [tokenInput, setTokenInput] = useState('');
     
     const updateStatusFromLog = (rawLog) => {
         const msg = rawLog.toLowerCase();
@@ -32,30 +30,14 @@ const Login = ({ onLoginSuccess }) => {
         try {
             const res = await window.api.openStealthLogin();
             if (res.success) {
-                
                 onLoginSuccess();
             } else {
                 setIsProcessing(false);
-                setStatusMessage('Не удалось войти. Попробуйте снова или введите токен вручную.');
+                setStatusMessage('Не удалось войти. Попробуйте еще раз.');
             }
         } catch (e) {
             setIsProcessing(false);
             setStatusMessage(`Критическая ошибка: ${e.message}`);
-        }
-    };
-    
-    const handleManualLogin = async () => {
-        if (!tokenInput.trim()) return;
-        
-        
-        
-        
-        const res = await window.api.loginWithToken(tokenInput.trim());
-        
-        if (res.success) {
-            onLoginSuccess();
-        } else {
-            alert('Неверный или просроченный токен. Попробуйте скопировать его заново.');
         }
     };
     
@@ -69,31 +51,6 @@ const Login = ({ onLoginSuccess }) => {
             );
         }
 
-        if (showManual) {
-            return (
-                 <div className="auth-content fade-in">
-                    <h2 className="auth-subtitle">Ручной ввод</h2>
-                    <p className="auth-desc-small">
-                        1. Нажмите F12 на сайте итд.<br/>
-                        2. Перейдите в Application → Cookies.<br/>
-                        3. Скопируйте значение <code>refresh_token</code>.
-                    </p>
-                    <input 
-                        className="auth-input" 
-                        placeholder="Вставьте refresh_token сюда..."
-                        value={tokenInput}
-                        onChange={e => setTokenInput(e.target.value)}
-                    />
-                    <button className="auth-btn-primary" onClick={handleManualLogin}>
-                        Войти
-                    </button>
-                    <button className="auth-link-btn" onClick={() => setShowManual(false)}>
-                        Назад
-                    </button>
-                </div>
-            );
-        }
-
         return (
             <div className="auth-content fade-in">
                 <h1 className="auth-title">Вход в итд.app</h1>
@@ -103,10 +60,6 @@ const Login = ({ onLoginSuccess }) => {
                 <button className="auth-btn-primary" onClick={handleExternalLogin}>
                     <ChromeIcon />
                     <span>Войти через браузер</span>
-                </button>
-                <div className="auth-divider">или</div>
-                <button className="auth-link-btn" onClick={() => setShowManual(true)}>
-                    Ввести токен вручную
                 </button>
             </div>
         );
@@ -123,18 +76,18 @@ const Login = ({ onLoginSuccess }) => {
                     <details className="auth-explanation-details">
                         <summary>
                             <InfoIcon />
-                            Почему такой сложный вход?
+                            Почему такой вход?
                         </summary>
                         <div className="explanation-content">
                             <p>
-                                <strong>итд.app</strong> — это неофициальный клиент. Официальный сайт защищен системой, которая не позволяет входить в аккаунт напрямую из сторонних приложений.
+                                <strong>итд.app</strong> — это неофициальный клиент. Официальный сайт защищен системой, которая не позволяет входить напрямую.
                             </p>
                             <p>
-                                Чтобы обойти это, мы "одалживаем" ключ доступа (токен) у вашего обычного браузера, которому сайт доверяет.
+                                Мы используем ваш обычный браузер (Chrome/Edge), чтобы безопасно получить временный ключ сессии.
                             </p>
                             <ul>
-                                <li>✅ <strong>Это безопасно.</strong> Ваш пароль никогда не передается и не сохраняется.</li>
-                                <li>🔑 Мы получаем только временный ключ сессии, который хранится в зашифрованном виде.</li>
+                                <li>✅ <strong>Это безопасно.</strong> Ваш пароль не передается приложению.</li>
+                                <li>🔑 Мы получаем только токен, который хранится в зашифрованном виде.</li>
                             </ul>
                         </div>
                     </details>

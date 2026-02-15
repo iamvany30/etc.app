@@ -1,6 +1,6 @@
 {
   "name": "etc.app",
-  "version": "0.4.0",
+  "version": "0.4.1",
   "description": "Социальная сеть нового поколения. Делитесь моментами, музыкой и мыслями.",
   "author": {
     "name": "iamvany",
@@ -62,13 +62,13 @@
     },
     "win": {
       "target": "nsis",
-      "icon": "public/favicon.ico",
+      "icon": "public/favicon.png",
       "legalTrademarks": "итд.app"
     },
     "mac": {
       "target": "dmg",
       "category": "public.app-category.social-networking",
-      "icon": "public/favicon.ico"
+      "icon": "public/favicon.png"
     },
     "linux": {
       "target": [
@@ -76,7 +76,7 @@
         "deb"
       ],
       "category": "Chat",
-      "icon": "public/favicon.ico"
+      "icon": "public/favicon.png"
     }
   },
   "eslintConfig": {

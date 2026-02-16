@@ -1,18 +1,14 @@
- 
+/* @source MobileNav.css */
 
 .mobile-nav {
     display: flex;
     justify-content: space-around;
     align-items: center;
-    position: fixed;
-    bottom: 0;
-    left: 0;
     width: 100%;
-    height: 53px;
-    background-color: rgba(0, 0, 0, 0.85);  
-    backdrop-filter: blur(12px);
-    border-top: 1px solid var(--color-border);
-    z-index: 1000;
+    height: 64px;
+    background: transparent; 
+    border: none;
+    padding: 0 8px;
 }
 
 .mobile-nav-item {
@@ -20,24 +16,33 @@
     display: flex;
     justify-content: center;
     align-items: center;
-    height: 100%;
+    height: 100%; 
     color: var(--color-text-secondary);
-    transition: color 0.2s;
+    transition: color 0.2s ease;
+    text-decoration: none;
+    background: transparent !important; 
 }
 
 .mobile-nav-item.active {
-    color: var(--color-text);
+    color: var(--color-primary);
 }
 
-.mobile-nav-item svg {
-     
-    width: 26px;
-    height: 26px;
+.nav-item-content {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
 }
 
- 
-@media (min-width: 500px) {
-    .mobile-nav {
-        display: none;
-    }
+.nav-item-label {
+    font-size: 10px;
+    font-weight: 700;
+    display: none; 
+}
+
+
+@media (min-width: 650px) {
+    .nav-item-content { flex-direction: row; gap: 8px; }
+    .nav-item-label { display: block; }
+    .mobile-nav-item { flex: 0 1 auto; padding: 0 16px; }
 }

@@ -1,0 +1,90 @@
+/* @source BottomDock.css */
+
+.bottom-dock-container {
+    position: fixed;
+    bottom: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 100;
+    width: clamp(320px, 92%, 800px);
+    transition: bottom 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.dock-glass-wrapper {
+    background: rgba(var(--glass-bg-rgb), 0.75);
+    backdrop-filter: blur(30px) saturate(180%);
+    -webkit-backdrop-filter: blur(30px) saturate(180%);
+    
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 28px;
+    box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5);
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+}
+
+
+.dock-player-section, .dock-upload-section {
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+
+.dock-upload-section {
+    padding: 8px 16px;
+    background: rgba(var(--color-primary-rgb), 0.05);
+}
+
+.dock-upload-mini {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.upload-pulse-dot {
+    width: 6px;
+    height: 6px;
+    background-color: var(--color-primary);
+    border-radius: 50%;
+    box-shadow: 0 0 8px var(--color-primary);
+    animation: dock-dot-pulse 1.5s infinite;
+}
+
+.upload-mini-text {
+    font-size: 11px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: var(--color-primary);
+    white-space: nowrap;
+}
+
+.upload-mini-bar {
+    flex: 1;
+    height: 4px;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 4px;
+    overflow: hidden;
+}
+
+.upload-mini-fill {
+    height: 100%;
+    width: 40%; 
+    background: var(--color-primary);
+    border-radius: 4px;
+    animation: dock-progress-move 2s infinite linear;
+}
+
+@keyframes dock-dot-pulse {
+    0% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.4; transform: scale(1.2); }
+    100% { opacity: 1; transform: scale(1); }
+}
+
+@keyframes dock-progress-move {
+    0% { transform: translateX(-100%); }
+    100% { transform: translateX(300%); }
+}
+
+@media (min-width: 1280px) {
+    .bottom-dock-container { display: none; }
+}

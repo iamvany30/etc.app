@@ -3,36 +3,47 @@ import { LikeIcon, CommentIcon, RepostIcon, ViewIcon } from '../icons/Interactio
 
 const PostFooter = ({ ctrl }) => {
     return (
-        <footer className="post-actions">
+        <div className="post-footer-actions">
             <button 
-                className={`action-btn comment ${ctrl.showComments ? 'active' : ''}`} 
+                className={`action-group comment ${ctrl.showComments ? 'active' : ''}`} 
                 onClick={(e) => { e.stopPropagation(); ctrl.setShowComments(!ctrl.showComments); }}
+                title="Комментировать"
             >
-                <span className="icon-wrapper"><CommentIcon /></span>
-                <span>{ctrl.commentsCount}</span>
+                <div className="action-icon-wrapper">
+                    <CommentIcon />
+                </div>
+                <span>{ctrl.commentsCount > 0 ? ctrl.commentsCount : ''}</span>
             </button>
             
             <button 
-                className={`action-btn repost ${ctrl.isReposted ? 'active' : ''}`} 
+                className={`action-group repost ${ctrl.isReposted ? 'active' : ''}`} 
                 onClick={ctrl.handleRepost}
+                title="Репост"
             >
-                <span className="icon-wrapper"><RepostIcon /></span>
-                <span>{ctrl.repostsCount}</span>
+                <div className="action-icon-wrapper">
+                    <RepostIcon />
+                </div>
+                <span>{ctrl.repostsCount > 0 ? ctrl.repostsCount : ''}</span>
             </button>
             
             <button 
-                className={`action-btn like ${ctrl.liked ? 'active' : ''}`} 
+                className={`action-group like ${ctrl.liked ? 'active' : ''}`} 
                 onClick={ctrl.handleLike}
+                title="Нравится"
             >
-                <span className="icon-wrapper"><LikeIcon active={ctrl.liked} /></span>
-                <span>{ctrl.likesCount}</span>
+                <div className="action-icon-wrapper">
+                    <LikeIcon active={ctrl.liked} />
+                </div>
+                <span>{ctrl.likesCount > 0 ? ctrl.likesCount : ''}</span>
             </button>
             
-            <button className="action-btn view" onClick={e => e.stopPropagation()}>
-                <span className="icon-wrapper"><ViewIcon /></span>
+            <button className="action-group view" onClick={e => e.stopPropagation()} title="Просмотры">
+                <div className="action-icon-wrapper">
+                    <ViewIcon />
+                </div>
                 <span>{ctrl.localPost.viewsCount || 0}</span>
             </button>
-        </footer>
+        </div>
     );
 };
 

@@ -1,53 +1,51 @@
-import React, { useEffect } from 'react';
-import { Link } from 'react-router-dom';
+/* @source src/components/ProfileMenu.jsx */
+import React, { useEffect, useMemo } from 'react';
+import ReactDOM from 'react-dom';
 import '../styles/ProfileMenu.css';  
 
-const IconSettings = () => <svg width="24" height="24" viewBox="0 0 24 24"><path fill="currentColor" d="M19.43 12.98c.04-.32.07-.64.07-.98s-.03-.66-.07-.98l2.11-1.65c.19-.15.24-.42.12-.64l-2-3.46c-.12-.22-.39-.3-.61-.22l-2.49 1c-.52-.4-1.08-.73-1.69-.98l-.38-2.65C14.46 2.18 14.25 2 14 2h-4c-.25 0-.46.18-.49.42l-.38 2.65c-.61.25-1.17.59-1.69.98l-2.49-1c-.23-.09-.49 0-.61.22l-2 3.46c-.13.22-.07.49.12.64l2.11 1.65c-.04.32-.07.65-.07.98s.03.66.07.98l-2.11 1.65c-.19.15-.24.42-.12.64l2 3.46c.12.22.39.3.61.22l2.49-1c.52.4 1.08.73 1.69.98l.38 2.65c.03.24.24.42.49.42h4c.25 0 .46-.18.49-.42l.38-2.65c.61-.25 1.17-.59 1.69-.98l2.49 1c.23.09.49 0 .61-.22l2-3.46c.12-.22.07-.49-.12-.64l-2.11-1.65zM12 15.5c-1.93 0-3.5-1.57-3.5-3.5s1.57-3.5 3.5-3.5 3.5 1.57 3.5 3.5-1.57 3.5-3.5 3.5z"></path></svg>;
-const IconLogout = () => <svg width="24" height="24" viewBox="0 0 24 24"><path fill="currentColor" d="M16 17v-3H9v-4h7V7l5 5-5 5zm-8-3H5v5h3v-5zm0-7H5v5h3V7zm0-5H5v3h3V2z"></path></svg>;
+const IconSettings = () => <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>;
+const IconLogout = () => <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg>;
 
-const ProfileMenu = ({ user, onSettingsClick, onLogoutClick, onClose }) => {
+const ProfileMenu = ({ user, anchorRect, onSettingsClick, onLogoutClick, onClose }) => {
     
-     
     useEffect(() => {
         if (window.innerWidth <= 768) {
             document.body.style.overflow = 'hidden';
         }
-        return () => {
-            document.body.style.overflow = '';
-        };
+        return () => { document.body.style.overflow = ''; };
     }, []);
 
-    return (
+    const menuStyle = useMemo(() => {
+        if (!anchorRect || window.innerWidth <= 768) return {};
+        return {
+            position: 'fixed',
+            bottom: window.innerHeight - anchorRect.top + 12, 
+            left: anchorRect.left,
+            width: anchorRect.width,
+            zIndex: 10000
+        };
+    }, [anchorRect]);
+
+    const content = (
         <>
-              
             <div className="profile-menu-backdrop" onClick={onClose}></div>
-
-            <div className="profile-menu">
-                  
-                <Link to={`/profile/${user.username}`} className="profile-menu-header" onClick={onClose}>
-                    <div className="avatar" style={{width: 44, height: 44, fontSize: 20}}>
-                        {user.avatar}
-                    </div>
-                    <div className="sidebar-user-info">
-                        <span className="display-name">{user.displayName}</span>
-                        <span className="username">@{user.username}</span>
-                    </div>
-                </Link>
-
-                  
+            <div className="profile-menu-container" style={menuStyle}>
                 <div className="profile-menu-items">
                     <button className="profile-menu-item" onClick={onSettingsClick}>
-                        <IconSettings />
+                        <div className="menu-icon-wrap"><IconSettings /></div>
                         <span>Настройки</span>
                     </button>
+
                     <button className="profile-menu-item danger" onClick={onLogoutClick}>
-                        <IconLogout />
-                        <span>Выйти</span>
+                        <div className="menu-icon-wrap"><IconLogout /></div>
+                        <span>Выйти из @{user.username}</span>
                     </button>
                 </div>
             </div>
         </>
     );
+
+    return ReactDOM.createPortal(content, document.body);
 };
 
 export default ProfileMenu;

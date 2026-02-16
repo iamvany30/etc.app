@@ -1,21 +1,19 @@
-import { useState, useCallback, useRef, useEffect } from 'react';
+
+import React, { useState, useCallback, useRef, useEffect } from 'react';
 import { apiClient } from '../../api/client';
 import { request } from '../../api/core'; 
 import { useModal } from '../../context/ModalContext';
 import { useUser } from '../../context/UserContext';
+import { useIsland } from '../../context/IslandContext';
 import PhoneVerificationModal from '../modals/PhoneVerificationModal';
-import jsmediatags from 'jsmediatags/dist/jsmediatags.min.js';
+import DrawingBoard from '../DrawingBoard';
 import { parseAndCleanForBackend, MARKDOWN_CONFIG } from '../../utils/markdownUtils';
 
-const safeBtoa = (str) => {
-    try {
-        if (!str) return "";
-        return window.btoa(unescape(encodeURIComponent(str)));
-    } catch (e) {
-        console.error("Encoding error:", e);
-        return "";
-    }
-};
+export const MAX_POST_LENGTH = 400;
+
+const DRAFT_TEXT_KEY = 'itd_post_draft_text';
+const DRAFT_POLL_KEY = 'itd_post_draft_poll';
+
 
 const useDebounce = (value, delay) => {
     const [debouncedValue, setDebouncedValue] = useState(value);
@@ -26,90 +24,55 @@ const useDebounce = (value, delay) => {
     return debouncedValue;
 };
 
-const processMusicFile = (file) => {
-    return new Promise((resolve) => {
-        const timer = setTimeout(() => {
-            console.warn("Metadata timeout - using filename");
-            resolve({
-                file,
-                coverFile: null,
-                meta: {
-                    title: file.name.replace(/\.[^/.]+$/, ""),
-                    artist: "Неизвестный исполнитель"
-                }
-            });
-        }, 2000);
-
-        try {
-            new jsmediatags.Reader(file)
-                .setTagsToRead(["title", "artist", "picture"])
-                .read({
-                    onSuccess: (tag) => {
-                        clearTimeout(timer);
-                        const tags = tag.tags;
-                        const title = tags.title || file.name.replace(/\.[^/.]+$/, "");
-                        const artist = tags.artist || "Неизвестный исполнитель";
-                        
-                        let coverFile = null;
-                        if (tags.picture) {
-                            try {
-                                const { data, type } = tags.picture;
-                                const byteArray = new Uint8Array(data);
-                                const blob = new Blob([byteArray], { type: type || 'image/jpeg' });
-                                coverFile = new File([blob], `cover-${Date.now()}.jpg`, { type: 'image/jpeg' });
-                            } catch (e) {
-                                console.warn("Cover extract failed", e);
-                            }
-                        }
-                        resolve({ file, coverFile, meta: { title, artist } });
-                    },
-                    onError: () => {
-                        clearTimeout(timer);
-                        resolve({
-                            file,
-                            coverFile: null,
-                            meta: {
-                                title: file.name.replace(/\.[^/.]+$/, ""),
-                                artist: "Неизвестный исполнитель"
-                            }
-                        });
-                    }
-                });
-        } catch (e) {
-            clearTimeout(timer);
-            resolve({
-                file,
-                coverFile: null,
-                meta: { title: file.name, artist: "Unknown" }
-            });
-        }
-    });
-};
-
 export const useCreatePost = (onPostCreated) => {
     const { currentUser } = useUser();
-    const { openModal } = useModal();
+    const { openModal, closeModal } = useModal();
+    const { showIslandAlert } = useIsland();
     const textareaRef = useRef(null);
 
-    const [text, setTextState] = useState("");
+    
+    const [text, setTextState] = useState(() => localStorage.getItem(DRAFT_TEXT_KEY) || "");
+    const [pollData, setPollData] = useState(() => {
+        try {
+            const saved = localStorage.getItem(DRAFT_POLL_KEY);
+            return saved ? JSON.parse(saved) : null;
+        } catch (e) { return null; }
+    });
+
+    
+    useEffect(() => {
+        localStorage.setItem(DRAFT_TEXT_KEY, text);
+    }, [text]);
+
+    useEffect(() => {
+        if (pollData) {
+            localStorage.setItem(DRAFT_POLL_KEY, JSON.stringify(pollData));
+        } else {
+            localStorage.removeItem(DRAFT_POLL_KEY);
+        }
+    }, [pollData]);
+
+    
     const [attachments, setAttachments] = useState([]);
     const [isSending, setIsSending] = useState(false);
-    const [isUploading, setIsUploading] = useState(false);
-    const [uploadStatus, setUploadStatus] = useState(""); 
     const [isRecording, setIsRecording] = useState(false); 
-    const [pollData, setPollData] = useState(null);
     const [isDragOver, setIsDragOver] = useState(false); 
 
+    
     const [mentionQuery, setMentionQuery] = useState(null);
     const [mentionResults, setMentionResults] = useState([]);
     const [isMentionLoading, setIsMentionLoading] = useState(false);
     const [mentionCursorPos, setMentionCursorPos] = useState(null);
     const debouncedMentionQuery = useDebounce(mentionQuery, 300);
 
+    
     const [linkPreview, setLinkPreview] = useState(null);
     const [isFetchingPreview, setIsFetchingPreview] = useState(false);
     const checkedLinksRef = useRef(new Set());
 
+    
+
+    
     useEffect(() => {
         const searchUsers = async () => {
             if (!debouncedMentionQuery) {
@@ -119,10 +82,9 @@ export const useCreatePost = (onPostCreated) => {
             setIsMentionLoading(true);
             try {
                 const res = await apiClient.search(debouncedMentionQuery);
-                const users = res?.data?.users || res?.users || [];
-                setMentionResults(users);
+                setMentionResults(res?.data?.users || res?.users || []);
             } catch (e) {
-                console.error("Mention search error:", e);
+                console.error(e);
             } finally {
                 setIsMentionLoading(false);
             }
@@ -130,27 +92,7 @@ export const useCreatePost = (onPostCreated) => {
         searchUsers();
     }, [debouncedMentionQuery]);
 
-    const handleMentionSelect = (username) => {
-        if (!username || mentionCursorPos === null || !textareaRef.current) return;
-        const currentText = text;
-        const afterCursor = currentText.slice(mentionCursorPos); 
-        const endOfWordMatch = afterCursor.match(/[\s\n]/);
-        const endOfWordIndex = endOfWordMatch ? endOfWordMatch.index : -1;
-        const replaceEnd = endOfWordIndex === -1 ? currentText.length : mentionCursorPos + endOfWordIndex;
-        const newText = currentText.substring(0, mentionCursorPos - 1) + `@${username} ` + currentText.substring(replaceEnd);
-        setTextState(newText);
-        setMentionQuery(null);
-        setMentionResults([]);
-        setMentionCursorPos(null);
-        setTimeout(() => {
-            if (textareaRef.current) {
-                textareaRef.current.focus();
-                const newCursor = (mentionCursorPos - 1) + 1 + username.length + 1;
-                textareaRef.current.setSelectionRange(newCursor, newCursor);
-            }
-        }, 0);
-    };
-
+    
     const detectAndFetchLink = async (inputText) => {
         const urlRegex = /(https?:\/\/[^\s]+)/g;
         const match = inputText.match(urlRegex);
@@ -160,162 +102,129 @@ export const useCreatePost = (onPostCreated) => {
             setIsFetchingPreview(true);
             try {
                 let previewData = null;
-                if (window.api && window.api.invoke) {
-                    const res = await request('/utils/link-preview', 'POST', { url });
-                    if (res && !res.error && res.data) {
-                        previewData = res.data;
+                const res = await request('/utils/link-preview', 'POST', { url });
+                if (res && !res.error && res.data) previewData = res.data;
+                if (previewData && (previewData.title || previewData.image)) {
+                    setLinkPreview({ url, title: previewData.title, description: previewData.description, image: previewData.image, siteName: previewData.siteName });
+                }
+            } catch (e) {} finally { setIsFetchingPreview(false); }
+        }
+    };
+    
+    
+    const processFiles = useCallback(async (files) => {
+        if (!files || files.length === 0) return;
+        
+        const mediaFiles = Array.from(files).filter(f => {
+            const type = f.type.toLowerCase();
+            return type.startsWith('image/') || type.startsWith('video/') || f.name.toLowerCase().endsWith('.gif');
+        });
+        
+        if (mediaFiles.length === 0) return;
+
+        if (attachments.length + mediaFiles.length > 4) {
+            showIslandAlert('error', 'Максимум 4 вложения', '🚫');
+            return;
+        }
+        
+        const pendingAttachments = mediaFiles.map(file => ({
+            localId: `pending_${Date.now()}_${Math.random()}`, 
+            previewUrl: URL.createObjectURL(file), 
+            status: 'pending', 
+            file: file 
+        }));
+
+        setAttachments(prev => [...prev, ...pendingAttachments]);
+
+        const uploadPromises = pendingAttachments.map(async (pending) => {
+            try {
+                const result = await apiClient.uploadFile(pending.file);
+                if (result?.data?.id) {
+                    return { localId: pending.localId, serverData: result.data };
+                }
+                throw new Error(result?.error?.message || 'Server upload failed');
+            } catch (error) {
+                return { localId: pending.localId, error };
+            }
+        });
+
+        const results = await Promise.all(uploadPromises);
+
+        setAttachments(prev => {
+            const nextState = [...prev];
+            results.forEach(res => {
+                const index = nextState.findIndex(att => att.localId === res.localId);
+                if (index !== -1) {
+                    URL.revokeObjectURL(nextState[index].previewUrl); 
+                    if (res.serverData) {
+                        nextState[index] = res.serverData; 
+                    } else {
+                        nextState.splice(index, 1); 
                     }
                 }
-                if (previewData && (previewData.title || previewData.image)) {
-                    setLinkPreview({
-                        url: url,
-                        title: previewData.title,
-                        description: previewData.description,
-                        image: previewData.image,
-                        siteName: previewData.siteName
-                    });
-                }
-            } catch (e) {
-                console.warn("Link preview failed:", e);
-            } finally {
-                setIsFetchingPreview(false);
-            }
-        }
-    };
-
-    const removeLinkPreview = () => setLinkPreview(null);
-
-    const setText = (e) => {
-        const val = e.target ? e.target.value : e;
-        setTextState(val);
-        detectAndFetchLink(val);
-        const cursor = e.target ? e.target.selectionStart : 0;
-        if (!cursor) return;
-        const textBeforeCursor = val.slice(0, cursor);
-        const words = textBeforeCursor.split(/[\s\n]+/);
-        const currentWord = words[words.length - 1];
-        if (currentWord.startsWith('@') && currentWord.length > 1) {
-            setMentionQuery(currentWord.slice(1));
-            setMentionCursorPos(cursor - currentWord.length + 1); 
-        } else {
-            setMentionQuery(null);
-            setMentionCursorPos(null);
-        }
-    };
-
-    const processFiles = async (files) => {
-        if (!files || files.length === 0) return;
-        const audioFiles = files.filter(f => f.type.startsWith('audio/'));
-        if (audioFiles.length > 0) {
-            alert("Для загрузки музыки используйте кнопку 🎵 в меню.");
-            return;
-        }
-        const mediaFiles = files.filter(f => {
-            const type = f.type.toLowerCase();
-            const name = f.name.toLowerCase();
-            return type.startsWith('image/') || type.startsWith('video/') || name.endsWith('.gif') || name.endsWith('.mp4') || name.endsWith('.mov') || name.endsWith('.jpg') || name.endsWith('.jpeg') || name.endsWith('.png') || name.endsWith('.webp');
+            });
+            return nextState;
         });
-        if (mediaFiles.length === 0) return;
-        if (attachments.length + mediaFiles.length > 4) {
-            alert("Максимум 4 вложения.");
-            return;
+
+        const successfulCount = results.filter(r => r.serverData).length;
+        if (successfulCount < results.length) {
+            showIslandAlert('error', `Ошибка загрузки ${results.length - successfulCount} файлов`, '⚠️');
         }
-        setIsUploading(true);
-        try {
-            const uploadedResults = [];
-            for (const file of mediaFiles) {
-                setUploadStatus(`Анализ ${file.name}...`);
-                const result = await apiClient.uploadFile(file, (statusText) => {
-                    setUploadStatus(statusText);
-                });
-                if (result && result.data && result.data.id) {
-                    uploadedResults.push(result.data);
-                } else if (result.error) {
-                    throw new Error(result.error.message || "Ошибка сервера");
-                }
+
+    }, [attachments.length, showIslandAlert]);
+
+    
+    const handlePaste = useCallback((e) => {
+        if (e.clipboardData && e.clipboardData.files.length > 0) {
+            e.preventDefault();
+            processFiles(e.clipboardData.files);
+        }
+    }, [processFiles]);
+
+    
+    const setText = useCallback((valOrEvent) => {
+        const value = valOrEvent?.target?.value ?? valOrEvent;
+        setTextState(value);
+        detectAndFetchLink(value);
+        
+        const cursor = valOrEvent?.target?.selectionStart;
+        if (cursor !== null && cursor !== undefined) {
+            const textBeforeCursor = value.slice(0, cursor);
+            const currentWord = textBeforeCursor.split(/[\s\n]+/).pop();
+            if (currentWord.startsWith('@') && currentWord.length > 1) {
+                setMentionQuery(currentWord.slice(1));
+                setMentionCursorPos(cursor - currentWord.length + 1);
+            } else {
+                setMentionQuery(null);
             }
-            setAttachments((prev) => [...prev, ...uploadedResults]);
-        } catch (err) {
-            console.error(err);
-            alert("Ошибка загрузки: " + err.message);
-        } finally {
-            setIsUploading(false);
-            setUploadStatus("");
         }
-    };
-
-    const handleFileSelect = (e) => {
-        const files = Array.from(e.target.files);
-        processFiles(files);
-        e.target.value = '';
-    };
-
-    const handleDragEnter = useCallback((e) => {
-        e.preventDefault();
-        e.stopPropagation();
-        setIsDragOver(true);
     }, []);
-
-    const handleDragLeave = useCallback((e) => {
-        e.preventDefault();
-        e.stopPropagation();
-        if (e.currentTarget.contains(e.relatedTarget)) return;
-        setIsDragOver(false);
-    }, []);
-
-    const handleDragOver = useCallback((e) => {
-        e.preventDefault();
-        e.stopPropagation();
-    }, []);
-
-    const handleDrop = useCallback((e) => {
-        e.preventDefault();
-        e.stopPropagation();
-        setIsDragOver(false);
-        const files = Array.from(e.dataTransfer.files);
-        processFiles(files);
-    }, [attachments]); 
-
-    const handleMusicSelect = async (e) => {
-        if (attachments.length > 0 || pollData) {
-            alert("Музыку нельзя совмещать с другими вложениями.");
-            e.target.value = '';
-            return;
-        }
-        const file = e.target.files[0];
-        if (!file) return;
-        setIsUploading(true);
-        setUploadStatus("Обработка аудио...");
-        try {
-            const result = await processMusicFile(file);
-            setUploadStatus("Загрузка аудиофайла...");
-            const audioRes = await apiClient.uploadFile(result.file);
-            if (!audioRes?.data?.id) throw new Error("Audio upload error");
-            let coverRes = null;
-            if (result.coverFile) {
-                setUploadStatus("Загрузка обложки...");
-                coverRes = await apiClient.uploadFile(result.coverFile);
+    
+    
+    const handleMentionSelect = (username) => {
+        if (!username || mentionCursorPos === null || !textareaRef.current) return;
+        const currentText = text;
+        const afterCursor = currentText.slice(mentionCursorPos); 
+        const endOfWordMatch = afterCursor.match(/[\s\n]/);
+        const endOfWordIndex = endOfWordMatch ? endOfWordMatch.index : -1;
+        const replaceEnd = endOfWordIndex === -1 ? currentText.length : mentionCursorPos + endOfWordIndex;
+        
+        const newText = currentText.substring(0, mentionCursorPos - 1) + `@${username} ` + currentText.substring(replaceEnd);
+        setText(newText);
+        setMentionQuery(null);
+        setMentionResults([]);
+        setMentionCursorPos(null);
+        
+        setTimeout(() => {
+            if (textareaRef.current) {
+                textareaRef.current.focus();
+                const newCursor = (mentionCursorPos - 1) + 1 + username.length + 1;
+                textareaRef.current.setSelectionRange(newCursor, newCursor);
             }
-            const artistEnc = safeBtoa(result.meta.artist);
-            const titleEnc = safeBtoa(result.meta.title);
-            const musicContent = `[artist:${artistEnc}] [title:${titleEnc}] #nowkie_music_track`;
-            const ids = [audioRes.data.id];
-            if (coverRes?.data?.id) ids.push(coverRes.data.id);
-            await submitPost(musicContent, ids);
-        } catch (err) {
-            console.error(err);
-            alert("Не удалось загрузить трек: " + err.message);
-        } finally {
-            setIsUploading(false);
-            setUploadStatus("");
-            e.target.value = '';
-        }
+        }, 0);
     };
 
-    const removeAttachment = (id) => setAttachments((prev) => prev.filter(a => a.id !== id));
-    const togglePoll = () => setPollData(pollData ? null : { question: '', options: ['', ''], multiple: false });
-    const updatePoll = (newData) => setPollData(newData);
-
+    
     const insertMarkdown = useCallback((type) => {
         const textarea = textareaRef.current;
         if (!textarea) return;
@@ -326,87 +235,103 @@ export const useCreatePost = (onPostCreated) => {
         const currentText = textarea.value;
         const selectedText = currentText.substring(start, end);
         const newText = currentText.substring(0, start) + config.start + selectedText + (config.end || config.start) + currentText.substring(end);
-        setTextState(newText);
-        setTimeout(() => {
-            textarea.focus();
-            const newCursorStart = start + config.start.length;
-            const newCursorEnd = newCursorStart + selectedText.length;
-            textarea.setSelectionRange(newCursorStart, newCursorEnd);
-        }, 0);
-    }, []);
+        setText(newText);
+    }, [text, setText]);
 
+    
     const submitPost = async (contentOverride = null, attachmentIdsOverride = null) => {
-        const rawContent = (contentOverride !== null ? contentOverride : text);
-        const ids = attachmentIdsOverride ?? attachments.map(a => a.id);
-        let pollPayload = null;
-        if (pollData && !attachmentIdsOverride) {
-            const validOptions = pollData.options.filter(o => o.trim().length > 0);
-            if (!pollData.question?.trim()) return alert("Введите вопрос.");
-            if (validOptions.length < 2) return alert("Минимум 2 варианта ответа.");
-            pollPayload = {
-                question: pollData.question.trim(),
-                options: validOptions.map(t => ({ text: t })),
-                multipleChoice: pollData.multiple
-            };
+        const rawContent = contentOverride !== null ? contentOverride : text;
+        if (!rawContent.trim() && !pollData && (attachmentIdsOverride || attachments.filter(a => !a.status)).length === 0) return;
+        if (rawContent.length > MAX_POST_LENGTH && contentOverride === null) {
+            showIslandAlert('error', 'Слишком длинный текст', '📝');
+            return;
         }
-        let cleanText = rawContent;
-        let spans = [];
-        if (contentOverride === null) {
-            try {
-                const parsed = parseAndCleanForBackend(rawContent);
-                cleanText = parsed.cleanText;
-                spans = (parsed.spans || []).filter(s => s.type !== 'mention');
-            } catch (e) {
-                console.error("Markdown parse error", e);
-                cleanText = rawContent;
-                spans = [];
-            }
-        }
-        if (!cleanText.trim() && ids.length === 0 && !pollPayload) return;
+
         setIsSending(true);
         try {
+            const ids = attachmentIdsOverride ?? attachments.map(a => a.id).filter(Boolean);
+            let pollPayload = null;
+            if (pollData && !attachmentIdsOverride) {
+                const validOptions = pollData.options.filter(o => o.trim().length > 0);
+                pollPayload = { 
+                    question: pollData.question.trim(), 
+                    options: validOptions.map(t => ({ text: t })), 
+                    multipleChoice: pollData.multiple 
+                };
+            }
+
+            const { cleanText, spans } = contentOverride === null 
+                ? parseAndCleanForBackend(rawContent) 
+                : { cleanText: rawContent, spans: [] };
+            
             const res = await apiClient.createPost(cleanText, ids, pollPayload, spans);
+
             if (res && !res.error) {
+                
+                localStorage.removeItem(DRAFT_TEXT_KEY);
+                localStorage.removeItem(DRAFT_POLL_KEY);
                 setTextState("");
                 setAttachments([]);
                 setPollData(null);
                 setLinkPreview(null);
                 checkedLinksRef.current.clear();
+                
                 if (onPostCreated) onPostCreated(res.data || res);
+                showIslandAlert('success', 'Пост опубликован!', '✨');
+            } else if (res?.error?.code === 'PHONE_VERIFICATION_REQUIRED') {
+                openModal(<PhoneVerificationModal user={currentUser} />);
             } else {
-                if (res?.error?.code === 'PHONE_VERIFICATION_REQUIRED') {
-                    openModal(<PhoneVerificationModal user={currentUser} />);
-                } else {
-                    alert("Ошибка: " + (res?.error?.message || "Не удалось отправить"));
-                }
+                showIslandAlert('error', res?.error?.message || 'Ошибка публикации', '❌');
             }
         } catch (e) {
-            console.error("Submit error:", e);
-            alert("Ошибка сети.");
-        } finally {
-            setIsSending(false);
+            showIslandAlert('error', 'Сбой при отправке', '📡');
+        } finally { 
+            setIsSending(false); 
         }
     };
-
-    const handleVoiceSent = async (fileId) => {
-        setIsRecording(false); 
-        await submitPost("", [fileId]);
+    
+    
+    const openDrawingModal = () => {
+        openModal(
+            <div style={{ padding: '20px', background: '#0f0f0f', borderRadius: '16px', width: '100%', maxWidth: '800px' }}>
+                <h2 style={{ marginBottom: '16px', color: 'white', fontSize: '18px', fontWeight: '800' }}>Создать рисунок</h2>
+                <DrawingBoard 
+                    aspectRatio={1.77}
+                    onSave={async (blob) => {
+                        const file = new File([blob], `draw_${Date.now()}.png`, { type: 'image/png' });
+                        await processFiles([file]); 
+                        closeModal();
+                    }} 
+                />
+            </div>
+        );
     };
 
+    
+    const handleFileSelect = (e) => { processFiles(e.target.files); e.target.value = ''; };
+    const removeAttachment = (id) => setAttachments(prev => prev.filter(a => (a.id || a.localId) !== id));
+    const handleVoiceSent = (attachmentId) => { setIsRecording(false); submitPost("#voice_message", [attachmentId]); };
+    const removeLinkPreview = () => setLinkPreview(null);
+    const togglePoll = () => setPollData(p => p ? null : { question: '', options: ['', ''], multiple: false });
+    const updatePoll = (newData) => setPollData(newData);
+    
+    
     return {
-        text, setText, insertMarkdown, textareaRef,
-        attachments, removeAttachment, handleFileSelect, handleMusicSelect,
-        isSending, isUploading, uploadStatus,
-        isRecording, setIsRecording, 
+        text, setText, textareaRef, insertMarkdown, handlePaste,
+        attachments, removeAttachment, handleFileSelect,
+        isSending,
+        isRecording, setIsRecording, handleVoiceSent,
         pollData, togglePoll, updatePoll,
-        submitPost, mentionResults, isMentionLoading, handleMentionSelect,
+        openDrawingModal,
+        submitPost, 
+        mentionResults, isMentionLoading, handleMentionSelect,
         linkPreview, isFetchingPreview, removeLinkPreview,
-        isDragOver,
+        isDragOver, setIsDragOver,
         dragEvents: {
-            onDragEnter: handleDragEnter,
-            onDragLeave: handleDragLeave,
-            onDragOver: handleDragOver,
-            onDrop: handleDrop
+            onDragEnter: (e) => { e.preventDefault(); setIsDragOver(true); },
+            onDragLeave: (e) => { e.preventDefault(); setIsDragOver(false); },
+            onDragOver: (e) => e.preventDefault(),
+            onDrop: (e) => { e.preventDefault(); setIsDragOver(false); processFiles(e.dataTransfer.files); }
         }
     };
 };

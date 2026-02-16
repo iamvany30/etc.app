@@ -1,21 +1,30 @@
-const { app, BrowserWindow, session, shell, globalShortcut } = require('electron');
+const { app, BrowserWindow, session, globalShortcut } = require('electron');
 const path = require('path');
 const { autoUpdater } = require('electron-updater');
 const { createMainWindow, getMainWindow } = require('./window');
 const { registerHandlers } = require('./ipc');
 const themes = require('./themes');
 const { PATHS } = require('./config');
-const fs = require('fs');
+
+process.on('uncaughtException', (error) => {
+    console.error(' [CRITICAL ERROR] Пойманное исключение:', error);
+    if (error.message && (error.message.includes('net::ERR_') || error.message.includes('SimpleURLLoaderWrapper'))) {
+        return;
+    }
+});
+
+process.on('unhandledRejection', (reason, promise) => {
+    console.error(' [WARN] Необработанный промис:', reason);
+});
 
 const ffmpeg = require('fluent-ffmpeg');
 const ffmpegPath = require('ffmpeg-static');
 ffmpeg.setFfmpegPath(ffmpegPath);
 
-
 if (process.platform === 'win32') {
     app.setAppUserModelId('com.etc.app');
 }
- 
+
 app.commandLine.appendSwitch('disable-site-isolation-trials');
 app.commandLine.appendSwitch('disable-features', 'OutOfBlinkCors,SameSiteByDefaultCookies,CookiesWithoutSameSiteMustBeSecure,IsolateOrigins,site-per-process');
 app.commandLine.appendSwitch('ignore-certificate-errors');
@@ -107,12 +116,16 @@ function launchApp() {
 
     mainWin.once('ready-to-show', () => {
         setTimeout(() => {
-            mainWin.show();
-            if (splashWindow) splashWindow.destroy();
+            if (mainWin && !mainWin.isDestroyed()) {
+                mainWin.show();
+            }
+            if (splashWindow && !splashWindow.isDestroyed()) {
+                splashWindow.destroy();
+            }
         }, 800);
     });
 }
- 
+
 if (process.defaultApp) {
     if (process.argv.length >= 2) {
         app.setAsDefaultProtocolClient('etc-app', process.execPath, [path.resolve(process.argv[1])]);
@@ -120,7 +133,7 @@ if (process.defaultApp) {
 } else {
     app.setAsDefaultProtocolClient('etc-app');
 }
- 
+
 const gotTheLock = app.requestSingleInstanceLock();
 if (!gotTheLock) {
     app.quit();
@@ -138,7 +151,7 @@ app.whenReady().then(async () => {
     
     const sendMediaControl = (command) => {
         const win = getMainWindow();
-        if (win) {
+        if (win && !win.isDestroyed()) {
             win.webContents.send('media-control', command);
         }
     };
@@ -148,9 +161,6 @@ app.whenReady().then(async () => {
     globalShortcut.register('MediaPreviousTrack', () => sendMediaControl('prev'));
      
     await session.defaultSession.clearCache();
-     
-    
-    
     
     const filter = {
         urls: ['https://xn--d1ah4a.com/*', 'https://*.xn--d1ah4a.com/*']
@@ -158,29 +168,20 @@ app.whenReady().then(async () => {
 
     session.defaultSession.webRequest.onBeforeSendHeaders(filter, (details, callback) => {
         const headers = details.requestHeaders;
-
-        
         headers['Origin'] = 'https://xn--d1ah4a.com';
         headers['Referer'] = 'https://xn--d1ah4a.com/';
         headers['Authority'] = 'xn--d1ah4a.com';
-        
-        
         headers['sec-ch-ua'] = '"Chromium";v="124", "Google Chrome";v="124", "Not-A.Brand";v="99"';
         headers['sec-ch-ua-mobile'] = '?0';
         headers['sec-ch-ua-platform'] = '"Windows"';
         headers['sec-fetch-dest'] = 'empty';
         headers['sec-fetch-mode'] = 'cors';
         headers['sec-fetch-site'] = 'same-origin';
-
-        
         headers['User-Agent'] = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36';
 
-        
         delete headers['Electron'];
-
         callback({ requestHeaders: headers });
     });
-    
 
     session.defaultSession.webRequest.onHeadersReceived((details, callback) => {
         callback({
@@ -195,7 +196,6 @@ app.whenReady().then(async () => {
      
     createSplash();
 });
-
 
 app.on('will-quit', () => {
     globalShortcut.unregisterAll();

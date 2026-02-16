@@ -1,167 +1,142 @@
-.modern-titlebar {
-    height: 32px;
-    background-color: var(--color-background);
-    border-bottom: 1px solid var(--color-border-light);
+/* @source TitleBar.css */
+
+:root {
+    --titlebar-height: 42px;
+    --win-close-hover: #e81123;
+    --btn-hover-bg: rgba(255, 255, 255, 0.1);
+    --btn-active-color: var(--color-primary);
+}
+
+.app-titlebar {
+    height: var(--titlebar-height);
+    width: 100%;
     display: flex;
     align-items: center;
     justify-content: space-between;
     position: fixed;
-    top: 0; left: 0; right: 0;
-    z-index: 100000;
-    
-    
-    -webkit-app-region: drag;
-    
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: 9999;
     user-select: none;
-    backdrop-filter: blur(10px);
-    -webkit-backdrop-filter: blur(10px);
+    -webkit-app-region: drag;
+    background-color: transparent;
+    transition: background-color 0.3s ease, border-bottom 0.3s ease;
 }
 
+.app-titlebar.is-scrolled {
+    background-color: rgba(var(--glass-bg-rgb), 0.90);
+    backdrop-filter: blur(20px) saturate(180%);
+    -webkit-backdrop-filter: blur(20px) saturate(180%);
+    border-bottom: 1px solid var(--color-border);
+}
 
-.nav-controls, 
-.window-system-controls,
-.tb-btn,
-.sys-btn {
+.titlebar-nav {
+    display: flex;
+    align-items: center;
+    height: 100%;
+    padding: 0 12px;
+    gap: 8px;
+    min-width: 140px;
+    flex-shrink: 0;
     -webkit-app-region: no-drag;
 }
 
-
-.nav-controls {
-    display: flex;
-    align-items: center;
-    gap: 4px; 
-    padding-left: 8px;
-    min-width: 110px; 
-}
-
-.tb-btn {
-    width: 28px;
-    height: 24px;
-    background: transparent;
+.nav-btn {
+    width: 32px;
+    height: 32px;
+    border-radius: 8px;
     border: none;
+    background: transparent;
     color: var(--color-text-secondary);
-    border-radius: 4px;
     cursor: pointer;
+    transition: all 0.2s ease;
+    opacity: 0.8;
     display: flex;
     align-items: center;
     justify-content: center;
-    transition: all 0.2s ease;
 }
 
-.tb-btn:hover:not(:disabled) {
-    background-color: var(--color-item-bg);
-    color: var(--color-text);
+.nav-btn:hover:not(:disabled) {
+    background-color: rgba(var(--color-primary-rgb), 0.15);
+    color: var(--btn-active-color);
+    opacity: 1;
 }
 
-.tb-btn:disabled {
-    opacity: 0.2;
+.nav-btn:disabled {
+    opacity: 0.3;
     cursor: default;
 }
 
-
-.title-label {
-    flex: 1;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    gap: 8px;
+.titlebar-center {
+    position: absolute;
+    left: 50%;
+    transform: translateX(-50%);
     height: 100%;
-    
-    cursor: default; 
-}
-
-.title-text-main {
-    font-size: 11px;
-    font-weight: 800;
-    text-transform: uppercase;
-    letter-spacing: 1.2px;
-    color: var(--color-text-secondary);
-    opacity: 0.9;
-    
+    display: flex;
+    align-items: center;
+    justify-content: center;
     pointer-events: none;
 }
 
-
-.window-system-controls {
-    display: flex;
-    width: 138px; 
-    height: 100%;
+.app-name {
+    font-size: 13px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: var(--color-text);
+    opacity: 0.4;
+    transition: opacity 0.3s ease;
 }
 
-.sys-btn {
+.is-scrolled .app-name {
+    opacity: 1;
+}
+
+.network-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background-color: #f4212e;
+    margin-right: 8px;
+    box-shadow: 0 0 8px #f4212e;
+    animation: pulse-dot 2s infinite;
+}
+
+@keyframes pulse-dot {
+    0% { opacity: 1; }
+    50% { opacity: 0.5; }
+    100% { opacity: 1; }
+}
+
+.window-controls {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    height: 100%;
+    min-width: 140px;
+    -webkit-app-region: no-drag;
+}
+
+.win-btn {
     width: 46px;
     height: 100%;
+    border: none;
+    background: transparent;
+    color: var(--color-text);
     display: flex;
     align-items: center;
     justify-content: center;
-    background: transparent;
-    border: none;
-    color: var(--color-text);
-    cursor: pointer;
-    transition: background 0.2s;
+    transition: background-color 0.2s;
+    opacity: 0.7;
 }
 
-.sys-btn:hover {
-    background-color: var(--color-border);
+.win-btn:hover {
+    background-color: var(--btn-hover-bg);
+    opacity: 1;
 }
 
-.sys-btn.close:hover {
-    background-color: #e81123 !important;
-    color: #fff !important;
-}
-
-
-.status-dot {
-    width: 6px;
-    height: 6px;
-    border-radius: 50%;
-    animation: tb-pulse 2s infinite;
-}
-
-.modern-titlebar.status-browser_offline .status-dot,
-.modern-titlebar.status-offline .status-dot { 
-    background-color: #f4212e; 
-}
-.modern-titlebar.status-server_down .status-dot { 
-    background-color: #ffad1f; 
-}
-
-@keyframes tb-pulse {
-    0% { opacity: 0.4; transform: scale(0.9); }
-    50% { opacity: 1; transform: scale(1.1); }
-    100% { opacity: 0.4; transform: scale(0.9); }
-}
-
-
-@media (max-width: 500px) {
-    .nav-controls .reload { display: none; }
-    .nav-controls { min-width: 65px; }
-    .title-text-main { font-size: 10px; max-width: 120px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-}
-
-@media (max-width: 400px) {
-    .nav-controls { display: none; }
-}
-
-
-.download-progress-bar-container {
-    position: absolute;
-    bottom: -1px; 
-    left: 0;
-    right: 0;
-    height: 3px;
-    background-color: transparent;
-    pointer-events: none; 
-}
-
-.download-progress-bar {
-    height: 100%;
-    background-color: var(--color-primary);
-    transition: width 0.2s ease-out;
-    box-shadow: 0 0 10px var(--color-primary);
-}
-
-.download-progress-bar.completed {
-    background-color: #00ba7c; 
-    box-shadow: 0 0 10px #00ba7c;
+.win-btn.close:hover {
+    background-color: var(--win-close-hover);
+    color: white;
 }

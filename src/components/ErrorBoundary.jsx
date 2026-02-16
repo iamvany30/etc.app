@@ -39,7 +39,7 @@ class ErrorBoundary extends React.Component {
                     top: 0,
                     left: 0,
                     right: 0,
-                    zIndex: 99999,
+                    zIndex: 9000,
                     borderBottom: '1px solid #ff6b6b',
                     WebkitAppRegion: 'drag'  
                 }}>

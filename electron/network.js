@@ -6,26 +6,18 @@ const { logDebug } = require('./logger');
 let activeStreamRequest = null;
 let reconnectTimer = null;
 let isStreamExpected = false; 
-
 let activeDdosPromise = null;
 let activeRefreshPromise = null;
 let isInjecting = false;
 
-/**
- * Принудительно сбрасывает куки из памяти на диск, 
- * чтобы сетевой модуль 'net' их гарантированно увидел.
- */
 async function flushCookies() {
     try {
         await session.defaultSession.cookies.flushStore();
     } catch (e) {
-        logDebug(`[Cookies] Ошибка синхронизации: ${e.message}`);
+        logDebug(`[Cookies] Sync error: ${e.message}`);
     }
 }
 
-/**
- * Внедряет refresh_token в сессию Electron.
- */
 async function injectRefreshTokenIntoSession(token) {
     if (!token || isInjecting) return;
     isInjecting = true;
@@ -44,28 +36,22 @@ async function injectRefreshTokenIntoSession(token) {
             expirationDate: Math.floor(Date.now() / 1000) + (60 * 60 * 24 * 30)
         });
         await flushCookies();
-        logDebug(`[Cookies] Токен внедрен для ${dotDomain}`);
     } catch (e) {
-        logDebug(`[Cookies] Ошибка внедрения: ${e.message}`);
+        logDebug(`[Cookies] Inject error: ${e.message}`);
     } finally {
         isInjecting = false;
     }
 }
 
-/**
- * Окно для прохождения проверки DDoS-Guard/Cloudflare.
- */
 function waitForDdosClearance(url) {
     if (activeDdosPromise) return activeDdosPromise;
 
     activeDdosPromise = new Promise((resolve) => {
-        logDebug(`[DDoS] 🛡️ Запуск процедуры обхода защиты: ${url}`);
-        
         const win = new BrowserWindow({
             width: 550, 
             height: 700,
             show: false, 
-            title: "Проверка безопасности",
+            title: "Security Check",
             alwaysOnTop: true,
             webPreferences: {
                 nodeIntegration: false,
@@ -87,20 +73,12 @@ function waitForDdosClearance(url) {
 
         const checkPage = async () => {
             if (win.isDestroyed() || isResolved) return;
-            
-            
-            const cookies = await session.defaultSession.cookies.get({ url: SITE_DOMAIN });
-            const hasDdgCookie = cookies.some(c => c.name.includes('ddg'));
-            
-            
             const title = win.getTitle().toLowerCase();
             const pageText = await win.webContents.executeJavaScript('document.body.innerText').catch(() => '');
-            
             const isProtected = title.includes('ddos-guard') || title.includes('just a moment') || title.includes('checking your browser');
             const isApiReached = pageText.includes('NOT_FOUND') || pageText.includes('"error"') || (pageText.trim().startsWith('{') && pageText.trim().endsWith('}'));
 
             if (isApiReached || (!isProtected && title !== '' && title !== 'electron')) {
-                logDebug(`[DDoS] ✅ Защита пройдена (Title: ${title})`);
                 finish(true);
             }
         };
@@ -108,7 +86,6 @@ function waitForDdosClearance(url) {
         win.webContents.on('did-finish-load', checkPage);
         win.on('page-title-updated', checkPage);
 
-        
         const showTimer = setTimeout(() => { if(!win.isDestroyed() && !isResolved) win.show(); }, 4000);
         const failTimer = setTimeout(() => finish(false), 60000);
 
@@ -119,9 +96,6 @@ function waitForDdosClearance(url) {
     return activeDdosPromise;
 }
 
-/**
- * Базовая функция запроса.
- */
 function rawFetch(endpoint, options = {}, attempt = 1) {
     return new Promise(async (resolve) => {
         const url = endpoint.startsWith('http') ? endpoint : `${API_BASE}${endpoint}`;
@@ -168,6 +142,7 @@ function rawFetch(endpoint, options = {}, attempt = 1) {
                     headers: response.headers
                 });
             });
+            response.on('error', (err) => resolve({ ok: false, status: 0, error: err.message }));
         });
 
         request.on('error', (err) => resolve({ ok: false, status: 0, error: err.message }));
@@ -175,14 +150,10 @@ function rawFetch(endpoint, options = {}, attempt = 1) {
     });
 }
 
-/**
- * Обновляет сессию с механизмом Retry.
- */
 async function refreshSession(retryCount = 0) {
     if (activeRefreshPromise) return activeRefreshPromise;
 
     activeRefreshPromise = (async () => {
-        logDebug(`[Refresh] Запуск обновления (попытка ${retryCount + 1})`);
         const token = store.loadRefreshToken();
         if (!token) return { success: false, reason: 'no_token' };
         
@@ -201,9 +172,7 @@ async function refreshSession(retryCount = 0) {
             return { success: true };
         }
 
-        
         if ((res.status === 429 || res.status >= 500 || res.status === 0) && retryCount < 2) {
-            logDebug(`[Refresh] Сервер занят (${res.status}). Повтор через 2с...`);
             await new Promise(r => setTimeout(r, 2000));
             activeRefreshPromise = null;
             return refreshSession(retryCount + 1);
@@ -245,33 +214,82 @@ async function apiCall(endpoint, method = 'GET', body = null) {
     return res.data || { error: { message: 'Server error' } };
 }
 
+async function uploadFileInternal(fileBuffer, fileName, fileType) {
+    try {
+        const accessToken = store.getAccessToken();
+        if (!fileBuffer) throw new Error("No data provided for upload");
+
+        const formData = new FormData();
+        const blob = new Blob([fileBuffer], { type: fileType });
+        formData.append('file', blob, fileName);
+
+        const options = {
+            method: 'POST',
+            headers: { 'User-Agent': USER_AGENT },
+            body: formData,
+        };
+        if (accessToken) {
+            options.headers['Authorization'] = `Bearer ${accessToken}`;
+        }
+        
+        const response = await fetch(`${API_BASE}/files/upload`, options);
+
+        if (!response.ok) {
+            throw new Error(`Server error during file upload: ${response.status}`);
+        }
+        
+        return { data: await response.json() };
+    } catch (error) {
+        return { error: { message: error.message } };
+    }
+}
+
 function startStreamConnection() {
     const token = store.getAccessToken();
     if (activeStreamRequest || !token) return;
     isStreamExpected = true;
     
-    const request = net.request({ method: 'GET', url: `${API_BASE}/notifications/stream`, useSessionCookies: true });
+    const request = net.request({ 
+        method: 'GET', 
+        url: `${API_BASE}/notifications/stream`, 
+        useSessionCookies: true 
+    });
+
     request.setHeader('Authorization', `Bearer ${token}`);
     request.setHeader('Accept', 'text/event-stream');
 
     request.on('response', (response) => {
         if (response.statusCode === 200) {
-            logDebug("[Stream] ✅ Подключено");
+            logDebug("[Stream] Connected");
             response.on('data', () => {}); 
-            response.on('end', () => { activeStreamRequest = null; if(isStreamExpected) setTimeout(startStreamConnection, 5000); });
+            response.on('end', () => { 
+                activeStreamRequest = null; 
+                if(isStreamExpected) setTimeout(startStreamConnection, 5000); 
+            });
+            response.on('error', () => {
+                activeStreamRequest = null;
+            });
         } else {
             activeStreamRequest = null;
             if (response.statusCode === 401) refreshSession();
         }
     });
-    request.on('error', () => { activeStreamRequest = null; });
+
+    request.on('error', (err) => { 
+        activeStreamRequest = null; 
+        if(isStreamExpected) setTimeout(startStreamConnection, 10000);
+    });
+
     request.end();
     activeStreamRequest = request;
 }
 
 function stopStreamConnection() {
     isStreamExpected = false;
-    if (activeStreamRequest) { activeStreamRequest.abort(); activeStreamRequest = null; }
+    if (activeStreamRequest) { 
+        try { activeStreamRequest.abort(); } catch(e){}
+        activeStreamRequest = null; 
+    }
 }
 
 async function checkApiStatus() {
@@ -280,10 +298,15 @@ async function checkApiStatus() {
 }
 
 async function quickInternetCheck() {
-    try { await fetch('https://8.8.8.8', { method: 'HEAD', mode: 'no-cors', priority: 'high' }); return true; } catch { return false; }
+    try { 
+        await fetch('https://8.8.8.8', { method: 'HEAD', mode: 'no-cors', priority: 'high' }); 
+        return true; 
+    } catch { 
+        return false; 
+    }
 }
 
 module.exports = { 
     rawFetch, refreshSession, apiCall, quickInternetCheck, 
-    checkApiStatus, startStreamConnection, stopStreamConnection   
+    checkApiStatus, startStreamConnection, stopStreamConnection, uploadFileInternal   
 };

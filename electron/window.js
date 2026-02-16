@@ -1,3 +1,5 @@
+
+
 const { BrowserWindow, shell, ipcMain, app } = require('electron');
 const path = require('path');
 const fs = require('fs'); 
@@ -8,7 +10,9 @@ let mainWindow = null;
 function createMainWindow() {
     mainWindow = new BrowserWindow({
         width: 1250, 
-        height: 900, 
+        height: 900,
+        minWidth: 400,
+        minHeight: 400,
         backgroundColor: '#101214', 
         frame: false, 
         show: false,
@@ -21,54 +25,51 @@ function createMainWindow() {
     });
 
     
+    
+    mainWindow.webContents.on('context-menu', (event) => {
+        event.preventDefault();
+    });
+    
+    
     mainWindow.webContents.session.on('will-download', (event, item, webContents) => {
         
         const downloadsPath = app.getPath('downloads');
         
-        
         const saveDir = path.join(downloadsPath, 'etc.app');
 
-        
         if (!fs.existsSync(saveDir)) {
             fs.mkdirSync(saveDir, { recursive: true });
         }
-
         
         const fileName = item.getFilename();
         const fullPath = path.join(saveDir, fileName);
 
-        
         item.setSavePath(fullPath);
 
+        const downloadUrl = item.getURL();
         
-        webContents.send('download-progress', { percent: 0 });
+        webContents.send('download-progress', { percent: 0, url: downloadUrl });
 
-        
         item.on('updated', (event, state) => {
             if (state === 'progressing') {
                 if (item.getTotalBytes() > 0) {
                     const percent = Math.floor((item.getReceivedBytes() / item.getTotalBytes()) * 100);
-                    webContents.send('download-progress', { percent });
+                    webContents.send('download-progress', { percent, url: downloadUrl });
                 }
             }
         });
 
-        
         item.on('done', (event, state) => {
             let finalStatus;
             if (state === 'completed') {
                 finalStatus = { percent: 100, status: 'completed' };
-                
-                
-                
-                
             } else if (state === 'cancelled') {
                 finalStatus = { percent: null, status: 'cancelled' };
             } else {
                 finalStatus = { percent: null, status: 'failed' };
             }
             
-            webContents.send('download-progress', finalStatus);
+            webContents.send('download-progress', { ...finalStatus, url: downloadUrl });
         });
     });
 

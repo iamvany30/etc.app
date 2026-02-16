@@ -1,141 +1,205 @@
- 
-.global-player {
-    position: fixed;
-    bottom: 0;
-    left: 0;
-    right: 0;
-    background-color: var(--color-card);
-    border-top: 1px solid var(--color-border);
-    height: 75px;
+/* @source GlobalPlayer.css */
+
+.gp-widget {
+    position: relative;
+    width: 100%;
+    background: #000;
+    border-radius: 20px;
+    padding: 12px;
     display: flex;
     flex-direction: column;
-     
-    z-index: 500; 
-    box-shadow: 0 -4px 12px rgba(0, 0, 0, 0.2);
-    transition: bottom 0.3s ease;
+    gap: 8px;
+    overflow: hidden;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+    transition: transform 0.3s cubic-bezier(0.2, 0.8, 0.2, 1);
 }
 
-.gp-progress-container {
-    height: 4px;
-    background-color: var(--color-border);
-    cursor: pointer;
-    width: 100%;
-    position: relative;
-}
 
-.gp-progress-bar {
-    height: 100%;
-    background-color: var(--color-primary);
+.gp-background {
     position: absolute;
-    top: 0; left: 0;
+    inset: 0;
+    z-index: 0;
+    filter: blur(35px); 
+    opacity: 0.5;
+    pointer-events: none;
 }
+
+.gp-blob {
+    position: absolute;
+    width: 120%;
+    height: 120%;
+    border-radius: 50%;
+    transition: background 1.5s ease;
+}
+
+.b1 { background: var(--c1); top: -30%; left: -20%; animation: drift 15s infinite alternate; }
+.b2 { background: var(--c3); bottom: -30%; right: -20%; animation: drift 20s infinite alternate-reverse; }
+.b3 { background: var(--c5); top: 20%; left: 20%; width: 60%; height: 60%; opacity: 0.4; }
+
+@keyframes drift {
+    from { transform: translate(0,0) rotate(0deg); }
+    to { transform: translate(10%, 5%) rotate(10deg); }
+}
+
 
 .gp-inner {
+    position: relative;
+    z-index: 2;
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 0 16px;
-    flex: 1;
+    gap: 12px;
 }
 
-.gp-info {
+.gp-info-side {
     display: flex;
     align-items: center;
-    gap: 12px;
-    width: 40%;
-    overflow: hidden;
+    gap: 10px;
+    min-width: 0;
 }
 
-.gp-avatar {
-    width: 42px;
-    height: 42px;
-    background-color: var(--color-item-bg);
-    border-radius: 6px;
+.gp-cover {
+    width: 44px;
+    height: 44px;
+    border-radius: 8px;
+    background: #111;
     overflow: hidden;
     flex-shrink: 0;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.3);
     display: flex;
     align-items: center;
     justify-content: center;
+    color: #fff;
+    font-size: 18px;
 }
 
-.gp-cover-img {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-}
+.gp-cover img { width: 100%; height: 100%; object-fit: cover; }
 
 .gp-text {
     display: flex;
     flex-direction: column;
-    overflow: hidden;
+    min-width: 0;
 }
 
-.gp-title {
-    font-weight: 700;
+.gp-name {
     font-size: 14px;
+    font-weight: 800;
+    color: #fff;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
 }
 
-.gp-artist {
-    font-size: 12px;
-    color: var(--color-text-secondary);
+.gp-author {
+    font-size: 11px;
+    color: rgba(255,255,255,0.6);
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
 }
+
 
 .gp-controls {
     display: flex;
     align-items: center;
-    gap: 16px;
+    gap: 8px;
 }
 
-.gp-btn {
-    background: none;
+.gp-btn-small {
+    background: rgba(255,255,255,0.1);
     border: none;
-    color: var(--color-text);
+    color: #fff;
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
     cursor: pointer;
-    padding: 8px;
-    border-radius: 50%;
-}
-.gp-btn:hover { background-color: var(--color-item-bg); }
-
-.gp-play-btn {
-    width: 40px;
-    height: 40px;
-    border-radius: 50%;
-    border: none;
-    background-color: var(--color-text);
-    color: var(--color-background);
     display: flex;
     align-items: center;
     justify-content: center;
+    transition: 0.2s;
+}
+
+.gp-btn-main {
+    width: 40px;
+    height: 40px;
+    background: #fff;
+    color: #000;
+    border-radius: 50%;
+    border: none;
     cursor: pointer;
-}
-
-.gp-time {
-    font-size: 12px;
-    color: var(--color-text-secondary);
-    font-variant-numeric: tabular-nums;
-    width: 20%;
-    text-align: right;
-    display: none; 
-}
-@media (min-width: 600px) {
-    .gp-time { display: block; }
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.2);
 }
 
 
-@media (max-width: 500px) {
-    .global-player {
-        bottom: 54px; 
-        border-bottom: 1px solid var(--color-border); 
-        height: 65px; 
+.gp-progress-area {
+    position: relative;
+    z-index: 2;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 4px;
+}
+
+.gp-time { font-size: 9px; font-weight: 800; color: rgba(255,255,255,0.5); min-width: 28px; }
+
+.gp-track {
+    flex: 1;
+    height: 4px;
+    background: rgba(255,255,255,0.1);
+    border-radius: 10px;
+    cursor: pointer;
+    overflow: hidden;
+}
+
+.gp-fill {
+    height: 100%;
+    background: #fff;
+    border-radius: 10px;
+}
+
+/* =========================================
+   АДАПТИВНОСТЬ (МОБИЛЬНЫЙ ДОК)
+   ========================================= */
+
+@media (max-width: 1279px) {
+    .gp-widget {
+        border-radius: 0;
+        background: transparent;
+        border: none;
+        box-shadow: none;
+        padding: 6px 12px;
+        gap: 4px;
     }
+
     
-    .gp-avatar { width: 36px; height: 36px; }
+    .gp-background {
+        opacity: 0.3;
+        filter: blur(50px);
+    }
+
+    .gp-cover {
+        width: 38px;
+        height: 38px;
+    }
+
+    .gp-progress-area {
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        margin-top: 0;
+        padding: 0;
+    }
+
     
-    .gp-controls { gap: 8px; }
+    .gp-time { display: none; }
+    .gp-track {
+        height: 2px;
+        border-radius: 0;
+        background: rgba(255,255,255,0.05);
+    }
 }

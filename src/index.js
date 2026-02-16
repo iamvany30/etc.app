@@ -1,3 +1,5 @@
+
+
 import React, { useState, useLayoutEffect } from 'react';
 import ReactDOM from 'react-dom/client';
  
@@ -6,15 +8,17 @@ import { HashRouter as Router } from 'react-router-dom';
 import App from './App';
 import { ThemeLoader } from './core/ThemeLoader';
 
- 
 import { UserProvider } from './context/UserContext';
 import { ModalProvider } from './context/ModalContext';
 import { MusicProvider } from './context/MusicContext';
+import { UploadProvider } from './context/UploadContext';
+import { DownloadProvider } from './context/DownloadContext';
+import { ContextMenuProvider } from './context/ContextMenuContext';
+import { IslandProvider } from './context/IslandContext';
 
 import './index.css';
 import './App.css';
 
- 
 const Bootstrapper = () => {
     const [isReady, setIsReady] = useState(false);
     const [themeError, setThemeError] = useState(null);
@@ -22,22 +26,18 @@ const Bootstrapper = () => {
     useLayoutEffect(() => {
         const boot = async () => {
             try {
-                 
                 const currentTheme = localStorage.getItem('itd_current_theme_folder');
                 
                 if (currentTheme && currentTheme !== 'default') {
                     console.log(`[System] Booting with theme: ${currentTheme}`);
-                     
                     await ThemeLoader.init(); 
                 } else {
-                     
                     await ThemeLoader.init(); 
                 }
             } catch (e) {
                 console.error("[System] Boot failed:", e);
                 setThemeError(e.message);
             } finally {
-                 
                 setIsReady(true);
             }
         };
@@ -45,7 +45,6 @@ const Bootstrapper = () => {
         boot();
     }, []);
 
-     
     if (themeError) {
         return (
             <div style={{ padding: 40, color: 'white', background: '#101214', height: '100vh' }}>
@@ -60,22 +59,27 @@ const Bootstrapper = () => {
         );
     }
 
-     
     if (!isReady) {
         return <div style={{ background: 'var(--color-background, #101214)', height: '100vh', width: '100vw' }} />;
     }
 
-     
     return (
         <React.StrictMode>
-              
             <Router>
                 <UserProvider> 
-                    <MusicProvider>
-                        <ModalProvider>
-                            <App />
-                        </ModalProvider>
-                    </MusicProvider>
+                    <DownloadProvider>
+                        <UploadProvider>
+                            <MusicProvider>
+                                <ModalProvider>
+                                    <IslandProvider>
+                                        <ContextMenuProvider>
+                                            <App />
+                                        </ContextMenuProvider>
+                                    </IslandProvider>
+                                </ModalProvider>
+                            </MusicProvider>
+                        </UploadProvider>
+                    </DownloadProvider>
                 </UserProvider>
             </Router>
         </React.StrictMode>

@@ -1,114 +1,163 @@
 /* @source BannerEditorModal.css */
 
-.banner-editor {
+.modern-cropper {
+    background: #0f0f0f;
+    color: #fff;
     width: 100%;
-    background-color: var(--color-background);
-    color: var(--color-text);
-}
-
-.banner-editor-header {
-    padding: 16px;
-    border-bottom: 1px solid var(--color-border);
-}
-
-.banner-editor-header h3 {
-    margin: 0;
-    font-size: 20px;
-}
-
-.banner-editor-content {
-    padding: 20px;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-}
-
-.banner-upload-area {
-    width: 100%;
-    height: 200px;
-    border: 2px dashed var(--color-border);
+    max-width: 800px;
     border-radius: 12px;
+    overflow: hidden;
+}
+
+.cropper-header {
     display: flex;
-    flex-direction: column;
+    justify-content: space-between;
+    align-items: center;
+    padding: 16px 20px;
+    border-bottom: 1px solid #222;
+}
+
+
+.tabs-container {
+    background: #1a1a1a;
+    padding: 4px;
+    border-radius: 8px;
+    display: flex;
+    gap: 4px;
+}
+
+.tab-btn {
+    background: transparent;
+    border: none;
+    color: #888;
+    padding: 6px 16px;
+    border-radius: 6px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: 0.2s;
+}
+
+.tab-btn.active {
+    background: #fff;
+    color: #000;
+}
+
+.close-x {
+    background: transparent;
+    border: none;
+    color: #666;
+    font-size: 20px;
+    cursor: pointer;
+}
+
+.cropper-body {
+    padding: 20px;
+}
+
+.hint-text {
+    font-size: 13px;
+    color: #aaa;
+    margin-bottom: 16px;
+}
+
+
+.work-area {
+    width: 100%;
+    aspect-ratio: 16 / 9;
+    border: 2px dashed #444;
+    border-radius: 12px;
+    position: relative;
+    background: #000;
+    overflow: hidden;
+}
+
+.upload-placeholder {
+    width: 100%;
+    height: 100%;
+    display: flex;
     align-items: center;
     justify-content: center;
     cursor: pointer;
-    color: var(--color-text-secondary);
-    transition: all 0.2s;
+    color: #666;
 }
 
-.banner-upload-area:hover {
-    border-color: var(--color-primary);
-    color: var(--color-primary);
-    background-color: rgba(29, 155, 240, 0.05);
-}
-
-.banner-preview-wrapper {
-    width: 600px;
-    height: 200px;
-    border: 1px solid var(--color-border);
-    overflow: hidden;
-    position: relative;
-    border-radius: 4px;
-}
-
-.banner-preview-wrapper canvas {
-    display: block;
+.image-container {
     width: 100%;
     height: 100%;
+    position: relative;
 }
 
-.banner-controls {
+.source-image {
     width: 100%;
-    margin-top: 20px;
-    display: flex;
-    align-items: center;
-    gap: 16px;
+    height: 100%;
+    object-fit: contain;
 }
 
-.banner-controls input[type="range"] {
-    flex: 1;
-    cursor: pointer;
-    accent-color: var(--color-primary);
+
+.cropper-overlay {
+    position: absolute;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(0,0,0,0.6); 
+    pointer-events: none;
 }
 
-.banner-editor-footer {
-    padding: 16px;
-    border-top: 1px solid var(--color-border);
+.crop-box {
+    position: absolute;
+    border: 2px solid #fff;
+    box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.5); 
+    cursor: move;
+    pointer-events: auto;
+}
+
+
+.grid-line {
+    position: absolute;
+    background: rgba(255,255,255,0.3);
+}
+.v1 { left: 33.3%; top: 0; bottom: 0; width: 1px; }
+.v2 { left: 66.6%; top: 0; bottom: 0; width: 1px; }
+.h1 { top: 33.3%; left: 0; right: 0; height: 1px; }
+.h2 { top: 66.6%; left: 0; right: 0; height: 1px; }
+
+
+.handle {
+    position: absolute;
+    width: 10px;
+    height: 10px;
+    background: #1d9bf0;
+    border: 2px solid #fff;
+}
+.handle.br { right: -5px; bottom: -5px; cursor: nwse-resize; }
+.handle.tl { left: -5px; top: -5px; cursor: nwse-resize; opacity: 0.5; }
+
+.cropper-footer {
+    padding: 16px 20px;
     display: flex;
     justify-content: flex-end;
     gap: 12px;
+    background: #0f0f0f;
 }
 
-.banner-editor-footer button {
-    padding: 10px 20px;
-    border-radius: 999px;
-    font-weight: 700;
-    font-size: 15px;
-    cursor: pointer;
+.btn-secondary {
+    background: #222;
+    color: #eee;
     border: none;
+    padding: 10px 24px;
+    border-radius: 8px;
+    font-weight: 700;
+    cursor: pointer;
 }
 
-.banner-editor-footer .cancel-btn {
-    background: transparent;
-    color: var(--color-text);
-    border: 1px solid var(--color-border);
-}
-
-.banner-editor-footer .save-btn {
-    background: var(--color-primary);
+.btn-primary {
+    background: #4a8df1;
     color: white;
+    border: none;
+    padding: 10px 24px;
+    border-radius: 8px;
+    font-weight: 700;
+    cursor: pointer;
 }
 
-.banner-editor-footer .save-btn:disabled {
+.btn-primary:disabled {
     opacity: 0.5;
-    cursor: default;
-}
-
-@media (max-width: 650px) {
-    .banner-preview-wrapper {
-        width: 100%;
-        height: auto;
-        aspect-ratio: 3/1;
-    }
 }

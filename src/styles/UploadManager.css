@@ -1,0 +1,43 @@
+/* @source UploadManager.css */
+
+/* 
+   Так как статус загрузки теперь отображается:
+   1. В правом сайдбаре (на десктопе >= 1280px)
+   2. В BottomDock (на мобильных < 1280px)
+   Мы скрываем старый плавающий контейнер UploadManager, чтобы не дублировать UI.
+*/
+
+.upload-manager-container {
+    display: none !important;
+}
+
+/* 
+   Стили ниже оставлены на случай, если вы захотите 
+   использовать UploadItem где-то еще 
+*/
+
+.upload-item {
+    background: var(--color-card);
+    border: 1px solid var(--color-border);
+    border-radius: 16px;
+    padding: 16px;
+    box-shadow: var(--shadow-layered);
+}
+
+.upload-progress-fill {
+    height: 100%;
+    background-color: var(--color-primary);
+    background-image: linear-gradient(
+        90deg, 
+        rgba(255,255,255,0) 0%, 
+        rgba(255,255,255,0.3) 50%, 
+        rgba(255,255,255,0) 100%
+    );
+    background-size: 200% 100%;
+    animation: upload-shimmer 1.5s infinite linear;
+}
+
+@keyframes upload-shimmer {
+    0% { background-position: 200% 0; }
+    100% { background-position: -200% 0; }
+}

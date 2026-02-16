@@ -18,20 +18,20 @@ const QuotedPost = ({ post, onLinkClick }) => {
             navigate(`/post/${post.id}`);
         }}>
             <div className="quote-header">
-                <div className="avatar" style={{width: 18, height: 18, fontSize: 10}}>
+                <div className="avatar" style={{width: 20, height: 20, fontSize: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--color-item-bg)', borderRadius: '50%'}}>
                     {post.author?.avatar || "👤"}
                 </div>
                 <span className="quote-author">{post.author?.displayName}</span>
                 <span className="quote-handle">@{post.author?.username}</span>
-                <span className="post-handle">·</span>
+                <span className="post-dot">·</span>
                 <TimeAgo dateStr={post.createdAt} />
             </div>
-            <div className="quote-content">
-                {parsedContent}
-            </div>
+            
+            {post.content && <div className="post-text-content" style={{marginBottom: 8}}>{parsedContent}</div>}
+            
             {post.attachments && post.attachments.length > 0 && (
-                <div style={{ marginTop: '8px' }}>
-                    <MediaGrid attachments={post.attachments.slice(0, 1)} />
+                <div style={{ marginTop: 4, borderRadius: 12, overflow: 'hidden' }}>
+                    <MediaGrid attachments={post.attachments.slice(0, 4)} />
                 </div>
             )}
         </div>

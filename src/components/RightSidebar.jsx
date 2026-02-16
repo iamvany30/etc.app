@@ -1,13 +1,22 @@
- 
+/* @source src/components/RightSidebar.jsx */
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { apiClient } from '../api/client';
+import { useUpload } from '../context/UploadContext'; 
+import { useMusic } from '../context/MusicContext';
+import { WidgetSkeleton } from './Skeletons';
+import GlobalPlayer from './GlobalPlayer';
 import '../styles/RightSidebar.css';
 
-const WidgetBox = ({ title, children, showMoreLink }) => (
-    <div className="widget-box">
-        <h2 className="widget-title">{title}</h2>
-        {children}
+const WidgetBox = ({ title, children, showMoreLink, className = "", delay = "0s" }) => (
+    <div 
+        className={`widget-box animate-in ${className}`} 
+        style={{ '--delay': delay }}
+    >
+        {title && <h2 className="widget-title">{title}</h2>}
+        <div className="widget-content">
+            {children}
+        </div>
         {showMoreLink && (
             <Link to={showMoreLink} className="widget-more">
                 Показать еще
@@ -17,90 +26,85 @@ const WidgetBox = ({ title, children, showMoreLink }) => (
 );
 
 const RightSidebar = () => {
-    const [trends, setTrends] = useState([]);
     const [users, setUsers] = useState([]);
-    const [clans, setClans] = useState([]);
     const [loading, setLoading] = useState(true);
+    const { uploads } = useUpload();
+    const { currentTrack } = useMusic();
+
+    const activeUploads = Object.values(uploads).filter(u => u.status !== 'complete' && u.status !== 'error');
 
     useEffect(() => {
         const fetchSidebarData = async () => {
             try {
-                 
-                const [trendsRes, usersRes, clansRes] = await Promise.all([
-                    apiClient.getExplore(),
-                    apiClient.getSuggestions(),
-                    apiClient.getTopClans()
-                ]);
-
-                 
-                setTrends(trendsRes?.data?.hashtags?.slice(0, 5) || []);
-                
-                 
-                setUsers(usersRes?.users?.slice(0, 3) || []);
-                
-                 
-                setClans(clansRes?.clans?.slice(0, 10) || []);
+                const usersRes = await apiClient.getSuggestions();
+                setUsers(usersRes?.users?.slice(0, 5) || []);
             } catch (error) {
-                console.error("Ошибка загрузки данных сайдбара:", error);
+                console.error("Ошибка загрузки:", error);
             } finally {
                 setLoading(false);
             }
         };
-
         fetchSidebarData();
     }, []);
 
-    if (loading && trends.length === 0) {
-        return <aside className="right-sidebar"><div className="loading-indicator">...</div></aside>;
-    }
+    const getStatusLabel = (status) => {
+        switch (status) {
+            case 'reading_tags': return 'Теги...';
+            case 'uploading_audio': return 'MP3...';
+            case 'uploading_cover': return 'Обложка...';
+            case 'creating_post': return 'Пост...';
+            default: return 'Ждите...';
+        }
+    };
 
     return (
         <aside className="right-sidebar">
-              
-            {trends.length > 0 && (
-                <WidgetBox title="Актуальные темы" showMoreLink="/explore">
-                    {trends.map((item) => (
-                        <div key={item.id} className="widget-item">
-                            <div className="widget-item-info">
-                                <span className="category">Актуально сейчас</span>
-                                <span className="name">#{item.name}</span>
-                                <span className="count">
-                                    {item.postsCount.toLocaleString()} постов
-                                </span>
+            
+            {}
+            {currentTrack && (
+                <div className="sidebar-player-widget animate-in" style={{ '--delay': '0.1s' }}>
+                    <GlobalPlayer />
+                </div>
+            )}
+
+            {}
+            {activeUploads.length > 0 && (
+                <WidgetBox 
+                    title="Загрузка" 
+                    className="upload-widget-sidebar" 
+                    delay="0.2s"
+                >
+                    {activeUploads.map(u => (
+                        <div key={u.id} className="sidebar-upload-item">
+                            <div className="sidebar-upload-info">
+                                <span className="s-upload-name">{u.fileName}</span>
+                                <span className="s-upload-status">{getStatusLabel(u.status)}</span>
+                            </div>
+                            <div className="sidebar-upload-bar">
+                                <div className="sidebar-upload-fill"></div>
                             </div>
                         </div>
                     ))}
                 </WidgetBox>
             )}
 
-              
-            {clans.length > 0 && (
-                <WidgetBox title="Топ кланов">
-                    <div className="top-clans__list">
-                        {clans.map((clan, index) => (
-                            <div 
-                                key={index} 
-                                className={`clan-tag ${index < 3 ? 'top-3' : ''}`}
-                                title={clan.name || 'Клан'}
-                            >
-                                <span>{index + 1}. {clan.avatar}</span>
-                                <span style={{ opacity: 0.7, fontSize: '12px' }}>
-                                    {clan.memberCount}
-                                </span>
-                            </div>
-                        ))}
-                    </div>
-                </WidgetBox>
-            )}
-
-              
-            {users.length > 0 && (
-                <WidgetBox title="Кого читать" showMoreLink="/explore">
-                    {users.map((user) => (
+            {}
+            {loading ? (
+                <div className="animate-in" style={{ '--delay': '0.3s' }}>
+                    <WidgetSkeleton />
+                </div>
+            ) : (
+                <WidgetBox 
+                    title="Кого читать" 
+                    showMoreLink="/explore" 
+                    delay="0.3s"
+                >
+                    {users.map((user, idx) => (
                         <Link 
                             to={`/profile/${user.username}`} 
                             key={user.id} 
-                            className="widget-item"
+                            className="widget-item stagger-item"
+                            style={{ '--i': idx }}
                         >
                             <div className="avatar" style={{ width: 40, height: 40, fontSize: 20 }}>
                                 {user.avatar || "👤"}
@@ -114,9 +118,8 @@ const RightSidebar = () => {
                 </WidgetBox>
             )}
 
-              
-            <div className="sidebar-footer-copy">
-                © 2026 итд.app (by Ванёк)
+            <div className="sidebar-footer-copy animate-in" style={{ '--delay': '0.5s' }}>
+                © 2026 итд.app
             </div>
         </aside>
     );

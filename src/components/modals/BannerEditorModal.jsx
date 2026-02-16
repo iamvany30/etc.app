@@ -1,3 +1,4 @@
+/* @source BannerEditorModal.jsx */
 import React, { useState, useRef, useEffect } from 'react';
 import { useModal } from '../../context/ModalContext';
 import { apiClient } from '../../api/client';
@@ -5,256 +6,174 @@ import '../../styles/BannerEditorModal.css';
 
 const BannerEditorModal = ({ onSaveSuccess }) => {
     const { closeModal } = useModal();
-    const [imageObj, setImageObj] = useState(null);
-    
-    const [originalFile, setOriginalFile] = useState(null);
-    const [zoom, setZoom] = useState(1);
-    const [position, setPosition] = useState({ x: 0, y: 0 });
-    const [isDragging, setIsDragging] = useState(false);
-    const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
+    const [activeTab, setActiveTab] = useState('image'); 
+    const [image, setImage] = useState(null);
+    const [imageMeta, setImageMeta] = useState({ w: 0, h: 0 });
     const [isSaving, setIsSaving] = useState(false);
 
-    const canvasRef = useRef(null);
+    
+    const [crop, setCrop] = useState({ x: 10, y: 10, width: 80, height: 24.7 }); 
+    const [dragging, setDragging] = useState(false);
+    const [dragType, setDragType] = useState('move'); 
+
+    const containerRef = useRef(null);
     const fileInputRef = useRef(null);
 
-    const CANVAS_WIDTH = 600;
-    const CANVAS_HEIGHT = 200;
-    const TARGET_WIDTH = 1200;
-    const TARGET_HEIGHT = 400;
+    const ASPECT_RATIO = 3.24; 
 
     const handleFileSelect = (e) => {
         const file = e.target.files[0];
         if (file) {
-            if (!file.type.startsWith('image/')) {
-                alert("Пожалуйста, выберите изображение.");
-                return;
-            }
-            
-            
-            setOriginalFile(file);
-
             const reader = new FileReader();
-            reader.onload = (event) => {
+            reader.onload = (ev) => {
                 const img = new Image();
                 img.onload = () => {
-                    setImageObj(img);
-                    setZoom(1);
-                    setPosition({ x: 0, y: 0 });
+                    setImage(ev.target.result);
+                    setImageMeta({ w: img.width, h: img.height });
+                    
+                    setCrop({ x: 5, y: 5, width: 90, height: 90 / ASPECT_RATIO });
                 };
-                img.src = event.target.result;
+                img.src = ev.target.result;
             };
             reader.readAsDataURL(file);
         }
     };
 
+    const handleMouseDown = (e, type) => {
+        e.stopPropagation();
+        setDragging(true);
+        setDragType(type);
+    };
+
     useEffect(() => {
-        if (!imageObj || !canvasRef.current) return;
+        const handleMouseMove = (e) => {
+            if (!dragging || !containerRef.current) return;
 
-        const canvas = canvasRef.current;
-        const ctx = canvas.getContext('2d');
+            const rect = containerRef.current.getBoundingClientRect();
+            let mouseX = ((e.clientX - rect.left) / rect.width) * 100;
+            let mouseY = ((e.clientY - rect.top) / rect.height) * 100;
 
-        ctx.fillStyle = '#16181c';
-        ctx.fillRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
-
-        const imgW = imageObj.width;
-        const imgH = imageObj.height;
-
-        const ratio = Math.max(CANVAS_WIDTH / imgW, CANVAS_HEIGHT / imgH);
-        const finalRatio = ratio * zoom;
-        const newW = imgW * finalRatio;
-        const newH = imgH * finalRatio;
-
-        const renderX = (CANVAS_WIDTH - newW) / 2 + position.x;
-        const renderY = (CANVAS_HEIGHT - newH) / 2 + position.y;
-
-        ctx.drawImage(imageObj, renderX, renderY, newW, newH);
-
-        const avSize = 110;
-        const avX = 30;
-        const avY = 100;
-        
-        ctx.strokeStyle = 'rgba(29, 155, 240, 0.5)';
-        ctx.lineWidth = 2;
-        ctx.strokeRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
-        
-        ctx.beginPath();
-        ctx.arc(avX + avSize/2, avY + avSize/2, avSize/2, 0, Math.PI * 2);
-        ctx.strokeStyle = 'rgba(0,0,0,0.5)';
-        ctx.stroke();
-
-    }, [imageObj, zoom, position]);
-
-    const handleMouseDown = (e) => {
-        setIsDragging(true);
-        setDragStart({ x: e.clientX - position.x, y: e.clientY - position.y });
-    };
-
-    const handleMouseMove = (e) => {
-        if (isDragging) {
-            setPosition({
-                x: e.clientX - dragStart.x,
-                y: e.clientY - dragStart.y
+            setCrop(prev => {
+                let next = { ...prev };
+                if (dragType === 'move') {
+                    next.x = Math.max(0, Math.min(mouseX - next.width / 2, 100 - next.width));
+                    next.y = Math.max(0, Math.min(mouseY - next.height / 2, 100 - next.height));
+                } else if (dragType === 'resize') {
+                    const newWidth = Math.max(20, Math.min(mouseX - next.x, 100 - next.x));
+                    next.width = newWidth;
+                    next.height = newWidth / ASPECT_RATIO;
+                    
+                    if (next.y + next.height > 100) {
+                        next.height = 100 - next.y;
+                        next.width = next.height * ASPECT_RATIO;
+                    }
+                }
+                return next;
             });
-        }
-    };
+        };
 
-    const handleMouseUp = () => {
-        setIsDragging(false);
-    };
+        const handleMouseUp = () => setDragging(false);
 
-    
-    const uploadAndSave = async (fileToUpload) => {
-        const uploadRes = await apiClient.uploadFile(fileToUpload);
-        
-        if (uploadRes && uploadRes.data && uploadRes.data.id) { 
-            const updateRes = await apiClient.updateProfile({ 
-                bannerId: uploadRes.data.id 
-            });
-            
-            if (updateRes && !updateRes.error) {
-                if (onSaveSuccess) onSaveSuccess(uploadRes.data.url || updateRes.banner); 
-                closeModal();
-            } else {
-                alert("Ошибка обновления профиля: " + (updateRes?.error?.message || "Unknown error"));
-            }
-        } else {
-            console.error("Upload failed", uploadRes);
-            alert("Ошибка загрузки файла. " + (uploadRes?.error?.message || "Проверьте консоль"));
+        if (dragging) {
+            window.addEventListener('mousemove', handleMouseMove);
+            window.addEventListener('mouseup', handleMouseUp);
         }
-    };
+        return () => {
+            window.removeEventListener('mousemove', handleMouseMove);
+            window.removeEventListener('mouseup', handleMouseUp);
+        };
+    }, [dragging, dragType]);
 
     const handleSave = async () => {
-        if (!imageObj) return;
+        if (!image) return;
         setIsSaving(true);
 
-        try {
-            
-            
-            
-            if (originalFile && originalFile.type === 'image/gif') {
-                await uploadAndSave(originalFile);
-                setIsSaving(false);
-                return;
-            }
+        const img = new Image();
+        img.src = image;
+        img.onload = async () => {
+            const canvas = document.createElement('canvas');
+            canvas.width = 1296;
+            canvas.height = 400;
+            const ctx = canvas.getContext('2d');
 
             
-            const outputCanvas = document.createElement('canvas');
-            outputCanvas.width = TARGET_WIDTH;
-            outputCanvas.height = TARGET_HEIGHT;
-            const ctx = outputCanvas.getContext('2d');
+            const realX = (crop.x / 100) * img.width;
+            const realY = (crop.y / 100) * img.height;
+            const realW = (crop.width / 100) * img.width;
+            const realH = (crop.height / 100) * img.height;
 
-            ctx.fillStyle = '#16181c';
-            ctx.fillRect(0, 0, TARGET_WIDTH, TARGET_HEIGHT);
+            ctx.drawImage(img, realX, realY, realW, realH, 0, 0, 1296, 400);
 
-            const imgW = imageObj.width;
-            const imgH = imageObj.height;
-            const ratio = Math.max(TARGET_WIDTH / imgW, TARGET_HEIGHT / imgH);
-            const finalRatio = ratio * zoom;
-            
-            const nw = imgW * finalRatio;
-            const nh = imgH * finalRatio;
-
-            const rx = (TARGET_WIDTH - nw) / 2 + (position.x * 2);
-            const ry = (TARGET_HEIGHT - nh) / 2 + (position.y * 2);
-
-            ctx.drawImage(imageObj, rx, ry, nw, nh);
-
-            outputCanvas.toBlob(async (blob) => {
-                if (!blob) {
-                    setIsSaving(false);
-                    alert("Ошибка создания изображения");
-                    return;
-                }
+            canvas.toBlob(async (blob) => {
                 const file = new File([blob], "banner.jpg", { type: "image/jpeg" });
-                await uploadAndSave(file);
+                const res = await apiClient.uploadFile(file);
+                if (res?.data?.id) {
+                    await apiClient.updateProfile({ bannerId: res.data.id });
+                    onSaveSuccess(res.data.url);
+                    closeModal();
+                }
                 setIsSaving(false);
             }, 'image/jpeg', 0.9);
-
-        } catch (e) {
-            console.error(e);
-            setIsSaving(false);
-            alert("Критическая ошибка: " + e.message);
-        }
+        };
     };
 
-    const isGif = originalFile?.type === 'image/gif';
-
     return (
-        <div className="banner-editor">
-            <div className="banner-editor-header">
-                <h3>Редактор обложки</h3>
+        <div className="modern-cropper">
+            <div className="cropper-header">
+                <div className="tabs-container">
+                    <button className={`tab-btn ${activeTab === 'draw' ? 'active' : ''}`} onClick={() => setActiveTab('draw')}>Рисовать</button>
+                    <button className={`tab-btn ${activeTab === 'image' ? 'active' : ''}`} onClick={() => setActiveTab('image')}>Изображение</button>
+                </div>
+                <button className="close-x" onClick={closeModal}>✕</button>
             </div>
 
-            <div className="banner-editor-content">
-                {!imageObj ? (
-                    <div className="banner-upload-area" onClick={() => fileInputRef.current.click()}>
-                        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
-                            <polyline points="17 8 12 3 7 8"></polyline>
-                            <line x1="12" y1="3" x2="12" y2="15"></line>
-                        </svg>
-                        <p>Нажмите для выбора файла</p>
-                        <span>JPG, PNG, GIF</span>
-                    </div>
-                ) : (
-                    <div className="banner-preview-wrapper">
-                        <canvas 
-                            ref={canvasRef}
-                            width={CANVAS_WIDTH}
-                            height={CANVAS_HEIGHT}
-                            onMouseDown={handleMouseDown}
-                            onMouseMove={handleMouseMove}
-                            onMouseUp={handleMouseUp}
-                            onMouseLeave={handleMouseUp}
-                            style={{ 
-                                cursor: isDragging ? 'grabbing' : 'grab',
-                                opacity: isGif ? 0.7 : 1 
-                            }}
-                        />
-                        {isGif && (
-                            <div style={{
-                                position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, 
-                                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                pointerEvents: 'none',
-                                color: 'white', textShadow: '0 1px 4px rgba(0,0,0,0.8)', fontWeight: 'bold'
-                            }}>
-                                GIF загружаются без обрезки для сохранения анимации
+            <div className="cropper-body">
+                <p className="hint-text">
+                    Настройте область отображения баннера. GIF загружаются без кадрирования.
+                </p>
+
+                <div className="work-area" ref={containerRef}>
+                    {!image ? (
+                        <div className="upload-placeholder" onClick={() => fileInputRef.current.click()}>
+                            <span>Нажмите, чтобы выбрать изображение</span>
+                        </div>
+                    ) : (
+                        <div className="image-container">
+                            <img src={image} alt="" className="source-image" />
+                            
+                            {}
+                            <div className="cropper-overlay">
+                                <div 
+                                    className="crop-box" 
+                                    style={{ 
+                                        left: `${crop.x}%`, 
+                                        top: `${crop.y}%`, 
+                                        width: `${crop.width}%`, 
+                                        height: `${crop.height}%` 
+                                    }}
+                                    onMouseDown={(e) => handleMouseDown(e, 'move')}
+                                >
+                                    {}
+                                    <div className="grid-line v1"></div>
+                                    <div className="grid-line v2"></div>
+                                    <div className="grid-line h1"></div>
+                                    <div className="grid-line h2"></div>
+
+                                    {}
+                                    <div className="handle br" onMouseDown={(e) => handleMouseDown(e, 'resize')}></div>
+                                    <div className="handle tl"></div>
+                                </div>
                             </div>
-                        )}
-                    </div>
-                )}
-
-                <input 
-                    type="file" 
-                    ref={fileInputRef} 
-                    onChange={handleFileSelect} 
-                    accept="image/png, image/jpeg, image/gif, image/webp" 
-                    style={{display: 'none'}} 
-                />
-
-                {imageObj && !isGif && (
-                    <div className="banner-controls">
-                        <label>Масштаб:</label>
-                        <input 
-                            type="range" 
-                            min="1" 
-                            max="5" 
-                            step="0.01" 
-                            value={zoom} 
-                            onChange={(e) => setZoom(parseFloat(e.target.value))} 
-                        />
-                    </div>
-                )}
+                        </div>
+                    )}
+                </div>
+                <input type="file" ref={fileInputRef} hidden onChange={handleFileSelect} accept="image/*" />
             </div>
 
-            <div className="banner-editor-footer">
-                <button className="cancel-btn" onClick={closeModal} disabled={isSaving}>Отмена</button>
-                <button 
-                    className="save-btn" 
-                    onClick={handleSave} 
-                    disabled={!imageObj || isSaving}
-                >
-                    {isSaving ? 'Сохранение...' : (isGif ? 'Загрузить GIF' : 'Сохранить')}
+            <div className="cropper-footer">
+                <button className="btn-secondary" onClick={closeModal}>Отмена</button>
+                <button className="btn-primary" onClick={handleSave} disabled={!image || isSaving}>
+                    {isSaving ? '...' : 'Сохранить'}
                 </button>
             </div>
         </div>

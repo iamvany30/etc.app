@@ -1,73 +1,76 @@
 import React from 'react';
 
 const RemoveIcon = () => (
-    <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2">
-        <line x1="18" y1="6" x2="6" y2="18"></line>
-        <line x1="6" y1="6" x2="18" y2="18"></line>
-    </svg>
+    <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+);
+
+const AddIcon = () => (
+    <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
 );
 
 const PollCreator = ({ pollData, onChange, onRemove }) => {
     
-    const handleQuestionChange = (e) => {
-        onChange({ ...pollData, question: e.target.value });
+    const handleQuestionChange = (e) => onChange({ ...pollData, question: e.target.value });
+    const handleOptionChange = (idx, val) => {
+        const newOpts = [...pollData.options];
+        newOpts[idx] = val;
+        onChange({ ...pollData, options: newOpts });
     };
-
-    const handleOptionChange = (index, value) => {
-        const newOptions = [...pollData.options];
-        newOptions[index] = value;
-        onChange({ ...pollData, options: newOptions });
-    };
-
     const addOption = () => {
-        if (pollData.options.length < 4) {
-            onChange({ ...pollData, options: [...pollData.options, ''] });
-        }
+        if (pollData.options.length < 4) onChange({ ...pollData, options: [...pollData.options, ''] });
     };
-
-    const removeOption = (index) => {
-        if (pollData.options.length > 2) {
-            const newOptions = pollData.options.filter((_, i) => i !== index);
-            onChange({ ...pollData, options: newOptions });
-        }
-    };
-
-    const toggleMultiple = () => {
-        onChange({ ...pollData, multiple: !pollData.multiple });
+    const removeOption = (idx) => {
+        if (pollData.options.length > 2) onChange({ ...pollData, options: pollData.options.filter((_, i) => i !== idx) });
     };
 
     return (
-        <div className="poll-creator" style={{ marginTop: 12, border: '1px solid var(--color-border)', borderRadius: 12, padding: 12, background: 'var(--color-item-bg)' }}>
-            <div className="poll-creator-header" style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 12, alignItems: 'center' }}>
-                <span style={{color: 'var(--color-primary)', fontWeight: 600, fontSize: 13, textTransform: 'uppercase' }}>Опрос</span>
-                <button type="button" onClick={onRemove} style={{ background: 'none', border: 'none', color: 'var(--color-text-secondary)', cursor: 'pointer' }}>
-                    <RemoveIcon />
-                </button>
-            </div>
-            
-            
+        <div style={{
+            border: '1px solid var(--color-border)', 
+            borderRadius: '16px', 
+            padding: '12px',
+            marginBottom: '12px',
+            backgroundColor: 'transparent' 
+        }}>
+            {}
             <input
                 type="text"
-                placeholder="Вопрос"
+                placeholder="Задайте вопрос..."
                 value={pollData.question}
                 onChange={handleQuestionChange}
                 maxLength={255}
-                style={{ width: '100%', padding: '10px 12px', borderRadius: 8, border: '1px solid var(--color-border)', background: 'var(--color-background)', color: 'var(--color-text)', outline: 'none', marginBottom: 12, fontSize: 16 }}
+                autoFocus
+                style={{
+                    width: '100%', padding: '8px 4px', 
+                    borderRadius: '4px', border: 'none', borderBottom: '2px solid var(--color-primary)',
+                    background: 'transparent', color: 'var(--color-text)', 
+                    fontSize: '16px', fontWeight: 'bold', outline: 'none', marginBottom: '12px'
+                }}
             />
             
-            <div className="poll-options-list" style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            {}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                 {pollData.options.map((opt, idx) => (
-                    <div key={idx} className="poll-option-row" style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-                        <input
-                            type="text"
-                            placeholder={`Вариант ${idx + 1}`}
-                            value={opt}
-                            onChange={(e) => handleOptionChange(idx, e.target.value)}
-                            maxLength={25}
-                            style={{ flex: 1, padding: '8px 12px', borderRadius: 8, border: '1px solid var(--color-border)', background: 'var(--color-background)', color: 'var(--color-text)', outline: 'none' }}
-                        />
+                    <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <div style={{
+                            flex: 1, display: 'flex', alignItems: 'center', 
+                            border: '1px solid var(--color-border)', borderRadius: '8px', 
+                            padding: '0 10px', backgroundColor: 'var(--color-input-bg)'
+                        }}>
+                            <input
+                                type="text"
+                                placeholder={`Вариант ${idx + 1}`}
+                                value={opt}
+                                onChange={(e) => handleOptionChange(idx, e.target.value)}
+                                maxLength={25}
+                                style={{
+                                    width: '100%', padding: '10px 0', border: 'none',
+                                    background: 'transparent', color: 'var(--color-text)', outline: 'none', fontSize: '14px'
+                                }}
+                            />
+                            {opt.length > 20 && <span style={{fontSize: 10, color: 'orange'}}>{25 - opt.length}</span>}
+                        </div>
                         {pollData.options.length > 2 && (
-                            <button type="button" onClick={() => removeOption(idx)} style={{ background: 'none', border: 'none', color: 'var(--color-text-secondary)', cursor: 'pointer', flexShrink: 0 }}>
+                            <button type="button" onClick={() => removeOption(idx)} style={{ color: '#f4212e', background: 'none', border: 'none', cursor: 'pointer', padding: 4 }}>
                                 <RemoveIcon />
                             </button>
                         )}
@@ -75,21 +78,26 @@ const PollCreator = ({ pollData, onChange, onRemove }) => {
                 ))}
             </div>
 
-            <div className="poll-footer" style={{ display: 'flex', justifyContent: 'space-between', marginTop: 12, alignItems: 'center' }}>
+            {}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '12px', borderTop: '1px solid var(--color-border)', paddingTop: '10px' }}>
                 {pollData.options.length < 4 ? (
-                    <button type="button" onClick={addOption} style={{ background: 'none', border: 'none', color: 'var(--color-primary)', fontWeight: 600, cursor: 'pointer', fontSize: 13 }}>
-                        + Добавить вариант
+                    <button type="button" onClick={addOption} style={{ 
+                        background: 'none', border: 'none', color: 'var(--color-primary)', 
+                        fontWeight: '600', cursor: 'pointer', fontSize: '13px', display: 'flex', alignItems: 'center', gap: 4 
+                    }}>
+                        <AddIcon /> Добавить вариант
                     </button>
-                ) : <div></div>}
+                ) : <div />}
                 
-                <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: 'var(--color-text-secondary)', cursor: 'pointer' }}>
-                    <input 
-                        type="checkbox" 
-                        checked={pollData.multiple} 
-                        onChange={toggleMultiple} 
-                    />
-                    <span>Несколько ответов</span>
-                </label>
+                <div style={{display: 'flex', alignItems: 'center', gap: 16}}>
+                    <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: '13px', color: 'var(--color-text-secondary)', cursor: 'pointer' }}>
+                        <input type="checkbox" checked={pollData.multiple} onChange={() => onChange({...pollData, multiple: !pollData.multiple})} />
+                        <span>Несколько ответов</span>
+                    </label>
+                    <button type="button" onClick={onRemove} style={{ color: '#f4212e', background: 'none', border: 'none', cursor: 'pointer', fontSize: '13px', fontWeight: '500' }}>
+                        Удалить опрос
+                    </button>
+                </div>
             </div>
         </div>
     );

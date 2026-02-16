@@ -1,5 +1,6 @@
 import React, { useMemo } from 'react';
 import { useMusic } from '../context/MusicContext';
+import { useDownload } from '../context/DownloadContext';
 import { PlayIcon, PauseIcon } from './icons/MediaIcons';
 import '../styles/MusicPlayer.css';
 
@@ -11,6 +12,42 @@ const DownloadIcon = () => (
         <line x1="12" y1="15" x2="12" y2="3"></line>
     </svg>
 );
+
+const CheckIcon = () => (
+    <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+      <polyline points="20 6 9 17 4 12"></polyline>
+    </svg>
+);
+
+const CircularProgress = ({ progress, size = 20, strokeWidth = 2 }) => {
+    const radius = (size - strokeWidth) / 2;
+    const circumference = radius * 2 * Math.PI;
+    const offset = circumference - (progress / 100) * circumference;
+
+    return (
+        <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} style={{ transform: 'rotate(-90deg)' }}>
+            <circle
+                stroke="rgba(255, 255, 255, 0.2)"
+                fill="transparent"
+                strokeWidth={strokeWidth}
+                r={radius}
+                cx={size / 2}
+                cy={size / 2}
+            />
+            <circle
+                stroke="currentColor"
+                fill="transparent"
+                strokeWidth={strokeWidth}
+                strokeDasharray={circumference}
+                strokeDashoffset={offset}
+                strokeLinecap="round"
+                r={radius}
+                cx={size / 2}
+                cy={size / 2}
+            />
+        </svg>
+    );
+};
 
 
 const Visualizer = () => (
@@ -24,8 +61,13 @@ const Visualizer = () => (
 
 const MusicPlayer = ({ id, src, artist, title, cover }) => {
     const { currentTrack, isPlaying, playTrack, togglePlay, progress, duration, seek } = useMusic();
+    const { downloads, startDownload } = useDownload();
     const isCurrent = currentTrack?.id === id;
     const isActive = isCurrent && isPlaying;
+
+    const downloadState = downloads[src];
+    const isDownloading = downloadState && downloadState.status !== 'completed' && downloadState.status !== 'failed';
+    const isCompleted = downloadState && downloadState.status === 'completed';
 
     
     const formatTime = (t) => {
@@ -55,7 +97,8 @@ const MusicPlayer = ({ id, src, artist, title, cover }) => {
     const handleDownload = (e) => {
         e.preventDefault();
         e.stopPropagation();
-        if (window.api && window.api.downloadFile) window.api.downloadFile(src);
+        if (isDownloading || isCompleted) return;
+        startDownload(src);
     };
 
     return (
@@ -105,8 +148,19 @@ const MusicPlayer = ({ id, src, artist, title, cover }) => {
                 </div>
 
                 
-                <button className="music-action-btn download" onClick={handleDownload} title="Скачать">
-                    <DownloadIcon />
+                <button 
+                    className={`music-action-btn download ${isCompleted ? 'completed' : ''}`}
+                    onClick={handleDownload} 
+                    title={isCompleted ? "Загружено" : "Скачать"} 
+                    disabled={isDownloading || isCompleted}
+                >
+                    {isDownloading ? (
+                        <CircularProgress progress={downloadState.percent} />
+                    ) : isCompleted ? (
+                        <CheckIcon />
+                    ) : (
+                        <DownloadIcon />
+                    )}
                 </button>
             </div>
         </div>

@@ -1,7 +1,9 @@
+
 import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { useUser } from '../context/UserContext';
 import Login from '../pages/Login';
 import OfflinePage from '../pages/OfflinePage';
+import { FeedCache } from '../core/FeedCache'; 
 
 const AuthFlow = ({ children }) => {
     const { setCurrentUser } = useUser();
@@ -44,18 +46,21 @@ const AuthFlow = ({ children }) => {
 
     
     const checkSession = useCallback(async () => {
-        
         try {
             const verifiedUser = await window.api.getInitUser();
 
             if (verifiedUser && !verifiedUser.error) {
-                
                 localStorage.setItem('nowkie_user', JSON.stringify(verifiedUser));
                 setCurrentUser(verifiedUser);
                 setStatus('auth');
                 emitStatus('online');
-            } else {
                 
+                
+                
+                setTimeout(() => FeedCache.preload(), 100); 
+                
+
+            } else {
                 localStorage.removeItem('nowkie_user');
                 setCurrentUser(null);
                 setStatus('guest');
@@ -72,9 +77,7 @@ const AuthFlow = ({ children }) => {
     }, [setCurrentUser, checkNetworkHealth]);
 
     useEffect(() => {
-        
         checkSession();
-
         const interval = setInterval(checkNetworkHealth, 10000); 
         window.addEventListener('online', checkNetworkHealth);
         window.addEventListener('offline', () => emitStatus('browser_offline'));
@@ -87,7 +90,6 @@ const AuthFlow = ({ children }) => {
 
     if (status === 'pending') return <div style={{ height: '100vh', backgroundColor: '#101214' }} />;
     if (status === 'guest' && !navigator.onLine) return <OfflinePage onRetry={checkSession} />;
-    
     
     if (status === 'guest') return <Login onLoginSuccess={checkSession} />;
 

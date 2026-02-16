@@ -1,20 +1,26 @@
+
+
 import React, { useEffect, useState, useCallback } from 'react';
-import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
+import { Routes, Route, Navigate } from 'react-router-dom';
 import { DynamicComponent } from './core/ComponentRegistry';
 
 
 import Sidebar from './components/Sidebar';
 import RightSidebar from './components/RightSidebar';
-import MobileNav from './components/MobileNav';
-import GlobalPlayer from './components/GlobalPlayer';
+import BottomDock from './components/BottomDock'; 
+import ScrollToTop from './components/ScrollToTop'; 
 import TitleBar from './components/TitleBar';
 import ErrorBoundary from './components/ErrorBoundary';
 import Snowfall from './components/Snowfall';
+import UploadManager from './components/UploadManager';
+import DynamicIsland from './components/DynamicIsland';
+import CustomBackground from './components/CustomBackground';
 
 
 import AuthFlow from './components/AuthFlow';
 import NotificationWatcher from './components/NotificationWatcher';
 import PresenceManager from './components/PresenceManager'; 
+import ContextMenuManager from './components/ContextMenuManager';
 
 
 import Feed from './pages/Feed';
@@ -38,28 +44,15 @@ const DefaultLayout = ({ children }) => {
                 {children}
             </main>
             <DynamicComponent name="Layout.RightSidebar" fallback={RightSidebar} />
-            <DynamicComponent name="Layout.MobileNav" fallback={MobileNav} />
-            <DynamicComponent name="Global.Player" fallback={GlobalPlayer} />
         </div>
     );
 };
 
-const AnimatedPage = ({ children }) => {
-    const location = useLocation();
-    return (
-        <div 
-            key={location.pathname} 
-            className="page-enter-active"
-        >
-            {children}
-        </div>
-    );
-};
 
 const RouteEl = ({ name, fallback }) => (
-    <AnimatedPage>
+    <div className="page-container">
         <DynamicComponent name={name} fallback={fallback} />
-    </AnimatedPage>
+    </div>
 );
 
 function App() {
@@ -69,9 +62,25 @@ function App() {
         const bgMode = localStorage.getItem('nowkie_bg') || 'dim';
         const accent = localStorage.getItem('nowkie_accent') || '#1d9bf0';
         const isSnow = localStorage.getItem('nowkie_snow_enabled') === 'true';
+        
+        const perfMode = localStorage.getItem('nowkie_perf_mode') || 'high';
 
         document.documentElement.setAttribute('data-bg', bgMode);
+        document.documentElement.setAttribute('data-perf', perfMode); 
+        
         document.documentElement.style.setProperty('--color-primary', accent);
+        
+        const hexToRgb = (hex) => {
+            const r = parseInt(hex.slice(1, 3), 16);
+            const g = parseInt(hex.slice(3, 5), 16);
+            const b = parseInt(hex.slice(5, 7), 16);
+            return `${r}, ${g}, ${b}`;
+        };
+        document.documentElement.style.setProperty('--color-primary-rgb', hexToRgb(accent));
+        
+        const glassRGB = bgMode === 'black' ? '0,0,0' : (bgMode === 'dim' ? '21,32,43' : '255,255,255');
+        document.documentElement.style.setProperty('--glass-bg-rgb', glassRGB);
+
         setSnowEnabled(isSnow);
     }, []);
 
@@ -83,15 +92,23 @@ function App() {
 
     return (
         <>
+            <CustomBackground />
             {snowEnabled && <Snowfall />}
+            
             <ErrorBoundary>
                 <TitleBar />
             </ErrorBoundary>
 
             <AuthFlow>
+                <DynamicIsland />
+                <ContextMenuManager />
                 <NotificationWatcher />
                 <PresenceManager />
-                
+                <ScrollToTop />
+
+                <BottomDock />
+                <UploadManager />
+
                 <DynamicComponent name="Layout.MainWrapper" fallback={DefaultLayout}>
                     <Routes>
                         <Route path="/" element={<RouteEl name="Page.Feed" fallback={Feed} />} />
@@ -109,7 +126,6 @@ function App() {
                         <Route path="*" element={<Navigate to="/" replace />} />
                     </Routes>
                 </DynamicComponent>
-            
             </AuthFlow>
         </>
     );

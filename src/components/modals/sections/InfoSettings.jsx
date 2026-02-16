@@ -1,6 +1,7 @@
+/* @source src/components/modals/sections/InfoSettings.jsx */
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { IconExternalLink, IconChevron } from '../SettingsIcons';
+import { IconExternalLink, IconChevron } from '../../icons/SettingsIcons';
 
 const contributors = [
     { 
@@ -12,55 +13,12 @@ const contributors = [
     },
     { 
         name: 'Graphic Chestnut', 
-        role: 'Дизайн лого', 
+        role: 'Дизайн логотипа', 
         avatar: '🫠',
         link: '/profile/GraphiChestnut',
         linkType: 'internal' 
     },
 ];
-
-const legalLinks = [
-    { href: "https://xn--d1ah4a.com/legal/terms", text: "Условия использования" },
-    { href: "https://xn--d1ah4a.com/legal/privacy", text: "Политика конфиденциальности" },
-    { href: "https://xn--d1ah4a.com/legal/cookies", text: "Использование Cookie" }
-];
-
-const InfoLink = ({ href, text }) => (
-    <a href={href} 
-       onClick={(e) => { e.preventDefault(); window.api.openExternalLink(href); }} 
-       className="settings-option">
-        <span className="settings-option-name">{text}</span>
-        <IconExternalLink />
-    </a>
-);
-
-const ContributorItem = ({ person }) => {
-    const content = (
-        <>
-            <div className="contributor-avatar">{person.avatar}</div>
-            <div className="contributor-info">
-                <span className="contributor-name">{person.name}</span>
-                <span className="contributor-role">{person.role}</span>
-            </div>
-            {person.linkType === 'internal' && <IconChevron />}
-            {person.linkType === 'external' && <IconExternalLink />}
-        </>
-    );
-
-    if (!person.link) {
-        return <div className="contributor-item">{content}</div>;
-    }
-
-    if (person.linkType === 'internal') {
-        return <Link to={person.link} className="contributor-item clickable">{content}</Link>;
-    }
-    
-    return (
-        <button className="contributor-item clickable" onClick={() => window.api.openExternalLink(person.link)}>
-            {content}
-        </button>
-    );
-};
 
 const InfoSettings = () => {
     const [version, setVersion] = useState('');
@@ -72,22 +30,38 @@ const InfoSettings = () => {
     }, []);
 
     return (
-        <div className="settings-content">
+        <div className="settings-content info-view">
             <div className="settings-section-title">Команда проекта</div>
-            <div className="contributor-list">
+            <div className="contributor-grid">
                 {contributors.map(person => (
-                    <ContributorItem key={person.name} person={person} />
+                    <Link to={person.link} key={person.name} className="contributor-card">
+                        <div className="contributor-avatar-wrap">
+                            <span className="contributor-emoji">{person.avatar}</span>
+                        </div>
+                        <div className="contributor-info">
+                            <span className="contributor-name">{person.name}</span>
+                            <span className="contributor-role">{person.role}</span>
+                        </div>
+                        <IconChevron size={16} className="contributor-arrow" />
+                    </Link>
                 ))}
             </div>
 
             <div className="settings-section-title">Правовая информация</div>
-            {legalLinks.map(link => (
-                <InfoLink key={link.href} {...link} />
-            ))}
+            <div className="legal-links">
+                <button className="settings-option compact" onClick={() => window.api.openExternalLink('https://xn--d1ah4a.com/legal/terms')}>
+                    <span>Условия использования</span>
+                    <IconExternalLink size={14} />
+                </button>
+                <button className="settings-option compact" onClick={() => window.api.openExternalLink('https://xn--d1ah4a.com/legal/privacy')}>
+                    <span>Политика конфиденциальности</span>
+                    <IconExternalLink size={14} />
+                </button>
+            </div>
 
-            <div className="settings-footer">
-                <span className="app-icon">💡</span>
-                итд.app v{version || '...'}
+            <div className="info-footer">
+                <span className="info-version">Версия {version || '0.5.0'}</span>
+                <p className="info-copyright">© 2026 iamvany. Все права защищены.</p>
             </div>
         </div>
     );

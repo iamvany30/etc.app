@@ -1,28 +1,58 @@
-
-
+/* @source MusicLibrary.css */
 .music-page-container {
     display: flex;
     flex-direction: column;
-    height: 100%;
+    height: 100%; 
+    overflow: hidden; 
 }
 
 
-.music-header-sticky {
-    position: sticky;
-    top: 0;
-    z-index: 10;
-    background-color: rgba(16, 18, 20, 0.95);
-    backdrop-filter: blur(12px);
-    padding: 16px 20px;
-    border-bottom: 1px solid var(--color-border);
+.music-header-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding-right: 16px;
 }
 
-.music-page-title {
-    font-size: 24px;
-    font-weight: 800;
-    margin: 0 0 16px 0;
-    color: var(--color-text);
+.upload-music-btn {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: var(--color-primary-alpha);
+    color: var(--color-primary);
+    border: 1px solid transparent;
+    border-radius: 99px;
+    padding: 8px 16px;
+    font-size: 14px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.2s;
 }
+
+.upload-music-btn:hover {
+    background: var(--color-primary);
+    color: white;
+    transform: scale(1.05);
+}
+
+
+.music-content-scroll {
+    flex: 1; 
+    overflow-y: auto; 
+    padding: 20px;
+    -webkit-overflow-scrolling: touch; 
+}
+
+
+.music-content-scroll::-webkit-scrollbar {
+    width: 6px;
+}
+
+.music-content-scroll::-webkit-scrollbar-thumb {
+    background: var(--color-border);
+    border-radius: 10px;
+}
+
 
 .music-search-wrapper {
     position: relative;
@@ -56,11 +86,6 @@
     box-shadow: 0 0 0 1px var(--color-primary);
 }
 
-
-.music-content-scroll {
-    padding: 20px;
-}
-
 .album-group {
     margin-bottom: 32px;
 }
@@ -73,7 +98,6 @@
     padding-bottom: 8px;
     border-bottom: 1px solid var(--color-border);
 }
-
 
 .flat-track-list {
     display: flex;
@@ -95,9 +119,8 @@
 }
 
 .track-row.active {
-    background-color: rgba(29, 155, 240, 0.1);
+    background-color: rgba(var(--color-primary-rgb), 0.1);
 }
-
 
 .track-cover-small {
     position: relative;
@@ -139,12 +162,10 @@
     color: white;
 }
 
-
 .track-row:hover .track-play-overlay,
 .track-row.active .track-play-overlay {
     opacity: 1;
 }
-
 
 .track-meta-col {
     flex: 1;
@@ -186,7 +207,6 @@
     text-align: right;
     display: none;
 }
-
 
 @media (min-width: 600px) {
     .track-album-col {

@@ -1,0 +1,139 @@
+/* @source ScrollToTop.css */
+.scroll-to-top-wrapper {
+    position: fixed;
+    bottom: 30px;
+    right: 20px;
+    z-index: 90;
+    opacity: 0;
+    visibility: hidden;
+    transform: translateY(15px);
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.scroll-to-top-wrapper.show {
+    opacity: 1;
+    visibility: visible;
+    transform: translateY(0);
+}
+
+
+.scroll-to-top-btn {
+    height: 48px;
+    width: 48px;
+    border-radius: 50%;
+    background-color: var(--color-primary);
+    color: white;
+    border: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.2);
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.scroll-text {
+    display: none; 
+}
+
+
+@media (min-width: 1280px) {
+    .scroll-to-top-wrapper {
+        
+        left: 50%;
+        right: auto;
+        transform: translateX(-50%) translateY(15px);
+        width: 100%;
+        max-width: 650px; 
+        display: flex;
+        justify-content: center;
+        bottom: 40px;
+        pointer-events: none; 
+    }
+
+    .scroll-to-top-wrapper.show {
+        transform: translateX(-50%) translateY(0);
+    }
+
+    .scroll-to-top-btn {
+        pointer-events: auto; 
+        width: auto;
+        height: 40px;
+        padding: 0 20px;
+        border-radius: 12px; 
+        background-color: var(--glass-bg);
+        backdrop-filter: blur(15px);
+        -webkit-backdrop-filter: blur(15px);
+        border: 1px solid var(--color-border);
+        color: var(--color-text);
+        font-weight: 700;
+        font-size: 14px;
+        gap: 8px;
+        box-shadow: var(--shadow-layered);
+    }
+
+    .scroll-to-top-btn:hover {
+        background-color: var(--color-primary);
+        color: white;
+        border-color: var(--color-primary);
+        transform: scale(1.05);
+    }
+
+    .scroll-text {
+        display: inline-block;
+    }
+
+    
+    body:has(.global-player) .scroll-to-top-wrapper {
+        bottom: 110px;
+    }
+}
+
+
+
+/* @source ScrollToTop.css */
+
+@media (min-width: 1280px) {
+    .scroll-to-top-wrapper {
+        left: 50%;
+        transform: translateX(-50%) translateY(15px);
+        width: 100%;
+        max-width: 650px;
+        display: flex;
+        justify-content: center;
+        
+        bottom: 15px; 
+        pointer-events: none;
+    }
+
+    .scroll-to-top-btn {
+        pointer-events: auto;
+        height: 32px; 
+        padding: 0 16px;
+        border-radius: 20px; 
+        background-color: var(--color-primary);
+        color: white;
+        font-weight: 700;
+        font-size: 13px;
+        gap: 6px;
+        border: none;
+        box-shadow: 0 4px 15px var(--color-primary-alpha);
+    }
+    
+    .scroll-to-top-btn:hover {
+        transform: translateY(-2px);
+        background-color: var(--color-primary-hover);
+    }
+}
+
+@media (max-width: 1279px) {
+    .scroll-to-top-wrapper {
+        right: 20px;
+        
+        bottom: 110px; 
+    }
+    
+    body:has(.has-player) .scroll-to-top-wrapper {
+        bottom: 170px;
+    }
+}

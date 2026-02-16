@@ -1,6 +1,6 @@
 {
   "name": "etc.app",
-  "version": "0.4.2",
+  "version": "0.5.0",
   "description": "Социальная сеть нового поколения. Делитесь моментами, музыкой и мыслями.",
   "author": {
     "name": "iamvany",
@@ -11,6 +11,7 @@
   "homepage": "./",
   "dependencies": {
     "@babel/standalone": "^7.29.1",
+    "@solar-icons/react": "^1.1.0",
     "@testing-library/dom": "^10.4.1",
     "@testing-library/jest-dom": "^6.9.1",
     "@testing-library/react": "^16.3.2",

@@ -1,10 +1,11 @@
+/* @source src/pages/Profile.jsx */
 import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { useParams } from 'react-router-dom';
 import { Virtuoso } from 'react-virtuoso';
 import { apiClient } from '../api/client';
 import { useUser } from '../context/UserContext';
 import { useModal } from '../context/ModalContext';
-import { getInitials } from '../utils/avatarUtils';
+
 
 import PostCard from '../components/PostCard';
 import { DynamicComponent } from '../core/ComponentRegistry';
@@ -15,21 +16,62 @@ import UserListModal from '../components/modals/UserListModal';
 import BannerEditorModal from '../components/modals/BannerEditorModal';
 import { ProfileSkeleton, PostSkeleton } from '../components/Skeletons';
 
+
+import { CameraIcon, SettingsIcon, CalendarIcon } from '../components/icons/CommonIcons';
 import { VerifiedBlue, VerifiedGold } from '../components/icons/VerifyIcons';
 
 import '../styles/Profile.css';
 
 const GOLD_VERIFIED_IDS = ['48f4cd67-58a2-4c0d-b1be-235fc4bb91a4'];
 
-const CameraIcon = () => (<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path><circle cx="12" cy="13" r="4"></circle></svg>);
-const SettingsIcon = () => (<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>);
-const CalendarIcon = () => (<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{marginRight: 6, opacity: 0.7}}><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>);
-
-
 function declension(number, titles) {
     const cases = [2, 0, 1, 1, 1, 2];
     return titles[(number % 100 > 4 && number % 100 < 20) ? 2 : cases[(number % 10 < 5) ? number % 10 : 5]];
 }
+
+
+const loadedBannersCache = new Set();
+
+const BannerImage = React.memo(({ src, alt }) => {
+    
+    const [isLoaded, setIsLoaded] = useState(() => !!src && loadedBannersCache.has(src));
+
+    
+    useEffect(() => {
+        if (src && !loadedBannersCache.has(src)) {
+            setIsLoaded(false);
+        } else if (src && loadedBannersCache.has(src)) {
+            setIsLoaded(true);
+        }
+    }, [src]);
+
+    const handleLoad = useCallback(() => {
+        if (src) loadedBannersCache.add(src);
+        setIsLoaded(true);
+    }, [src]);
+
+    return (
+        <>
+            <div className={`profile-banner-placeholder ${isLoaded ? 'hidden' : ''}`} />
+            
+            {src && (
+                <img 
+                    src={src} 
+                    alt={alt} 
+                    className={`profile-banner-img ${isLoaded ? 'loaded' : ''}`}
+                    onLoad={handleLoad}
+                    
+                    
+                    ref={(img) => {
+                        if (img && img.complete && !isLoaded) {
+                            handleLoad();
+                        }
+                    }}
+                />
+            )}
+        </>
+    );
+});
 
 const Profile = () => {
     const { username } = useParams();
@@ -41,7 +83,7 @@ const Profile = () => {
     const [activeTab, setActiveTab] = useState('posts'); 
     
     const [loadingProfile, setLoadingProfile] = useState(true);
-    const [loadingPosts, setLoadingPosts] = useState(false);
+    
     
     const [isFollowing, setIsFollowing] = useState(false);
     const [followersCount, setFollowersCount] = useState(0);
@@ -73,14 +115,11 @@ const Profile = () => {
             const userData = profileRes?.user || profileRes?.data || profileRes;
 
             if (userData && (userData.id || userData.username)) {
-                
                 const processedUser = {
                     ...userData,
-                    
                     isOnline: !!(userData.online || userData.isOnline),
-                    
                     lastSeen: userData.lastSeen || userData.last_seen || null,
-                    showLastSeen: userData.showLastSeen
+                    showLastSeen: userData.showLastSeen !== false
                 };
                 
                 setUser(processedUser);
@@ -103,7 +142,7 @@ const Profile = () => {
 
         isFetchingRef.current = true;
         if (isInitial) {
-            setLoadingPosts(true);
+            
             setPosts([]);
             nextCursorRef.current = null;
             hasMoreRef.current = true;
@@ -122,11 +161,7 @@ const Profile = () => {
             const responseData = res?.posts || res?.data?.posts || [];
             const pagination = res?.pagination || res?.data?.pagination;
 
-            if (isInitial) {
-                setPosts(responseData);
-            } else {
-                setPosts(prev => [...prev, ...responseData]);
-            }
+            setPosts(prev => isInitial ? responseData : [...prev, ...responseData]);
 
             if (pagination) {
                 nextCursorRef.current = pagination.nextCursor;
@@ -137,7 +172,7 @@ const Profile = () => {
         } catch (e) {
             console.error("Ошибка загрузки постов:", e);
         } finally {
-            setLoadingPosts(false);
+            
             isFetchingRef.current = false;
         }
     }, [username, activeTab]);
@@ -162,15 +197,52 @@ const Profile = () => {
         }
     };
 
-    const handleBannerUpdate = (newUrl) => {
-        setUser(prev => ({ ...prev, banner: newUrl }));
-        if (isMyProfile) setCurrentUser(prev => ({ ...prev, banner: newUrl }));
-    };
     
-    const handlePostCreated = (newPost) => {
-        if (activeTab === 'posts') {
-            setPosts(prev => [newPost, ...prev]);
-        }
+    const handleBannerUpdate = useCallback((newUrl) => {
+        setUser(prev => ({ ...prev, banner: newUrl }));
+        
+        
+        setCurrentUser(prev => {
+            if (prev.username === username) { 
+                return { ...prev, banner: newUrl };
+            }
+            return prev;
+        });
+    }, [setCurrentUser, username]);
+    
+    const handlePostCreated = useCallback((newPost) => {
+        
+        setActiveTab(currentTab => {
+            if (currentTab === 'posts') {
+                setPosts(prev => [newPost, ...prev]);
+            }
+            return currentTab;
+        });
+    }, []);
+
+    const renderOnlineStatus = () => {
+        if (!user) return null;
+        if (user.isOnline) return <div className="online-status-badge">В сети</div>;
+        if (user.showLastSeen === false || !user.lastSeen) return <div className="offline-status-badge">Оффлайн</div>;
+
+        const date = new Date(user.lastSeen);
+        if (isNaN(date.getTime())) return <div className="offline-status-badge">Оффлайн</div>;
+
+        const now = new Date();
+        const diffSeconds = Math.floor((now - date) / 1000);
+        let timeText = '';
+
+        if (diffSeconds < 60) timeText = 'только что';
+        else if (diffSeconds < 3600) {
+            const m = Math.max(1, Math.floor(diffSeconds / 60));
+            timeText = `${m} ${declension(m, ['минуту', 'минуты', 'минут'])} назад`;
+        } else if (diffSeconds < 86400) { 
+            const h = Math.floor(diffSeconds / 3600);
+            timeText = `${h} ${declension(h, ['час', 'часа', 'часов'])} назад`;
+        } else if (diffSeconds < 172800) timeText = 'вчера';
+        else timeText = date.toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' });
+
+        return <div className="offline-status-badge">Был(а) {timeText}</div>;
     };
 
     const formatDate = (dateStr) => {
@@ -179,190 +251,150 @@ const Profile = () => {
         return isNaN(date.getTime()) ? null : date.toLocaleDateString('ru-RU', { month: 'long', year: 'numeric' });
     };
 
-    
-    const renderOnlineStatus = () => {
-        if (!user) return null;
-        
-        
-        if (user.isOnline) {
-            return <div className="online-status-badge">В сети</div>;
-        }
-
-        
-        
-        if (user.showLastSeen === false) {
-             return <div className="offline-status-badge">Не в сети</div>;
-        }
-
-        
-        if (!user.lastSeen) {
-             return <div className="offline-status-badge">Не в сети</div>;
-        }
-
-        const date = new Date(user.lastSeen);
-        if (isNaN(date.getTime())) {
-             return <div className="offline-status-badge">Не в сети</div>;
-        }
-
-        const now = new Date();
-        const diffSeconds = Math.floor((now - date) / 1000);
-        let timeText = '';
-
-        if (diffSeconds < 60) {
-            timeText = 'только что';
-        } else if (diffSeconds < 3600) {
-            const m = Math.max(1, Math.floor(diffSeconds / 60));
-            timeText = `${m} ${declension(m, ['минуту', 'минуты', 'минут'])} назад`;
-        } else if (diffSeconds < 86400) { 
-            const h = Math.floor(diffSeconds / 3600);
-            timeText = `${h} ${declension(h, ['час', 'часа', 'часов'])} назад`;
-        } else if (diffSeconds < 172800) { 
-            timeText = 'вчера';
-        } else {
-            
-            timeText = date.toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' });
-        }
-
-        
-        
-        return <div className="offline-status-badge">Был(а) {timeText}</div>;
-    };
-
     const ProfileHeader = useMemo(() => {
         if (!user) return null;
         const hasGoldVerify = GOLD_VERIFIED_IDS.includes(user.id);
         const hasBlueVerify = user.verified && !hasGoldVerify;
         const isMutual = user.isFollowing && user.isFollowedBy;
-        const followsYou = user.isFollowedBy && !user.isFollowedBy;
+        const followsYou = user.isFollowedBy && !user.isFollowing;
         const formattedRegDate = formatDate(user.createdAt);
         
-        const isAvatarUrl = user.avatar && user.avatar.startsWith('http');
-        const avatarContent = isAvatarUrl ? (
-            <img src={user.avatar} alt={user.username} className="profile-avatar-img" />
-        ) : (
-            user.avatar ? user.avatar : getInitials(user.displayName || user.username)
-        );
-
         return (
-            <div className="profile-header-wrapper">
-                <div className="profile-banner">
-                    {user.banner ? (
-                        <img src={user.banner} alt="Banner" className="profile-banner__image" />
-                    ) : (
-                        <div className="profile-banner__placeholder" />
-                    )}
-                    {isMyProfile && (
-                        <button className="edit-banner-btn" onClick={() => openModal(<BannerEditorModal onSaveSuccess={handleBannerUpdate} />)} title="Изменить обложку">
-                            <CameraIcon />
-                        </button>
-                    )}
-                </div>
-                
-                <div className="profile-header-top">
-                    <div className="profile-avatar-wrapper">
-                        
-                        {user.isOnline && <div className="avatar-online-indicator" />}
-                        
-                        <div className="profile-avatar-placeholder">
-                            {avatarContent}
-                        </div>
+            <div className="profile-header-container">
+                {}
+                {user.banner && (
+                    <div className="profile-background-glow">
+                        <img src={user.banner} alt="" aria-hidden="true" />
+                        <div className="profile-glow-overlay" />
                     </div>
-                    
-                    <div className="profile-actions">
-                        {isMyProfile ? (
-                            <div style={{display: 'flex', gap: '8px'}}>
-                                <button className="profile-btn outline" onClick={() => openModal(<EditProfileModal />)}>Редактировать</button>
-                                <button className="profile-btn outline" style={{padding: '8px', minWidth: 'auto', display: 'flex', alignItems: 'center'}} onClick={() => openModal(<SettingsModal />)} title="Настройки">
-                                    <SettingsIcon />
-                                </button>
-                            </div>
-                        ) : (
-                            <button className={`profile-btn ${isFollowing ? 'outline' : 'filled'}`} onClick={handleFollowToggle}>
-                                {isFollowing ? 'Читаю' : 'Читать'}
+                )}
+
+                {}
+                <div className="profile-banner-group">
+                    <div className="profile-banner">
+                        <BannerImage src={user.banner} alt="Banner" />
+                        
+                        <div className="profile-banner-fade" />
+                        {isMyProfile && (
+                            <button className="edit-banner-btn-modern" onClick={() => openModal(<BannerEditorModal onSaveSuccess={handleBannerUpdate} />)}>
+                                <CameraIcon size={18} />
+                                <span>Изменить обложку</span>
                             </button>
                         )}
                     </div>
                 </div>
-
-                <div className="profile-details">
-                    <div className="profile-names">
-                        <div className="profile-display-name-row">
-                            <h1 className="profile-display-name">{user.displayName}</h1>
-                            {hasGoldVerify && <VerifiedGold title="Официальный аккаунт" style={{marginLeft: 4}} />}
-                            {hasBlueVerify && <VerifiedBlue title="Подтвержденный аккаунт" style={{marginLeft: 4}} />}
-                            
-                            
-                            {renderOnlineStatus()}
+                
+                <div className="profile-info-layer">
+                    <div className="profile-avatar-row">
+                        <div className="profile-avatar-main">
+                            <div className="avatar" style={{ 
+                                width: '100%', height: '100%', fontSize: '60px',
+                                border: '4px solid var(--color-background)',
+                                backgroundColor: 'var(--color-item-bg)'
+                            }}>
+                                {user.avatar || "👤"}
+                            </div>
+                            {user.isOnline && <div className="avatar-status-dot" />}
                         </div>
-                        <span className="profile-username">@{user.username}</span>
-                        <div className="profile-badges-row">
-                            {isMutual && <span className="mutual-badge">Взаимная подписка</span>}
-                            {followsYou && <span className="mutual-badge">Подписан(а) на вас</span>}
+                        
+                        <div className="profile-action-btns">
+                            {isMyProfile ? (
+                                <>
+                                    <button className="btn-modern-outline" onClick={() => openModal(<EditProfileModal />)}>Изменить профиль</button>
+                                    <button className="btn-modern-icon" onClick={() => openModal(<SettingsModal />)}><SettingsIcon size={20} /></button>
+                                </>
+                            ) : (
+                                <button className={`btn-modern-follow ${isFollowing ? 'unfollow' : 'follow'}`} onClick={handleFollowToggle}>
+                                    {isFollowing ? 'Вы читаете' : 'Читать'}
+                                </button>
+                            )}
                         </div>
                     </div>
-                    
-                    {user.bio && <p className="profile-bio">{user.bio}</p>}
-                    
-                    {formattedRegDate && (
-                        <div className="profile-meta-info">
-                            <div className="profile-join-date">
-                                <CalendarIcon />
-                                <span>Регистрация: {formattedRegDate}</span>
+
+                    <div className="profile-text-content">
+                        <div className="profile-name-row">
+                            <h1 className="profile-full-name">{user.displayName}</h1>
+                            <div className="verify-badges">
+                                {hasGoldVerify && <VerifiedGold />}
+                                {hasBlueVerify && <VerifiedBlue />}
                             </div>
+                            {renderOnlineStatus()}
                         </div>
-                    )}
-                    
-                    <div className="profile-stats">
-                        <button className="stat-item" onClick={() => openModal(<UserListModal username={username} type="following" title="Читаемые" />)}>
-                            <span className="stat-value">{user.followingCount || 0}</span>
-                            <span className="stat-label">в читаемых</span>
-                        </button>
-                        <button className="stat-item" onClick={() => openModal(<UserListModal username={username} type="followers" title="Читатели" />)}>
-                            <span className="stat-value">{followersCount}</span>
-                            <span className="stat-label">читателей</span>
-                        </button>
+                        <span className="profile-handle-text">@{user.username}</span>
+                        
+                        {(isMutual || followsYou) && (
+                            <div className="profile-relationship">
+                                {isMutual && <span className="rel-pill">Взаимная подписка</span>}
+                                {followsYou && <span className="rel-pill">Читает вас</span>}
+                            </div>
+                        )}
+
+                        {user.bio && <p className="profile-description">{user.bio}</p>}
+                        
+                        <div className="profile-meta-row">
+                            {formattedRegDate && (
+                                <div className="meta-item">
+                                    <CalendarIcon size={16} />
+                                    <span>В сообществе с {formattedRegDate}</span>
+                                </div>
+                            )}
+                        </div>
+                        
+                        <div className="profile-stats-row">
+                            <button className="stat-link" onClick={() => openModal(<UserListModal username={username} type="following" title="Читаемые" />)}>
+                                <strong>{user.followingCount || 0}</strong> <span>читаемых</span>
+                            </button>
+                            <button className="stat-link" onClick={() => openModal(<UserListModal username={username} type="followers" title="Читатели" />)}>
+                                <strong>{followersCount}</strong> <span>читателей</span>
+                            </button>
+                        </div>
                     </div>
                 </div>
 
-                <nav className="profile-tabs">
-                    <button className={`profile-tab ${activeTab === 'posts' ? 'active' : ''}`} onClick={() => setActiveTab('posts')}>
-                        <span className="tab-content">Посты</span>
+                <nav className="profile-nav-tabs">
+                    <button className={`nav-tab-item ${activeTab === 'posts' ? 'active' : ''}`} onClick={() => setActiveTab('posts')}>
+                        <span>Посты</span>
                     </button>
-                    <button className={`profile-tab ${activeTab === 'likes' ? 'active' : ''}`} onClick={() => setActiveTab('likes')}>
-                        <span className="tab-content">Нравится</span>
+                    <button className={`nav-tab-item ${activeTab === 'likes' ? 'active' : ''}`} onClick={() => setActiveTab('likes')}>
+                        <span>Нравится</span>
                     </button>
                 </nav>
 
-                <div className="profile-content-header">
+                <div className="profile-posts-header">
                     {isMyProfile && activeTab === 'posts' && (
-                        <DynamicComponent name="Components.CreatePost" fallback={CreatePostFallback} onPostCreated={handlePostCreated} />
-                    )}
-                    
-                    {loadingPosts && posts.length === 0 && <div style={{padding: '16px'}}><PostSkeleton /></div>}
-                    
-                    {!loadingPosts && posts.length === 0 && (
-                        <div className="empty-state">
-                            <h3>{activeTab === 'posts' ? 'Нет постов' : 'Нет отметок "Нравится"'}</h3>
-                            <p style={{marginTop: 8, color: 'var(--color-text-secondary)'}}>
-                                {activeTab === 'posts' 
-                                    ? (isMyProfile ? 'Опубликуйте что-нибудь!' : 'Пользователь пока ничего не публиковал.')
-                                    : 'Здесь появятся посты, которые вам понравились.'
-                                }
-                            </p>
+                        <div className="profile-create-wrap">
+                            <DynamicComponent name="Components.CreatePost" fallback={CreatePostFallback} onPostCreated={handlePostCreated} />
                         </div>
                     )}
                 </div>
             </div>
         );
-    }, [user, isMyProfile, isFollowing, followersCount, activeTab, loadingPosts, posts.length, username, openModal, currentUser]);
+        
+    }, [user, isMyProfile, isFollowing, followersCount, activeTab, username, openModal, handleBannerUpdate, handlePostCreated, renderOnlineStatus]); 
 
-    if (loadingProfile) return <div className="profile-page" style={{padding: 20}}><ProfileSkeleton /></div>;
-    if (!user) return <div className="empty-state" style={{marginTop: 100}}><h2>Пользователь не найден</h2><p>Такого аккаунта не существует или он был удален.</p></div>;
+    if (loadingProfile) {
+        return (
+            <div className="profile-page">
+                <ProfileSkeleton />
+                <div style={{padding: '0 16px', marginTop: 20}}>
+                    <PostSkeleton />
+                </div>
+            </div>
+        );
+    }
+    
+    if (!user) return (
+        <div className="empty-state" style={{marginTop: 100}}>
+            <h2>Пользователь не найден</h2>
+            <p>Аккаунт не существует или был удален.</p>
+        </div>
+    );
 
     return (
-        <div className="profile-page" style={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
+        <div className="profile-page content-fade-in" style={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
             <Virtuoso
                 ref={virtuosoRef}
+                data-virtuoso-scroller="true"
                 style={{ flexGrow: 1 }}
                 data={displayPosts}
                 endReached={() => loadPosts(false)}
@@ -370,19 +402,17 @@ const Profile = () => {
                 components={{
                     Header: () => ProfileHeader,
                     Footer: () => hasMoreRef.current && posts.length > 0 ? (
-                        <div style={{padding: 20}}><PostSkeleton /></div>
+                        <div style={{padding: '0'}}><PostSkeleton /></div>
                     ) : (
                         <div style={{height: 140}} />
                     )
                 }}
                 itemContent={(index, post) => (
-                    <div style={{ paddingBottom: 1 }}>
-                        <PostCard 
-                            post={post} 
-                            key={post.id} 
-                            isPinned={user?.pinnedPostId === post.id} 
-                        />
-                    </div>
+                    <PostCard 
+                        post={post} 
+                        key={post.id} 
+                        isPinned={user?.pinnedPostId === post.id} 
+                    />
                 )}
             />
         </div>

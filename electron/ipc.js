@@ -2,7 +2,7 @@ const { ipcMain, shell, app } = require('electron');
 const path = require('path');
 const fs = require('fs/promises');
 const ffmpeg = require('fluent-ffmpeg');
-
+const jsmediatags = require('jsmediatags');
 
 const auth = require('./auth');
 const network = require('./network');
@@ -26,12 +26,11 @@ async function withTempFiles(inputData, extension, callback) {
         const outputData = await fs.readFile(resultPath);
         return { success: true, data: outputData };
     } catch (error) {
-        logDebug(`[FFMPEG-ERROR] ${error.message}`);
+        console.error(`[FFMPEG-ERROR] ${error.message}`);
         return { success: false, error: error.message };
     } finally {
         await fs.unlink(tempInputPath).catch(() => {});
         await fs.unlink(tempOutputPath).catch(() => {});
-        
         await fs.unlink(tempOutputPath + '.mp3').catch(() => {});
         await fs.unlink(tempOutputPath + '.mp4').catch(() => {});
     }
@@ -44,10 +43,8 @@ function registerHandlers() {
     
     ipcMain.handle('app:get-version', () => app.getVersion());
 
-    
     ipcMain.handle('open-stealth-login', (event) => auth.handleStealthLogin(event));
 
-    
     ipcMain.handle('get-init-user', async () => {
         const token = store.loadRefreshToken();
         if (!token) return null;
@@ -65,17 +62,15 @@ function registerHandlers() {
         return null;
     });
 
-    
     ipcMain.handle('api-call', (e, a) => network.apiCall(a.endpoint, a.method, a.body));
 
-    
     ipcMain.handle('open-external-link', (e, u) => shell.openExternal(u));
+    
     ipcMain.handle('download-file', (e, { url }) => {
         const win = getMainWindow();
         if (win) win.webContents.downloadURL(url);
     });
 
-    
     ipcMain.handle('presence:start', () => network.startStreamConnection());
     ipcMain.handle('presence:stop', () => network.stopStreamConnection());
 
@@ -113,32 +108,87 @@ function registerHandlers() {
     
     ipcMain.handle('upload-file', async (e, { file, fileBuffer, fileName, fileType }) => {
         try {
-            const accessToken = store.getAccessToken();
-            let buffer = fileBuffer || (file?.path ? await fs.readFile(file.path) : null);
-            if (!buffer) throw new Error("No data");
-
-            const formData = new FormData();
-            const blob = new Blob([buffer], { type: fileType });
-            formData.append('file', blob, fileName);
-
-            const options = {
-                method: 'POST',
-                headers: { 'User-Agent': USER_AGENT },
-                body: formData
-            };
-            if (accessToken) options.headers['Authorization'] = `Bearer ${accessToken}`;
-
-            const response = await fetch(`${API_BASE}/files/upload`, options);
-            if (!response.ok) throw new Error(`Server error: ${response.status}`);
-
-            return { data: await response.json() };
+            const buffer = fileBuffer || (file?.path ? await fs.readFile(file.path) : null);
+            return await network.uploadFileInternal(buffer, fileName, fileType);
         } catch (error) {
             return { error: { message: error.message } };
         }
     });
 
-    ipcMain.handle('cancel-stealth-login', () => auth.cancelStealthLogin());
+    
+    ipcMain.handle('upload-music-post', async (event, { uploadId, filePath, fileName, fileType }) => {
+        console.log(`[MUSIC-UPLOAD] Начало процесса для ID: ${uploadId}`);
+        
+        const sendStatus = (status, error = null) => {
+            if (event.sender && !event.sender.isDestroyed()) {
+                console.log(`[MUSIC-UPLOAD] ${uploadId} -> Статус: ${status}`);
+                event.sender.send('upload-progress', { id: uploadId, status, error });
+            }
+        };
 
+        try {
+            
+            sendStatus('reading_tags');
+            const tags = await new Promise((resolve, reject) => {
+                jsmediatags.read(filePath, {
+                    onSuccess: resolve,
+                    onError: (err) => reject(new Error(err.info || "Не удалось прочитать теги файла"))
+                });
+            });
+
+            const title = tags.tags.title || fileName.replace(/\.[^/.]+$/, "");
+            const artist = tags.tags.artist || 'Неизвестный исполнитель';
+            const album = tags.tags.album || 'Синглы';
+            
+            
+            const b64 = (str) => Buffer.from(str).toString('base64');
+            const postContent = `#nowkie_music_track [title:${b64(title)}] [artist:${b64(artist)}] [album:${b64(album)}]`;
+
+            
+            sendStatus('uploading_audio');
+            const audioBuffer = await fs.readFile(filePath);
+            const audioRes = await network.uploadFileInternal(audioBuffer, fileName, fileType);
+            
+            if (audioRes.error) throw new Error(audioRes.error.message);
+            const attachmentIds = [audioRes.data.id];
+
+            
+            if (tags.tags.picture) {
+                try {
+                    sendStatus('uploading_cover');
+                    const { data, format } = tags.tags.picture;
+                    const coverBuffer = Buffer.from(data);
+                    const coverRes = await network.uploadFileInternal(coverBuffer, 'cover.jpg', format);
+                    if (!coverRes.error && coverRes.data?.id) {
+                        attachmentIds.push(coverRes.data.id);
+                    }
+                } catch (coverErr) {
+                    console.warn("[MUSIC-UPLOAD] Не удалось загрузить обложку, продолжаем без неё:", coverErr.message);
+                }
+            }
+
+            
+            sendStatus('creating_post');
+            const postRes = await network.apiCall('/posts', 'POST', {
+                content: postContent,
+                attachmentIds: attachmentIds
+            });
+
+            if (postRes.error) throw new Error(postRes.error.message);
+
+            
+            console.log(`[MUSIC-UPLOAD] Успешно завершено для: ${title}`);
+            sendStatus('complete');
+            return { success: true };
+
+        } catch (err) {
+            console.error(`[MUSIC-UPLOAD] ОШИБКА для ${uploadId}:`, err.message);
+            sendStatus('error', err.message);
+            return { success: false, error: err.message };
+        }
+    });
+
+    ipcMain.handle('cancel-stealth-login', () => auth.cancelStealthLogin());
     ipcMain.handle('app:quick-check', () => network.quickInternetCheck());
     ipcMain.handle('app:check-api-status', () => network.checkApiStatus());
 
@@ -149,6 +199,5 @@ function registerHandlers() {
     ipcMain.handle('themes:delete', (e, f) => themes.deleteTheme(f));
     ipcMain.handle('themes:read-content', (e, f) => themes.readThemeContent(f));
 }
-
 
 module.exports = { registerHandlers };

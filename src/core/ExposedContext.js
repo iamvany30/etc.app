@@ -1,23 +1,27 @@
+
 import React from 'react';
-import ReactDOM from 'react-dom/client';  
+import ReactDOM from 'react-dom/client';
 import * as RouterDOM from 'react-router-dom';
 import { Virtuoso, VirtuosoGrid, GroupedVirtuoso } from 'react-virtuoso';
 
- 
+
 import { apiClient } from '../api/client';
 import { useUser } from '../context/UserContext';
 import { useModal } from '../context/ModalContext';
 import { useMusic } from '../context/MusicContext';
+import { useUpload } from '../context/UploadContext';
 
- 
+import * as CommonIcons from '../components/icons/CommonIcons';
 import * as MediaIcons from '../components/icons/MediaIcons';
 import * as MenuIcons from '../components/icons/MenuIcons';
 import * as VerifyIcons from '../components/icons/VerifyIcons';
 import * as SidebarIcons from '../components/icons/SidebarIcons';
 import * as NotificationIcons from '../components/icons/NotificationIcons';
-import * as SettingsIcons from '../components/modals/SettingsIcons';
+import * as SettingsIcons from '../components/icons/SettingsIcons';
+import * as ThemeIcons from '../components/icons/ThemeIcons';
+import { MusicIcon } from '../components/icons/MusicIcon';
 
- 
+
 import PostCard from '../components/PostCard';
 import CreatePost from '../components/CreatePost';
 import MediaGrid from '../components/MediaGrid';
@@ -27,10 +31,11 @@ import MobileNav from '../components/MobileNav';
 import GlobalPlayer from '../components/GlobalPlayer';
 import Comment from '../components/Comment';
 import TitleBar from '../components/TitleBar';
-import VoicePlayer from '../components/VoicePlayer';  
-import MusicPlayer from '../components/MusicPlayer';  
+import VoicePlayer from '../components/VoicePlayer';
+import MusicPlayer from '../components/MusicPlayer';
+import DrawingBoard from '../components/DrawingBoard';
 
- 
+
 import SettingsModal from '../components/modals/SettingsModal';
 import EditProfileModal from '../components/modals/EditProfileModal';
 import ImageModal from '../components/modals/ImageModal';
@@ -39,90 +44,74 @@ import ConfirmDeleteModal from '../components/modals/ConfirmDeleteModal';
 import UserListModal from '../components/modals/UserListModal';
 import ExternalLinkModal from '../components/modals/ExternalLinkModal';
 
+
 import { ComponentRegistry, DynamicComponent } from './ComponentRegistry';
 
- 
+
 const utils = {
-     
+    
     formatNumber: (num) => {
         if (!num) return '0';
         if (num >= 1000000) return (num / 1000000).toFixed(1) + 'M';
         if (num >= 1000) return (num / 1000).toFixed(1) + 'K';
         return num.toString();
     },
-
-     
+    
     formatDuration: (seconds) => {
         const min = Math.floor(seconds / 60);
         const sec = Math.floor(seconds % 60);
         return `${min}:${sec.toString().padStart(2, '0')}`;
     },
-
-     
-    clsx: (...args) => {
-        return args.filter(Boolean).join(' ');
-    },
-
-     
+    
+    clsx: (...args) => args.filter(Boolean).join(' '),
+    
     debounce: (func, wait) => {
         let timeout;
         return function(...args) {
-            const context = this;
             clearTimeout(timeout);
-            timeout = setTimeout(() => func.apply(context, args), wait);
+            timeout = setTimeout(() => func.apply(this, args), wait);
         };
-    },
-
-     
-    safeParse: (str, fallback = null) => {
-        try { return JSON.parse(str); } catch { return fallback; }
     }
 };
 
- 
+
 const system = {
-    copyToClipboard: (text) => {
-        navigator.clipboard.writeText(text).catch(console.error);
-    },
+    
+    copyToClipboard: (text) => navigator.clipboard.writeText(text).catch(console.error),
+    
     openExternal: (url) => {
-        if (window.api && window.api.openExternalLink) {
-            window.api.openExternalLink(url);
-        } else {
-            window.open(url, '_blank');
-        }
-    },
-    playSound: (type) => {
-         
-        console.log('Playing sound:', type);
+        if (window.api?.openExternalLink) window.api.openExternalLink(url);
+        else window.open(url, '_blank');
     }
 };
 
+/**
+ * Главная функция, которая собирает все экспорты в единый глобальный объект `window.ItdApp`
+ */
 export const setupExposedContext = () => {
     window.ItdApp = {
-         
+        
         React,
         ReactDOM,
         RouterDOM,
+        Virtuoso: { Virtuoso, VirtuosoGrid, GroupedVirtuoso },
+
         
-         
-        Virtuoso,
-        VirtuosoGrid,
-        GroupedVirtuoso,
-        
-         
         DynamicComponent,
         register: ComponentRegistry.register,
         getComponent: ComponentRegistry.get,
         
-         
+        
         api: apiClient,
         
-         
+        
         hooks: {
+            
             useUser, 
             useModal, 
             useMusic,
-             
+            useUpload,
+            
             useState: React.useState,
             useEffect: React.useEffect,
             useCallback: React.useCallback,
@@ -131,55 +120,49 @@ export const setupExposedContext = () => {
             useContext: React.useContext,
             useLayoutEffect: React.useLayoutEffect,
             useReducer: React.useReducer,
-             
+            
+            
             useNavigate: RouterDOM.useNavigate,
             useLocation: RouterDOM.useLocation,
             useParams: RouterDOM.useParams,
             useSearchParams: RouterDOM.useSearchParams
         },
 
-         
+        
         utils,
         system,
 
-         
+        
         unload: (fileList) => {
-            if (!fileList || !Array.isArray(fileList)) return;
-            Array.from(document.styleSheets).forEach((sheet) => {
-                try {
-                    const owner = sheet.ownerNode;
-                    if (!owner || owner.id === 'theme-dynamic-style') return;
-                    const cssText = owner.textContent || "";
-                    const href = sheet.href || "";
-                     
-                    const shouldDisable = fileList.some(name => cssText.includes(`@source ${name}`) || href.includes(name));
-                    if (shouldDisable) {
-                        owner.setAttribute('data-itd-shell-disabled', 'true');
-                        owner.disabled = true;
-                        if (owner.tagName === 'LINK') owner.rel = 'alternate stylesheet';
-                    }
-                } catch (e) {}
+            if (!Array.isArray(fileList)) return;
+            document.querySelectorAll('style, link[rel="stylesheet"]').forEach(el => {
+                const content = el.tagName === 'STYLE' ? el.textContent : el.href;
+                if (fileList.some(name => content.includes(name))) {
+                    el.disabled = true;
+                    el.dataset.themeUnloaded = 'true';
+                }
             });
         },
-
         restoreAllStyles: () => {
-            const disabled = document.querySelectorAll('[data-itd-shell-disabled="true"]');
-            disabled.forEach(el => {
+            document.querySelectorAll('[data-theme-unloaded="true"]').forEach(el => {
                 el.disabled = false;
-                el.removeAttribute('data-itd-shell-disabled');
-                if (el.tagName === 'LINK') el.rel = 'stylesheet';
+                delete el.dataset.themeUnloaded;
             });
         },
 
-         
+        
         Icons: { 
+            ...CommonIcons,
             ...MediaIcons, 
             ...MenuIcons, 
             ...VerifyIcons, 
             ...SidebarIcons, 
             ...NotificationIcons, 
-            ...SettingsIcons 
+            ...SettingsIcons,
+            ...ThemeIcons,
+            MusicIcon 
         },
+        
         
         Components: { 
             PostCard, 
@@ -192,8 +175,10 @@ export const setupExposedContext = () => {
             Comment, 
             TitleBar,
             VoicePlayer,
-            MusicPlayer
+            MusicPlayer,
+            DrawingBoard
         },
+        
         
         Modals: { 
             SettingsModal, 

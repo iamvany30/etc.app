@@ -3,10 +3,13 @@ import ReactDOM from 'react-dom';
 import ConfirmDeleteModal from '../modals/ConfirmDeleteModal';
 import { apiClient } from '../../api/client';
 import { ShareIcon, EditIcon, DeleteIcon, PinIcon } from '../icons/MenuIcons';
+import { useIsland } from '../../context/IslandContext';
+
 
 const PostMenu = ({ post, isOwner, isPinned, ctrl, onClose, anchorRef }) => {
     const [position, setPosition] = useState({ top: 0, left: 0 });
     const menuRef = useRef(null);
+    const { showIslandAlert } = useIsland();
 
     
     useLayoutEffect(() => {
@@ -55,9 +58,9 @@ const PostMenu = ({ post, isOwner, isPinned, ctrl, onClose, anchorRef }) => {
     }, [onClose, anchorRef]);
 
     const handleShare = () => {
-        const url = `https://xn--d1ah4a.com/@${post.author?.username}/post/${post.id}`;
-        navigator.clipboard.writeText(url).then(() => alert("Ссылка скопирована!")).catch(() => {});
-        onClose();
+        const url = `...`;
+        navigator.clipboard.writeText(url);
+        showIslandAlert('success', 'Ссылка скопирована', '🔗');
     };
 
     const handlePin = async () => {
@@ -92,7 +95,7 @@ const PostMenu = ({ post, isOwner, isPinned, ctrl, onClose, anchorRef }) => {
                 top: position.top,
                 left: position.left,
                 position: 'absolute',
-                zIndex: 99999, 
+                zIndex: 500, 
                 marginTop: 0 
             }}
             onClick={(e) => e.stopPropagation()}

@@ -1,31 +1,33 @@
+/* @source MobileNav.jsx */
 import React from 'react';
 import { NavLink } from 'react-router-dom';
 import { IconFeed, IconExplore, IconNotifications, IconProfile } from './icons/SidebarIcons';
+import { MusicIcon } from './icons/MusicIcon'; 
 import { useUser } from '../context/UserContext';
 import '../styles/MobileNav.css';  
 
 const MobileNav = () => {
     const { currentUser } = useUser();
-    
     if (!currentUser) return null;
+
+    const navItems = [
+        { to: "/", label: "Лента", icon: <IconFeed /> },
+        { to: "/music", label: "Музыка", icon: <MusicIcon /> },
+        { to: "/explore", label: "Обзор", icon: <IconExplore /> },
+        { to: "/notifications", label: "События", icon: <IconNotifications /> },
+        { to: `/profile/${currentUser.username}`, label: "Профиль", icon: <IconProfile /> }
+    ];
 
     return (
         <nav className="mobile-nav">
-            <NavLink to="/" className={({isActive}) => `mobile-nav-item ${isActive ? 'active' : ''}`}>
-                <IconFeed width="24" height="24" />
-            </NavLink>
-            
-            <NavLink to="/explore" className={({isActive}) => `mobile-nav-item ${isActive ? 'active' : ''}`}>
-                <IconExplore width="24" height="24" />
-            </NavLink>
-            
-            <NavLink to="/notifications" className={({isActive}) => `mobile-nav-item ${isActive ? 'active' : ''}`}>
-                <IconNotifications width="24" height="24" />
-            </NavLink>
-            
-            <NavLink to={`/profile/${currentUser.username}`} className={({isActive}) => `mobile-nav-item ${isActive ? 'active' : ''}`}>
-                <IconProfile width="24" height="24" />
-            </NavLink>
+            {navItems.map(item => (
+                <NavLink key={item.to} to={item.to} className={({isActive}) => `mobile-nav-item ${isActive ? 'active' : ''}`}>
+                    <div className="nav-item-content">
+                        {item.icon}
+                        <span className="nav-item-label">{item.label}</span>
+                    </div>
+                </NavLink>
+            ))}
         </nav>
     );
 };

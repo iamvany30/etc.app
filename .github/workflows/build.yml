@@ -1,4 +1,4 @@
-name: Build and Publish
+name: Build and Publish Windows
 
 on:
   push:
@@ -8,12 +8,11 @@ on:
 
 jobs:
   release:
-    name: Build for ${{ matrix.os }}
-    runs-on: ${{ matrix.os }}
+    name: Build Windows App
+    runs-on: windows-latest
 
-    strategy:
-      matrix:
-        os: [ubuntu-latest, macos-latest, windows-latest]
+    permissions:
+      contents: write
 
     steps:
       - name: Checkout git repo
@@ -26,9 +25,9 @@ jobs:
           cache: 'npm'
 
       - name: Install dependencies
-        run: npm install
+        run: npm ci
 
-      - name: Build React App
+      - name: Build React Frontend
         run: npm run build
         env:
           CI: false
@@ -37,5 +36,6 @@ jobs:
         uses: samuelmeuli/action-electron-builder@v1
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
+          args: --windows
           release: true
           max_attempts: 3

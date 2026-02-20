@@ -1,4 +1,4 @@
-# итд.app (etc.app)
+# итд.app (etc.app) - Windows App
 
 ![Version](https://img.shields.io/badge/version-0.4.0-blue.svg)
 ![Electron](https://img.shields.io/badge/Electron-34.0-2F3336.svg?logo=electron)

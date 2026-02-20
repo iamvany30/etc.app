@@ -1,201 +1,300 @@
-const { net, BrowserWindow, session } = require('electron');
+const { net, session, app } = require('electron');
 const { SITE_DOMAIN, API_BASE, USER_AGENT } = require('./config');
 const store = require('./store');
 const { logDebug } = require('./logger');
 
+let GLOBAL_USER_AGENT = USER_AGENT;
+let GLOBAL_ACCESS_TOKEN = null; 
+let isSessionRestored = false;
 let activeStreamRequest = null;
-let reconnectTimer = null;
-let isStreamExpected = false; 
-let activeDdosPromise = null;
-let activeRefreshPromise = null;
-let isInjecting = false;
+let isStreamExpected = false;
+let isRefreshing = false;
+let refreshPromise = null;
 
-async function flushCookies() {
+function setGlobalAccessToken(token) {
+    GLOBAL_ACCESS_TOKEN = token;
+}
+
+
+async function captureAndSaveCookies() {
     try {
-        await session.defaultSession.cookies.flushStore();
+        
+        const cookies = await session.defaultSession.cookies.get({ domain: 'xn--d1ah4a.com' });
+        
+        if (cookies && cookies.length > 0) {
+            
+            store.updateActiveSessionCookies(cookies);
+            logDebug(`[Network] Актуальные куки сохранены (${cookies.length} шт).`);
+        }
     } catch (e) {
-        logDebug(`[Cookies] Sync error: ${e.message}`);
+        console.error("[Network] Не удалось сохранить свежие куки:", e);
     }
 }
 
-async function injectRefreshTokenIntoSession(token) {
-    if (!token || isInjecting) return;
-    isInjecting = true;
+async function applyCookiesToSession(cookies) {
+    if (!cookies || !Array.isArray(cookies)) return;
+
+    let restoredCount = 0;
+    const cookieNames = cookies.map(c => c.name).join(', ');
+    logDebug(`[Network] Применяем куки: ${cookieNames}`);
+
+    for (const cookie of cookies) {
+        if (!cookie || typeof cookie.name !== 'string' || typeof cookie.domain !== 'string') continue;
+        try {
+            if (cookie.name === 'refresh_token') cookie.path = '/';
+            
+            let cookieDomain = cookie.domain;
+            let urlDomain = cookieDomain.startsWith('.') ? cookieDomain.substring(1) : cookieDomain;
+            const schema = cookie.secure ? 'https://' : 'http://';
+            const url = `${schema}${urlDomain}${cookie.path || '/'}`;
+            
+            let sameSite = 'unspecified';
+            if (cookie.sameSite && typeof cookie.sameSite === 'string') {
+                const ssLower = cookie.sameSite.toLowerCase();
+                if (ssLower.includes('lax')) sameSite = 'lax';
+                else if (ssLower.includes('strict')) sameSite = 'strict';
+                else if (ssLower.includes('none')) sameSite = 'no_restriction';
+            }
+
+            
+            if (sameSite === 'no_restriction' && !cookie.secure) {
+                logDebug(`[Network] Пропуск небезопасной куки ${cookie.name} с SameSite=None`);
+                continue;
+            }
+
+            await session.defaultSession.cookies.set({
+                url: url,
+                name: cookie.name,
+                value: String(cookie.value || ''),
+                domain: cookie.domain,
+                path: cookie.path || '/',
+                secure: !!cookie.secure,  
+                httpOnly: !!cookie.httpOnly,
+                sameSite: sameSite,
+                expirationDate: cookie.expirationDate || cookie.expires || (Date.now() / 1000) + 31536000 
+            });
+            restoredCount++;
+        } catch (e) {
+            console.warn(`[Network] Ошибка установки куки ${cookie.name}:`, e.message);
+        }
+    }
+    
+    await session.defaultSession.cookies.flushStore();
+    logDebug(`[Network] Успешно применено кук: ${restoredCount}`);
+}
+
+async function restoreSession() {
+    const data = store.loadSessionData();
+    if (!data) {
+        logDebug("[Network] Нет данных сессии для активного аккаунта.");
+        return { success: false, reason: 'no_data' };
+    }
+
+    logDebug("[Network] Начало восстановления сессии активного аккаунта...");
+
     try {
-        const domain = new URL(SITE_DOMAIN).hostname;
-        const dotDomain = domain.startsWith('.') ? domain : `.${domain}`;
+        if (data.userAgent) {
+            GLOBAL_USER_AGENT = data.userAgent;
+            session.defaultSession.setUserAgent(GLOBAL_USER_AGENT);
+        } else {
+            GLOBAL_USER_AGENT = USER_AGENT;
+            session.defaultSession.setUserAgent(GLOBAL_USER_AGENT);
+        }
+
+        await session.defaultSession.clearStorageData({ storages: ['cookies', 'localstorage'] });
+
+        if (data.cookies && Array.isArray(data.cookies)) {
+            await applyCookiesToSession(data.cookies);
+        }
         
-        await session.defaultSession.cookies.set({
-            url: SITE_DOMAIN,
-            name: 'refresh_token',
-            value: token,
-            domain: dotDomain,
-            path: '/',
-            secure: true,
-            httpOnly: true,
-            expirationDate: Math.floor(Date.now() / 1000) + (60 * 60 * 24 * 30)
-        });
-        await flushCookies();
+        isSessionRestored = true;
+        return { success: true };
     } catch (e) {
-        logDebug(`[Cookies] Inject error: ${e.message}`);
-    } finally {
-        isInjecting = false;
+        logDebug(`[Network] Ошибка восстановления сессии: ${e.message}`);
+        return { success: false, reason: 'restore_error' };
     }
 }
 
-function waitForDdosClearance(url) {
-    if (activeDdosPromise) return activeDdosPromise;
+async function switchUserSession(targetAccount) {
+    logDebug(`[Network] Переключение сессии на: ${targetAccount?.user?.username}`);
+    
+    if (!targetAccount || !targetAccount.session) {
+        return { success: false, error: "Invalid account data" };
+    }
 
-    activeDdosPromise = new Promise((resolve) => {
-        const win = new BrowserWindow({
-            width: 550, 
-            height: 700,
-            show: false, 
-            title: "Security Check",
-            alwaysOnTop: true,
-            webPreferences: {
-                nodeIntegration: false,
-                contextIsolation: true,
-                session: session.defaultSession
-            }
-        });
+    try {
+        stopStreamConnection();
+        GLOBAL_ACCESS_TOKEN = null;
+        isSessionRestored = false;
         
-        win.setMenu(null);
-        let isResolved = false;
+        await session.defaultSession.clearStorageData();
+        logDebug("[Network] Хранилище сессии очищено.");
 
-        const finish = (result) => {
-            if (isResolved) return;
-            isResolved = true;
-            activeDdosPromise = null;
-            setTimeout(() => { try { if(!win.isDestroyed()) win.destroy(); } catch(e){} }, 500);
-            resolve(result);
-        };
+        const sessionData = targetAccount.session;
+        if (sessionData.userAgent) {
+            GLOBAL_USER_AGENT = sessionData.userAgent;
+            session.defaultSession.setUserAgent(GLOBAL_USER_AGENT);
+        } else {
+            GLOBAL_USER_AGENT = USER_AGENT;
+            session.defaultSession.setUserAgent(GLOBAL_USER_AGENT);
+        }
 
-        const checkPage = async () => {
-            if (win.isDestroyed() || isResolved) return;
-            const title = win.getTitle().toLowerCase();
-            const pageText = await win.webContents.executeJavaScript('document.body.innerText').catch(() => '');
-            const isProtected = title.includes('ddos-guard') || title.includes('just a moment') || title.includes('checking your browser');
-            const isApiReached = pageText.includes('NOT_FOUND') || pageText.includes('"error"') || (pageText.trim().startsWith('{') && pageText.trim().endsWith('}'));
+        if (sessionData.cookies && Array.isArray(sessionData.cookies)) {
+            await applyCookiesToSession(sessionData.cookies);
+        }
 
-            if (isApiReached || (!isProtected && title !== '' && title !== 'electron')) {
-                finish(true);
-            }
-        };
-
-        win.webContents.on('did-finish-load', checkPage);
-        win.on('page-title-updated', checkPage);
-
-        const showTimer = setTimeout(() => { if(!win.isDestroyed() && !isResolved) win.show(); }, 4000);
-        const failTimer = setTimeout(() => finish(false), 60000);
-
-        win.on('closed', () => { clearTimeout(showTimer); clearTimeout(failTimer); finish(false); });
-        win.loadURL(url, { userAgent: USER_AGENT });
-    });
-
-    return activeDdosPromise;
+        logDebug("[Network] Проверка сессии после переключения...");
+        const refreshRes = await rawFetch('/v1/auth/refresh', { method: 'POST' });
+        
+        if (refreshRes.ok && refreshRes.data.accessToken) {
+            GLOBAL_ACCESS_TOKEN = refreshRes.data.accessToken;
+            isSessionRestored = true;
+            logDebug("[Network] Сессия успешно переключена и обновлена.");
+            
+            
+            await captureAndSaveCookies();
+            
+            return { success: true };
+        } else {
+            logDebug(`[Network] Сессия переключена, но токен не обновлен (Status: ${refreshRes.status}). Возможно, истек срок действия.`);
+            return { success: true, warning: "token_refresh_failed" };
+        }
+    } catch (e) {
+        logDebug(`[Network] Ошибка при переключении сессии: ${e.message}`);
+        return { success: false, error: e.message };
+    }
 }
 
-function rawFetch(endpoint, options = {}, attempt = 1) {
-    return new Promise(async (resolve) => {
+function rawFetch(endpoint, options = {}) {
+    return new Promise((resolve) => {
         const url = endpoint.startsWith('http') ? endpoint : `${API_BASE}${endpoint}`;
-        if (attempt > 3) return resolve({ ok: false, status: 0, error: 'Max retries' });
-
-        const request = net.request({
-            method: options.method || 'GET',
-            url: url,
-            useSessionCookies: true
+        
+        const request = net.request({ 
+            method: options.method || 'GET', 
+            url: url, 
+            useSessionCookies: true 
         });
 
-        const accessToken = store.getAccessToken();
-        request.setHeader('User-Agent', USER_AGENT);
+        const timeoutId = setTimeout(() => {
+            request.abort();
+            logDebug(`[Network] ТАЙМАУТ (${url}) - запрос прерван.`);
+            resolve({ ok: false, status: 408, error: 'Request Timeout' });
+        }, 15000);
+
+        request.setHeader('User-Agent', GLOBAL_USER_AGENT);
         request.setHeader('Origin', SITE_DOMAIN);
         request.setHeader('Referer', SITE_DOMAIN + '/');
-        request.setHeader('Accept', 'application/json');
-        if (accessToken) request.setHeader('Authorization', `Bearer ${accessToken}`);
+        request.setHeader('Accept', 'application/json, text/plain, */*');
+        request.setHeader('Authority', 'xn--d1ah4a.com');
+        request.setHeader('sec-ch-ua', '"Chromium";v="124", "Google Chrome";v="124", "Not-A.Brand";v="99"');
+        request.setHeader('sec-ch-ua-mobile', '?0');
+        request.setHeader('sec-ch-ua-platform', '"Windows"');
+        request.setHeader('sec-fetch-dest', 'empty');
+        request.setHeader('sec-fetch-mode', 'cors');
+        request.setHeader('sec-fetch-site', 'same-origin');
         
+        if (GLOBAL_ACCESS_TOKEN) {
+            request.setHeader('Authorization', `Bearer ${GLOBAL_ACCESS_TOKEN}`);
+        }
+
         if (options.headers) {
             Object.keys(options.headers).forEach(key => request.setHeader(key, options.headers[key]));
         }
 
-        if (options.body) request.write(options.body);
-
         request.on('response', (response) => {
+            clearTimeout(timeoutId);
+
             const chunks = [];
             response.on('data', (chunk) => chunks.push(chunk));
-            response.on('end', async () => {
-                const buffer = Buffer.concat(chunks);
-                const text = buffer.toString('utf8');
 
-                if ((response.statusCode === 403 || response.statusCode === 503) && text.includes('ddos-guard')) {
-                    const passed = await waitForDdosClearance(url);
-                    if (passed) return resolve(await rawFetch(endpoint, options, attempt + 1));
+            response.on('end', () => {
+                const text = Buffer.concat(chunks).toString('utf8');
+
+                if (response.statusCode === 403 && text.includes('challenge')) {
+                    logDebug("[Network] Ошибка: Cloudflare требует ручную проверку (403).");
+                    resolve({ ok: false, status: 403, error: 'Cloudflare Block' });
+                    return;
                 }
 
                 let data = null;
-                try { data = text ? JSON.parse(text) : {}; } catch (e) { data = { error: 'Parse Error', raw: text }; }
+                try {
+                    data = text ? JSON.parse(text) : {};
+                } catch (e) {
+                    data = { error: 'Parse Error', raw: text };
+                }
 
-                resolve({
-                    ok: response.statusCode >= 200 && response.statusCode < 300,
-                    status: response.statusCode,
-                    data,
-                    headers: response.headers
+                resolve({ 
+                    ok: response.statusCode >= 200 && response.statusCode < 300, 
+                    status: response.statusCode, 
+                    data 
                 });
             });
-            response.on('error', (err) => resolve({ ok: false, status: 0, error: err.message }));
         });
 
-        request.on('error', (err) => resolve({ ok: false, status: 0, error: err.message }));
+        request.on('error', (err) => {
+            clearTimeout(timeoutId);
+            logDebug(`[Network] Сетевая ошибка (${url}): ${err.message}`);
+            resolve({ ok: false, status: 0, error: err.message });
+        });
+
+        if (options.body) {
+            request.write(options.body);
+        }
+
         request.end();
     });
 }
 
-async function refreshSession(retryCount = 0) {
-    if (activeRefreshPromise) return activeRefreshPromise;
+async function refreshSession() {
+    if (isRefreshing) return refreshPromise;
 
-    activeRefreshPromise = (async () => {
-        const token = store.loadRefreshToken();
-        if (!token) return { success: false, reason: 'no_token' };
-        
-        await injectRefreshTokenIntoSession(token);
-        const res = await rawFetch('/v1/auth/refresh', { method: 'POST' });
-
-        if (res.ok && res.data?.accessToken) {
-            store.setAccessToken(res.data.accessToken);
-            const newToken = res.data.refreshToken || (res.headers['set-cookie']?.[0]?.match(/refresh_token=([^;]+)/)?.[1]);
-            if (newToken) {
-                store.saveRefreshToken(newToken);
-                await injectRefreshTokenIntoSession(newToken);
+    isRefreshing = true;
+    refreshPromise = (async () => {
+        try {
+            if (!isSessionRestored) {
+                const restoreResult = await restoreSession();
+                if (!restoreResult.success) return { success: false, reason: restoreResult.reason };
             }
-            store.resetFailureCount();
-            if (isStreamExpected) startStreamConnection();
-            return { success: true };
-        }
 
-        if ((res.status === 429 || res.status >= 500 || res.status === 0) && retryCount < 2) {
-            await new Promise(r => setTimeout(r, 2000));
-            activeRefreshPromise = null;
-            return refreshSession(retryCount + 1);
-        }
+            logDebug("[Network] Получение токена доступа (AccessToken)...");
+            const refreshRes = await rawFetch('/v1/auth/refresh', { method: 'POST' });
 
-        if (res.status === 401) {
-            store.incrementFailureCount();
-            if (store.getFailureCount() >= 5) {
-                store.clearRefreshToken();
-                return { success: false, reason: 'token_invalid_permanent' };
+            if (refreshRes.ok && refreshRes.data.accessToken) {
+                GLOBAL_ACCESS_TOKEN = refreshRes.data.accessToken;
+                
+                
+                await captureAndSaveCookies();
+                
+                return { success: true };
+            } else {
+                logDebug(`[Network] Ошибка обновления токена (Code: ${refreshRes.status}).`);
+                if (refreshRes.status !== 429) {  
+                    
+                    store.clearRefreshToken();
+                    isSessionRestored = false;
+                }
+                return { success: false, reason: 'token_refresh_failed' };
             }
+        } finally {
+            isRefreshing = false;
+            refreshPromise = null;
         }
-        return { success: false, reason: 'network_error' };
     })();
 
-    try { return await activeRefreshPromise; } finally { activeRefreshPromise = null; }
+    return refreshPromise;
 }
 
 async function apiCall(endpoint, method = 'GET', body = null) {
     if (endpoint === '/v1/auth/logout') {
         stopStreamConnection();
-        await rawFetch(endpoint, { method: 'POST' });
+        
+        if (store.getActiveAccount()) {
+            store.removeAccount(store.getActiveAccount().user.id);
+        }
         store.clearRefreshToken();
+        isSessionRestored = false;
+        GLOBAL_ACCESS_TOKEN = null;
+        await session.defaultSession.clearStorageData();
         return { success: true };
     }
 
@@ -206,38 +305,43 @@ async function apiCall(endpoint, method = 'GET', body = null) {
     }
 
     let res = await rawFetch(endpoint, options);
-    if (res.status === 401 && endpoint !== '/v1/auth/refresh') {
-        const refreshed = await refreshSession();
-        if (refreshed.success) return (await rawFetch(endpoint, options)).data;
+    
+    
+    if (res.status === 401) {
+        logDebug(`[Network] 401 Unauthorized на ${endpoint}. Пробуем обновить токен...`);
+        const refreshRes = await refreshSession();
+        
+        if (refreshRes.success) {
+            
+            res = await rawFetch(endpoint, options);
+        } else {
+            logDebug(`[Network] Рефреш не удался. Сброс сессии.`);
+            
+            isSessionRestored = false;
+            GLOBAL_ACCESS_TOKEN = null;
+            return { error: { code: "SESSION_EXPIRED", message: "Сессия истекла" } };
+        }
     }
 
     return res.data || { error: { message: 'Server error' } };
 }
 
 async function uploadFileInternal(fileBuffer, fileName, fileType) {
+    if (!GLOBAL_ACCESS_TOKEN) await refreshSession();
     try {
-        const accessToken = store.getAccessToken();
-        if (!fileBuffer) throw new Error("No data provided for upload");
-
         const formData = new FormData();
-        const blob = new Blob([fileBuffer], { type: fileType });
-        formData.append('file', blob, fileName);
-
-        const options = {
+        formData.append('file', new Blob([fileBuffer], { type: fileType }), fileName);
+        
+        const response = await fetch(`${API_BASE}/files/upload`, {
             method: 'POST',
-            headers: { 'User-Agent': USER_AGENT },
+            headers: { 
+                'User-Agent': GLOBAL_USER_AGENT, 
+                'Authorization': `Bearer ${GLOBAL_ACCESS_TOKEN}` 
+            },
             body: formData,
-        };
-        if (accessToken) {
-            options.headers['Authorization'] = `Bearer ${accessToken}`;
-        }
+        });
         
-        const response = await fetch(`${API_BASE}/files/upload`, options);
-
-        if (!response.ok) {
-            throw new Error(`Server error during file upload: ${response.status}`);
-        }
-        
+        if (!response.ok) throw new Error(`Upload failed: ${response.status}`);
         return { data: await response.json() };
     } catch (error) {
         return { error: { message: error.message } };
@@ -245,41 +349,39 @@ async function uploadFileInternal(fileBuffer, fileName, fileType) {
 }
 
 function startStreamConnection() {
-    const token = store.getAccessToken();
-    if (activeStreamRequest || !token) return;
+    if (activeStreamRequest || !GLOBAL_ACCESS_TOKEN) return;
+    
     isStreamExpected = true;
+    logDebug("[Network] Запуск SSE стрима...");
     
     const request = net.request({ 
         method: 'GET', 
         url: `${API_BASE}/notifications/stream`, 
         useSessionCookies: true 
     });
-
-    request.setHeader('Authorization', `Bearer ${token}`);
+    
+    request.setHeader('User-Agent', GLOBAL_USER_AGENT);
     request.setHeader('Accept', 'text/event-stream');
-
+    request.setHeader('Authorization', `Bearer ${GLOBAL_ACCESS_TOKEN}`);
+    
     request.on('response', (response) => {
         if (response.statusCode === 200) {
-            logDebug("[Stream] Connected");
             response.on('data', () => {}); 
+            
             response.on('end', () => { 
                 activeStreamRequest = null; 
                 if(isStreamExpected) setTimeout(startStreamConnection, 5000); 
             });
-            response.on('error', () => {
-                activeStreamRequest = null;
-            });
-        } else {
-            activeStreamRequest = null;
-            if (response.statusCode === 401) refreshSession();
+        } else { 
+            activeStreamRequest = null; 
         }
     });
-
-    request.on('error', (err) => { 
+    
+    request.on('error', () => { 
         activeStreamRequest = null; 
-        if(isStreamExpected) setTimeout(startStreamConnection, 10000);
+        if(isStreamExpected) setTimeout(startStreamConnection, 10000); 
     });
-
+    
     request.end();
     activeStreamRequest = request;
 }
@@ -287,19 +389,19 @@ function startStreamConnection() {
 function stopStreamConnection() {
     isStreamExpected = false;
     if (activeStreamRequest) { 
-        try { activeStreamRequest.abort(); } catch(e){}
+        try { activeStreamRequest.abort(); } catch(e){} 
         activeStreamRequest = null; 
     }
 }
 
 async function checkApiStatus() {
-    const res = await rawFetch('/hashtags/trending?limit=1', { method: 'HEAD' });
+    const res = await rawFetch('/hashtags/trending?limit=1');
     return res.status < 500 && res.status !== 0;
 }
 
 async function quickInternetCheck() {
     try { 
-        await fetch('https://8.8.8.8', { method: 'HEAD', mode: 'no-cors', priority: 'high' }); 
+        await fetch('https://8.8.8.8', { method: 'HEAD', mode: 'no-cors' }); 
         return true; 
     } catch { 
         return false; 
@@ -307,6 +409,16 @@ async function quickInternetCheck() {
 }
 
 module.exports = { 
-    rawFetch, refreshSession, apiCall, quickInternetCheck, 
-    checkApiStatus, startStreamConnection, stopStreamConnection, uploadFileInternal   
+    rawFetch, 
+    refreshSession, 
+    apiCall, 
+    quickInternetCheck, 
+    checkApiStatus, 
+    startStreamConnection, 
+    stopStreamConnection, 
+    uploadFileInternal,
+    setGlobalAccessToken, 
+    applyCookiesToSession,
+    switchUserSession,
+    captureAndSaveCookies 
 };

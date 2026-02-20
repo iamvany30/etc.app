@@ -1,12 +1,11 @@
-
-
 import React, { useState, useLayoutEffect } from 'react';
 import ReactDOM from 'react-dom/client';
- 
 import { HashRouter as Router } from 'react-router-dom';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'; 
 
 import App from './App';
 import { ThemeLoader } from './core/ThemeLoader';
+
 
 import { UserProvider } from './context/UserContext';
 import { ModalProvider } from './context/ModalContext';
@@ -15,9 +14,21 @@ import { UploadProvider } from './context/UploadContext';
 import { DownloadProvider } from './context/DownloadContext';
 import { ContextMenuProvider } from './context/ContextMenuContext';
 import { IslandProvider } from './context/IslandContext';
+import { AppearanceProvider } from './context/AppearanceContext';
 
 import './index.css';
 import './App.css';
+
+
+const queryClient = new QueryClient({
+    defaultOptions: {
+        queries: {
+            refetchOnWindowFocus: false,
+            retry: 1,
+            staleTime: 1000 * 60 * 5, 
+        },
+    },
+});
 
 const Bootstrapper = () => {
     const [isReady, setIsReady] = useState(false);
@@ -65,23 +76,28 @@ const Bootstrapper = () => {
 
     return (
         <React.StrictMode>
-            <Router>
-                <UserProvider> 
-                    <DownloadProvider>
-                        <UploadProvider>
-                            <MusicProvider>
-                                <ModalProvider>
-                                    <IslandProvider>
-                                        <ContextMenuProvider>
-                                            <App />
-                                        </ContextMenuProvider>
-                                    </IslandProvider>
-                                </ModalProvider>
-                            </MusicProvider>
-                        </UploadProvider>
-                    </DownloadProvider>
-                </UserProvider>
-            </Router>
+            {}
+            <QueryClientProvider client={queryClient}>
+                <Router>
+                <AppearanceProvider>
+                    <UserProvider>
+                        <DownloadProvider>
+                            <UploadProvider>
+                                <MusicProvider>
+                                    <ModalProvider> {}
+                                        <IslandProvider>
+                                            <ContextMenuProvider>
+                                                <App />
+                                            </ContextMenuProvider>
+                                        </IslandProvider>
+                                    </ModalProvider>
+                                </MusicProvider>
+                            </UploadProvider>
+                        </DownloadProvider>
+                    </UserProvider>
+                </AppearanceProvider>
+                </Router>
+            </QueryClientProvider>
         </React.StrictMode>
     );
 };

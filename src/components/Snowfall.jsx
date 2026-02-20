@@ -3,14 +3,17 @@ import React, { useEffect, useRef } from 'react';
 const Snowfall = () => {
     const canvasRef = useRef(null);
     const mouse = useRef({ x: -1000, y: -1000 });
+    const isVisible = useRef(true); 
 
     useEffect(() => {
         const canvas = canvasRef.current;
-        const ctx = canvas.getContext('2d');
+        if (!canvas) return;
+        
+        const ctx = canvas.getContext('2d', { alpha: true }); 
         let animationFrameId;
 
         let snowflakes = [];
-        const snowflakeCount = 140; 
+        const snowflakeCount = 80; 
 
         const resize = () => {
             canvas.width = window.innerWidth;
@@ -26,14 +29,12 @@ const Snowfall = () => {
                     x: Math.random() * canvas.width,
                     y: Math.random() * canvas.height,
                     radius: z + 0.3,
-                    
                     speed: (z + 0.5) * 0.25, 
                     opacity: (z / 3) * 0.4 + 0.15,
                     wind: Math.random() * 0.4 - 0.2, 
                     swing: Math.random() * 2, 
                     swingSpeed: Math.random() * 0.02, 
                     offset: Math.random() * 1000,
-                    
                     vx: 0,
                     vy: 0
                 });
@@ -43,55 +44,53 @@ const Snowfall = () => {
         const handleMouseMove = (e) => {
             mouse.current = { x: e.clientX, y: e.clientY };
         };
+        
+        
+        const handleVisibilityChange = () => {
+            isVisible.current = document.visibilityState === 'visible';
+        };
 
         const draw = () => {
+            
+            if (!isVisible.current) {
+                animationFrameId = requestAnimationFrame(draw);
+                return;
+            }
+
             ctx.clearRect(0, 0, canvas.width, canvas.height);
             
             snowflakes.forEach(p => {
-                
                 p.offset += p.swingSpeed;
                 const currentSwing = Math.sin(p.offset) * p.swing;
 
                 
                 const dx = p.x - mouse.current.x;
                 const dy = p.y - mouse.current.y;
-                const dist = Math.sqrt(dx * dx + dy * dy);
                 
                 
-                const maxDist = 250; 
+                const distSq = dx*dx + dy*dy;
+                const maxDistSq = 250 * 250;
 
-                if (dist < maxDist) {
-                    const force = (maxDist - dist) / maxDist;
-                    const strength = 4; 
+                if (distSq < maxDistSq) {
+                    const dist = Math.sqrt(distSq);
+                    const force = (250 - dist) / 250;
+                    const strength = 2; 
                     
                     p.vx += (dx / dist) * force * strength;
                     p.vy += (dy / dist) * force * strength;
                 }
 
-                
                 p.vx *= 0.92; 
                 p.vy *= 0.92;
 
-                
                 p.x += p.wind + currentSwing + p.vx;
                 p.y += p.speed + p.vy;
 
-                
                 ctx.beginPath();
                 ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
                 ctx.fillStyle = `rgba(255, 255, 255, ${p.opacity})`;
-                
-                
-                if (p.radius > 2) {
-                    ctx.shadowBlur = 5;
-                    ctx.shadowColor = "rgba(255, 255, 255, 0.8)";
-                } else {
-                    ctx.shadowBlur = 0;
-                }
-                
                 ctx.fill();
 
-                
                 if (p.y > canvas.height + 20) {
                     p.y = -20;
                     p.x = Math.random() * canvas.width;
@@ -106,6 +105,7 @@ const Snowfall = () => {
 
         window.addEventListener('resize', resize);
         window.addEventListener('mousemove', handleMouseMove);
+        document.addEventListener('visibilitychange', handleVisibilityChange);
         
         resize();
         draw();
@@ -113,6 +113,7 @@ const Snowfall = () => {
         return () => {
             window.removeEventListener('resize', resize);
             window.removeEventListener('mousemove', handleMouseMove);
+            document.removeEventListener('visibilitychange', handleVisibilityChange);
             cancelAnimationFrame(animationFrameId);
         };
     }, []);

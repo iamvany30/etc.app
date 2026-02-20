@@ -1,3 +1,4 @@
+/* @source electron/config.js */
 const path = require('path');
 const { app } = require('electron');
 
@@ -13,7 +14,8 @@ module.exports = {
         STORE: path.join(app.getPath('userData'), 'session.secure'),
         RESOURCES: RESOURCES_PATH,
         BROWSER_HELPER: path.join(RESOURCES_PATH, 'browser_helper.exe'),
-        ICON: path.join(__dirname, '../public/favicon.ico'),
+        WALLPAPERS: path.join(app.getPath('userData'), 'wallpapers'),
+        ICON: path.join(__dirname, '../public/icon.ico'), 
         PRELOAD: path.join(__dirname, 'preload.js'),
         BUILD_INDEX: path.join(__dirname, '../build/index.html')
     }

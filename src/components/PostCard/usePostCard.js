@@ -2,10 +2,11 @@ import { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useUser } from '../../context/UserContext';
 import { useModal } from '../../context/ModalContext';
+import { useIsland } from '../../context/IslandContext'; 
 import { apiClient } from '../../api/client';
 import ExternalLinkModal, { isTrustedLink } from '../modals/ExternalLinkModal';
 import { reconstructMarkdown } from '../../utils/markdownUtils';
-
+import { bookmarkUtils } from '../../utils/bookmarkUtils'; 
 
 const safeDecode = (str) => {
     try { return decodeURIComponent(escape(window.atob(str))); } 
@@ -24,6 +25,7 @@ const findAudioAttachment = (attachments) => {
 export const usePostCard = (post, initialShowComments, highlightCommentId) => {
     const { currentUser } = useUser();
     const { openModal } = useModal();
+    const { showIslandAlert } = useIsland(); 
     const navigate = useNavigate();
     
     
@@ -38,6 +40,9 @@ export const usePostCard = (post, initialShowComments, highlightCommentId) => {
     const [isReposted, setIsReposted] = useState(post.isReposted);
     const [repostsCount, setRepostsCount] = useState(post.repostsCount);
     const [wasViewed, setWasViewed] = useState(post.isViewed || false);
+    
+    
+    const [isSaved, setIsSaved] = useState(() => bookmarkUtils.isSaved(post.id));
     
     
     const [showComments, setShowComments] = useState(initialShowComments || !!highlightCommentId);
@@ -62,6 +67,7 @@ export const usePostCard = (post, initialShowComments, highlightCommentId) => {
         setIsReposted(post.isReposted);
         setRepostsCount(post.repostsCount);
         setCommentsCount(post.commentsCount);
+        setIsSaved(bookmarkUtils.isSaved(post.id)); 
     }, [post]);
 
     
@@ -77,6 +83,15 @@ export const usePostCard = (post, initialShowComments, highlightCommentId) => {
         observer.observe(postRef.current);
         return () => observer.disconnect();
     }, [localPost.id, wasViewed]);
+
+    
+    useEffect(() => {
+        const handleBookmarkUpdate = () => {
+            setIsSaved(bookmarkUtils.isSaved(localPost.id));
+        };
+        window.addEventListener('bookmarks-updated', handleBookmarkUpdate);
+        return () => window.removeEventListener('bookmarks-updated', handleBookmarkUpdate);
+    }, [localPost.id]);
 
     
     const handleLike = async (e) => {
@@ -100,6 +115,16 @@ export const usePostCard = (post, initialShowComments, highlightCommentId) => {
         } catch {
             setIsReposted(prevReposted);
             setRepostsCount(p => prevReposted ? p + 1 : p - 1);
+        }
+    };
+
+    const handleSave = (e) => {
+        e.stopPropagation();
+        const newState = bookmarkUtils.toggle(localPost);
+        setIsSaved(newState);
+        
+        if (newState) {
+            showIslandAlert('success', 'Сохранено', '🔖');
         }
     };
 
@@ -184,13 +209,12 @@ export const usePostCard = (post, initialShowComments, highlightCommentId) => {
         wasViewed,
         postRef,
         isOwner,
-        
-        
         musicData,
 
         
         liked, likesCount, handleLike,
         isReposted, repostsCount, handleRepost,
+        isSaved, handleSave, 
         
         
         isEditing, setIsEditing,

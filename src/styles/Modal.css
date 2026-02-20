@@ -146,3 +146,20 @@ body.modal-open {
         flex-shrink: 0;
     }
 }
+
+.modal-content.fullscreen,
+.modal-content.fullscreen .modal-body-wrapper,
+.modal-content.fullscreen .modal-body {
+    height: 100vh !important;
+    max-height: 100vh !important;
+    width: 100vw !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    overflow: hidden !important;
+    display: block !important; 
+}
+
+.modal-content.fullscreen {
+    background: #000 !important;
+    border: none !important;
+}

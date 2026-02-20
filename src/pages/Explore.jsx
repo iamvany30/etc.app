@@ -1,4 +1,3 @@
-/* @source src/pages/Explore.jsx */
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { Virtuoso } from 'react-virtuoso';
@@ -7,10 +6,8 @@ import PostCard from '../components/PostCard';
 import { PostSkeleton, ExploreSkeleton, WidgetSkeleton } from '../components/Skeletons';
 import '../styles/Explore.css';
 
-
 const CACHE_KEY = 'itd_explore_data_v1';
 const CACHE_TTL = 24 * 60 * 60 * 1000; 
-
 
 const SearchIcon = () => (
     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
@@ -49,33 +46,27 @@ const Explore = () => {
     
     useEffect(() => {
         const loadInitialData = async () => {
-            
             if (searchQuery) {
                 setLoadingInitial(false);
                 return;
             }
 
-            
             try {
                 const cachedRaw = localStorage.getItem(CACHE_KEY);
                 if (cachedRaw) {
                     const { data, timestamp } = JSON.parse(cachedRaw);
                     const age = Date.now() - timestamp;
 
-                    
                     if (age < CACHE_TTL) {
-                        console.log(`[Explore] Loaded from cache (${Math.round(age / 1000 / 60)} min old)`);
                         setTrendsData(data);
                         setLoadingInitial(false);
                         return; 
                     }
                 }
             } catch (e) {
-                console.warn("[Explore] Cache parse error", e);
                 localStorage.removeItem(CACHE_KEY);
             }
 
-            
             try {
                 const [trendsRes, clansRes] = await Promise.all([
                     apiClient.getExplore(),
@@ -88,7 +79,6 @@ const Explore = () => {
                 };
 
                 setTrendsData(newData);
-
                 
                 localStorage.setItem(CACHE_KEY, JSON.stringify({
                     data: newData,
@@ -107,7 +97,8 @@ const Explore = () => {
 
     
     const loadHashtagFeed = useCallback(async (isInitial = false) => {
-        if (!isHashtagFeedMode || isFetchingRef.current) return;
+        
+        if (!searchQuery.trim().startsWith('#') || isFetchingRef.current) return;
         if (!isInitial && !hasMoreRef.current) return;
 
         const tag = searchQuery.replace('#', '').trim();
@@ -124,6 +115,8 @@ const Explore = () => {
 
         try {
             const res = await apiClient.getHashtagPosts(tag, nextCursorRef.current);
+            
+            
             if (activeSearchRef.current !== searchQuery) return;
 
             const data = res?.data || res;
@@ -132,44 +125,60 @@ const Explore = () => {
             setHashtagPosts(prev => isInitial ? newPosts : [...prev, ...newPosts]);
             nextCursorRef.current = data?.pagination?.nextCursor || null;
             hasMoreRef.current = !!data?.pagination?.hasMore;
-        } catch (e) { console.error(e); } 
-        finally {
+        } catch (e) { 
+            console.error(e); 
+        } finally {
             setLoading(false);
             setLoadingMore(false);
             isFetchingRef.current = false;
         }
-    }, [searchQuery, isHashtagFeedMode]);
+    }, [searchQuery]);
 
     
     useEffect(() => {
         const query = searchQuery.trim();
         activeSearchRef.current = query;
+        let isCancelled = false; 
 
         if (!query) {
             setSearchResults(null);
             setHashtagPosts([]);
             setSearchParams({}, { replace: true });
+            setLoading(false);
             return;
         }
 
         const timer = setTimeout(async () => {
+            if (isCancelled) return;
+
             setSearchParams({ q: query }, { replace: true });
 
             if (query.startsWith('#')) {
-                loadHashtagFeed(true);
+                
+                
+                if (!isCancelled) {
+                    loadHashtagFeed(true);
+                }
             } else {
-                setLoading(true);
+                
+                if (!isCancelled) setLoading(true);
                 try {
                     const res = await apiClient.search(query);
-                    if (activeSearchRef.current === query) {
+                    if (!isCancelled) {
                         setSearchResults(res?.data || res);
                     }
-                } catch (e) { console.error(e); } 
-                finally { if (activeSearchRef.current === query) setLoading(false); }
+                } catch (e) { 
+                    console.error(e); 
+                } finally { 
+                    if (!isCancelled) setLoading(false); 
+                }
             }
         }, 400);
 
-        return () => clearTimeout(timer);
+        return () => {
+            clearTimeout(timer);
+            isCancelled = true; 
+        };
     }, [searchQuery, setSearchParams, loadHashtagFeed]);
 
     
@@ -183,7 +192,6 @@ const Explore = () => {
         if (!searchQuery.trim()) {
             return (
                 <div className="explore-scroll-area content-fade-in">
-                    {}
                     {trendsData.clans.length > 0 && (
                         <section className="clans-section">
                             <h3 className="explore-section-title">Топ сообществ</h3>
@@ -205,7 +213,6 @@ const Explore = () => {
                         </section>
                     )}
 
-                    {}
                     <section className="trends-section">
                         <h3 className="explore-section-title">Актуальные темы</h3>
                         <div className="trends-list">

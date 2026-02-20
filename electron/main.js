@@ -1,20 +1,68 @@
-const { app, BrowserWindow, session, globalShortcut } = require('electron');
+const { app, BrowserWindow, session, globalShortcut, Menu, nativeTheme, protocol, net } = require('electron');
 const path = require('path');
+const fs = require('fs');
 const { autoUpdater } = require('electron-updater');
+const { pathToFileURL } = require('url');
+
+ 
+ 
+ 
+const localAppData = process.env.LOCALAPPDATA || path.join(process.env.USERPROFILE, 'AppData', 'Local');
+const sharedProfilePath = path.join(localAppData, 'etc.app', 'electron_profile_v1');
+
+if (!fs.existsSync(sharedProfilePath)) {
+    try {
+        fs.mkdirSync(sharedProfilePath, { recursive: true });
+    } catch (e) {
+        console.error("Critical: Failed to create profile dir:", e);
+    }
+}
+
+try {
+     
+    app.setPath('userData', sharedProfilePath);
+    app.commandLine.appendSwitch('user-data-dir', sharedProfilePath);
+} catch (e) {
+    console.error("Critical: Failed to set userData path:", e);
+}
+
+ 
+const { logDebug } = require('./logger'); 
+const discord = require('./discord');
 const { createMainWindow, getMainWindow } = require('./window');
 const { registerHandlers } = require('./ipc');
 const themes = require('./themes');
-const { PATHS } = require('./config');
+const { PATHS, USER_AGENT } = require('./config');
+
+ 
+
+protocol.registerSchemesAsPrivileged([
+    { 
+        scheme: 'font', 
+        privileges: { 
+            secure: true, 
+            standard: true, 
+            supportFetchAPI: true, 
+            corsEnabled: true,
+            bypassCSP: true
+        } 
+    }
+]);
+
+app.commandLine.appendSwitch('disable-site-isolation-trials');
+app.commandLine.appendSwitch('disable-features', 'OutOfBlinkCors,SameSiteByDefaultCookies,CookiesWithoutSameSiteMustBeSecure,IsolateOrigins,site-per-process');
+app.commandLine.appendSwitch('ignore-certificate-errors');
+app.commandLine.appendSwitch('enable-gpu-rasterization');
+app.commandLine.appendSwitch('enable-zero-copy');
+
+Menu.setApplicationMenu(null);
 
 process.on('uncaughtException', (error) => {
-    console.error(' [CRITICAL ERROR] Пойманное исключение:', error);
-    if (error.message && (error.message.includes('net::ERR_') || error.message.includes('SimpleURLLoaderWrapper'))) {
-        return;
-    }
+    console.error(' [CRITICAL EXCEPTION]', error);
 });
 
-process.on('unhandledRejection', (reason, promise) => {
-    console.error(' [WARN] Необработанный промис:', reason);
+process.on('unhandledRejection', (reason) => {
+    console.error(' [UNHANDLED REJECTION]', reason);
 });
 
 const ffmpeg = require('fluent-ffmpeg');
@@ -25,9 +73,23 @@ if (process.platform === 'win32') {
     app.setAppUserModelId('com.etc.app');
 }
 
-app.commandLine.appendSwitch('disable-site-isolation-trials');
-app.commandLine.appendSwitch('disable-features', 'OutOfBlinkCors,SameSiteByDefaultCookies,CookiesWithoutSameSiteMustBeSecure,IsolateOrigins,site-per-process');
-app.commandLine.appendSwitch('ignore-certificate-errors');
+const ICONS = {
+    DEFAULT: PATHS.ICON, 
+    DARK: path.join(__dirname, '../public/icon-dark.ico'), 
+    LIGHT: path.join(__dirname, '../public/icon-light.ico')
+};
+
+function updateAppIcon() {
+    const win = getMainWindow();
+    if (!win || win.isDestroyed()) return;
+    let iconToUse = ICONS.DEFAULT;
+    if (fs.existsSync(ICONS.DARK) && fs.existsSync(ICONS.LIGHT)) {
+        iconToUse = nativeTheme.shouldUseDarkColors ? ICONS.DARK : ICONS.LIGHT;
+    }
+    win.setIcon(iconToUse);
+}
+
+nativeTheme.on('updated', updateAppIcon);
 
 let splashWindow = null;
 
@@ -56,7 +118,6 @@ function createSplash() {
     });
 
     splashWindow.loadFile(path.join(__dirname, 'splash.html'));
-    
     splashWindow.once('ready-to-show', () => {
         splashWindow.show();
         runUpdateSequence();
@@ -83,7 +144,8 @@ async function runUpdateSequence() {
         updateSplash('Обновлений нет', 'Проверка контента...', 50);
         checkContentAndLaunch();
     });
-    autoUpdater.on('error', () => {
+    autoUpdater.on('error', (err) => {
+        console.error("Updater Error:", err);
         updateSplash('Ошибка обновления', 'Пропуск...', 100);
         checkContentAndLaunch();
     });
@@ -97,7 +159,7 @@ async function runUpdateSequence() {
 
     try {
         await autoUpdater.checkForUpdates();
-    } catch {
+    } catch (e) {
         checkContentAndLaunch();
     }
 }
@@ -109,21 +171,33 @@ async function checkContentAndLaunch() {
 
 function launchApp() {
     updateSplash('Запуск', 'Загрузка интерфейса...', 100);
-    
     registerHandlers(); 
+    discord.init();
     createMainWindow();
     const mainWin = getMainWindow();
+    if (mainWin) {
+        updateAppIcon(); 
 
-    mainWin.once('ready-to-show', () => {
-        setTimeout(() => {
+        
+        mainWin.on('focus', () => {
             if (mainWin && !mainWin.isDestroyed()) {
-                mainWin.show();
+                mainWin.webContents.send('window-focus-state', { isFocused: true });
             }
-            if (splashWindow && !splashWindow.isDestroyed()) {
-                splashWindow.destroy();
+        });
+        mainWin.on('blur', () => {
+            if (mainWin && !mainWin.isDestroyed()) {
+                mainWin.webContents.send('window-focus-state', { isFocused: false });
             }
-        }, 800);
-    });
+        });
+        
+
+        mainWin.once('ready-to-show', () => {
+            setTimeout(() => {
+                if (mainWin && !mainWin.isDestroyed()) mainWin.show();
+                if (splashWindow && !splashWindow.isDestroyed()) splashWindow.destroy();
+            }, 800);
+        });
+    }
 }
 
 if (process.defaultApp) {
@@ -148,23 +222,37 @@ if (!gotTheLock) {
 }
 
 app.whenReady().then(async () => {
-    
+     
+    protocol.handle('font', (request) => {
+        try {
+            let fontName = request.url.slice('font://'.length);
+            if (fontName.endsWith('/')) {
+                fontName = fontName.slice(0, -1);
+            }
+            fontName = decodeURIComponent(fontName);
+
+             
+            const fontsDir = path.join(app.getPath('userData'), 'fonts');
+            const fontPath = path.join(fontsDir, fontName);
+
+            const fileUrl = pathToFileURL(fontPath).toString();
+            return net.fetch(fileUrl);
+        } catch (error) {
+            console.error('[Font Protocol] Error handling request:', request.url, error);
+            return new Response('Error', { status: 500 });
+        }
+    });
+
     const sendMediaControl = (command) => {
         const win = getMainWindow();
-        if (win && !win.isDestroyed()) {
-            win.webContents.send('media-control', command);
-        }
+        if (win && !win.isDestroyed()) win.webContents.send('media-control', command);
     };
 
     globalShortcut.register('MediaPlayPause', () => sendMediaControl('play-pause'));
     globalShortcut.register('MediaNextTrack', () => sendMediaControl('next'));
     globalShortcut.register('MediaPreviousTrack', () => sendMediaControl('prev'));
      
-    await session.defaultSession.clearCache();
-    
-    const filter = {
-        urls: ['https://xn--d1ah4a.com/*', 'https://*.xn--d1ah4a.com/*']
-    };
+    const filter = { urls: ['https://xn--d1ah4a.com/*', 'https://*.xn--d1ah4a.com/*'] };
 
     session.defaultSession.webRequest.onBeforeSendHeaders(filter, (details, callback) => {
         const headers = details.requestHeaders;
@@ -177,19 +265,26 @@ app.whenReady().then(async () => {
         headers['sec-fetch-dest'] = 'empty';
         headers['sec-fetch-mode'] = 'cors';
         headers['sec-fetch-site'] = 'same-origin';
-        headers['User-Agent'] = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36';
-
+        headers['User-Agent'] = USER_AGENT; 
         delete headers['Electron'];
         callback({ requestHeaders: headers });
     });
 
     session.defaultSession.webRequest.onHeadersReceived((details, callback) => {
+        const policy = 
+            "default-src * 'unsafe-inline' 'unsafe-eval' data: blob: font: file:;" + 
+            " script-src * 'unsafe-inline' 'unsafe-eval' data: blob:;" +
+            " connect-src * 'unsafe-inline' data: blob: font: font://* file:;" +
+            " style-src * 'unsafe-inline' font:;" +
+            " font-src * 'unsafe-inline' data: blob: font: font://*;" +
+            " frame-src * 'unsafe-inline' data: blob:;" +
+            " img-src * 'unsafe-inline' data: blob: file:;" + 
+            " media-src * 'unsafe-inline' data: blob: file:;"; 
+
         callback({
             responseHeaders: {
                 ...details.responseHeaders,
-                'Content-Security-Policy': [
-                    "default-src 'self' 'unsafe-inline' 'unsafe-eval' data: blob: https: ws: localhost:*; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline' https:; img-src 'self' data: blob: https:; connect-src 'self' https: ws: localhost:*;"
-                ]
+                'Content-Security-Policy': [ policy ]
             }
         });
     });

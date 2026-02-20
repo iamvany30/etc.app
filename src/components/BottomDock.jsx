@@ -1,5 +1,5 @@
-/* @source BottomDock.jsx */
 import React from 'react';
+import { useLocation } from 'react-router-dom'; 
 import { useMusic } from '../context/MusicContext';
 import { useUser } from '../context/UserContext';
 import { useUpload } from '../context/UploadContext'; 
@@ -11,8 +11,10 @@ const BottomDock = () => {
     const { currentUser } = useUser();
     const { currentTrack } = useMusic();
     const { uploads } = useUpload();
+    const location = useLocation(); 
 
-    if (!currentUser) return null;
+    
+    if (!currentUser || location.pathname.startsWith('/login')) return null;
 
     
     const activeUploads = Object.values(uploads).filter(u => u.status !== 'complete' && u.status !== 'error');

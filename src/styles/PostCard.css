@@ -32,6 +32,12 @@
 }
 
 
+.action-group.bookmark:hover, .action-group.bookmark.active { color: var(--color-primary); }
+.action-group.bookmark:hover .action-icon-wrapper, .action-group.bookmark.active .action-icon-wrapper { 
+    background-color: var(--color-primary-alpha); 
+}
+.action-group.bookmark:active svg { transform: scale(0.9); }
+
 .post-meta-row {
     grid-column: 2 / 3; 
     display: flex;

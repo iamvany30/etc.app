@@ -1,9 +1,7 @@
-/* @source src/components/modals/SettingsModal.jsx */
 import React, { useState } from 'react';
 import { useUser } from '../../context/UserContext';
 import { useModal } from '../../context/ModalContext';
 import '../../styles/SettingsModal.css';
-
 
 import { 
     IconBack, 
@@ -14,10 +12,12 @@ import {
     IconMedia, 
     IconLogout, 
     IconInfo,
-    IconShield
+    IconShield,
+    IconUsers
 } from '../icons/SettingsIcons';
 
 
+import AccountsSettings from './sections/AccountsSettings'; 
 import AccountSettings from './sections/AccountSettings';
 import SecuritySettings from './sections/SecuritySettings';
 import PrivacySettings from './sections/PrivacySettings';
@@ -25,7 +25,6 @@ import AppearanceSettings from './sections/AppearanceSettings';
 import MediaSettings from './sections/MediaSettings';
 import InfoSettings from './sections/InfoSettings';
 import ThemeSettings from './sections/ThemeSettings';
-
 
 import LogoutConfirmModal from './LogoutConfirmModal';
 
@@ -38,6 +37,7 @@ const SettingsModal = () => {
     
     const titles = {
         main: 'Настройки',
+        accounts_manage: 'Управление аккаунтами',
         account: 'Ваш аккаунт',
         security: 'Пароль',
         private: 'Приватность',
@@ -62,7 +62,6 @@ const SettingsModal = () => {
                         console.error("Logout failed", e);
                     }
                 }} 
-                
                 onCancel={() => openModal(<SettingsModal />)}
             />
         );
@@ -92,6 +91,14 @@ const SettingsModal = () => {
                 return (
                     <div className="settings-content">
                         <div className="settings-section-title">Аккаунт</div>
+                        
+                        <MenuItem 
+                            id="accounts_manage" 
+                            icon={<IconUsers />} 
+                            label="Мои аккаунты" 
+                            desc="Переключение и добавление" 
+                        />
+
                         <MenuItem 
                             id="account" 
                             icon={<IconUser />} 
@@ -149,6 +156,8 @@ const SettingsModal = () => {
                         </div>
                     </div>
                 );
+            
+            case 'accounts_manage': return <AccountsSettings setStatus={setStatus} />;
             case 'account': return <AccountSettings user={currentUser} setCurrentUser={setCurrentUser} setStatus={setStatus} />;
             case 'security': return <SecuritySettings setStatus={setStatus} />;
             case 'private': return <PrivacySettings setStatus={setStatus} />;

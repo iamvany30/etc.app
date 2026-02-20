@@ -1,5 +1,4 @@
-/* @source src/components/RightSidebar.jsx */
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, memo } from 'react'; 
 import { Link } from 'react-router-dom';
 import { apiClient } from '../api/client';
 import { useUpload } from '../context/UploadContext'; 
@@ -25,11 +24,23 @@ const WidgetBox = ({ title, children, showMoreLink, className = "", delay = "0s"
     </div>
 );
 
+
+const SidebarPlayerWrapper = () => {
+    const { currentTrack } = useMusic();
+    if (!currentTrack) return null;
+    
+    return (
+        <div className="sidebar-player-widget animate-in" style={{ '--delay': '0.1s' }}>
+            <GlobalPlayer />
+        </div>
+    );
+};
+
 const RightSidebar = () => {
     const [users, setUsers] = useState([]);
     const [loading, setLoading] = useState(true);
     const { uploads } = useUpload();
-    const { currentTrack } = useMusic();
+    
 
     const activeUploads = Object.values(uploads).filter(u => u.status !== 'complete' && u.status !== 'error');
 
@@ -61,11 +72,7 @@ const RightSidebar = () => {
         <aside className="right-sidebar">
             
             {}
-            {currentTrack && (
-                <div className="sidebar-player-widget animate-in" style={{ '--delay': '0.1s' }}>
-                    <GlobalPlayer />
-                </div>
-            )}
+            <SidebarPlayerWrapper />
 
             {}
             {activeUploads.length > 0 && (
@@ -125,4 +132,5 @@ const RightSidebar = () => {
     );
 };
 
-export default RightSidebar;
+
+export default memo(RightSidebar);

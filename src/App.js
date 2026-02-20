@@ -1,8 +1,7 @@
-
-
 import React, { useEffect, useState, useCallback } from 'react';
-import { Routes, Route, Navigate } from 'react-router-dom';
+import { Routes, Route, Navigate, Outlet } from 'react-router-dom';
 import { DynamicComponent } from './core/ComponentRegistry';
+import { useUser } from './context/UserContext'; 
 
 
 import Sidebar from './components/Sidebar';
@@ -15,12 +14,11 @@ import Snowfall from './components/Snowfall';
 import UploadManager from './components/UploadManager';
 import DynamicIsland from './components/DynamicIsland';
 import CustomBackground from './components/CustomBackground';
-
-
 import AuthFlow from './components/AuthFlow';
 import NotificationWatcher from './components/NotificationWatcher';
 import PresenceManager from './components/PresenceManager'; 
 import ContextMenuManager from './components/ContextMenuManager';
+import DiscordManager from './components/DiscordManager'; 
 
 
 import Feed from './pages/Feed';
@@ -32,42 +30,44 @@ import Music from './pages/Music';
 import Login from './pages/Login';
 import OfflinePage from './pages/OfflinePage';
 import StatusPage from './pages/StatusPage';
+import ManualLogin from './pages/ManualLogin';
+import Downloads from './pages/Downloads';
+import Bookmarks from './pages/Bookmarks';
 
 import './App.css';
 import './styles/Layout.css';
 
-const DefaultLayout = ({ children }) => {
+const DefaultLayout = () => {
     return (
         <div className="layout">
             <DynamicComponent name="Layout.Sidebar" fallback={Sidebar} />
             <main className="content hide-scrollbar">
-                {children}
+                <Outlet />
             </main>
             <DynamicComponent name="Layout.RightSidebar" fallback={RightSidebar} />
         </div>
     );
 };
 
-
-const RouteEl = ({ name, fallback }) => (
+const RouteEl = ({ name, fallback: Fallback }) => (
     <div className="page-container">
-        <DynamicComponent name={name} fallback={fallback} />
+        <DynamicComponent name={name} fallback={Fallback} />
     </div>
 );
 
 function App() {
+    const { currentUser } = useUser(); 
     const [snowEnabled, setSnowEnabled] = useState(localStorage.getItem('nowkie_snow_enabled') === 'true');
 
     const applySettings = useCallback(() => {
+        
         const bgMode = localStorage.getItem('nowkie_bg') || 'dim';
         const accent = localStorage.getItem('nowkie_accent') || '#1d9bf0';
         const isSnow = localStorage.getItem('nowkie_snow_enabled') === 'true';
-        
         const perfMode = localStorage.getItem('nowkie_perf_mode') || 'high';
 
         document.documentElement.setAttribute('data-bg', bgMode);
-        document.documentElement.setAttribute('data-perf', perfMode); 
-        
+        document.documentElement.setAttribute('data-perf', perfMode);
         document.documentElement.style.setProperty('--color-primary', accent);
         
         const hexToRgb = (hex) => {
@@ -100,32 +100,36 @@ function App() {
             </ErrorBoundary>
 
             <AuthFlow>
-                <DynamicIsland />
-                <ContextMenuManager />
-                <NotificationWatcher />
-                <PresenceManager />
-                <ScrollToTop />
+                <React.Fragment key={currentUser?.id || 'guest'}>
+                    <DynamicIsland />
+                    <ContextMenuManager />
+                    <NotificationWatcher />
+                    <PresenceManager />
+                    <DiscordManager />
+                    <ScrollToTop />
+                    <BottomDock />
+                    <UploadManager />
 
-                <BottomDock />
-                <UploadManager />
-
-                <DynamicComponent name="Layout.MainWrapper" fallback={DefaultLayout}>
                     <Routes>
-                        <Route path="/" element={<RouteEl name="Page.Feed" fallback={Feed} />} />
-                        <Route path="/explore" element={<RouteEl name="Page.Explore" fallback={Explore} />} />
-                        <Route path="/notifications" element={<RouteEl name="Page.Notifications" fallback={Notifications} />} />
-                        <Route path="/music" element={<RouteEl name="Page.Music" fallback={Music} />} />
-                        
-                        <Route path="/profile/:username" element={<RouteEl name="Page.Profile" fallback={Profile} />} />
-                        <Route path="/post/:id" element={<RouteEl name="Page.PostDetails" fallback={PostDetails} />} />
-                        
-                        <Route path="/status" element={<StatusPage />} />
+                        <Route element={<DefaultLayout />}>
+                            <Route path="/" element={<RouteEl name="Page.Feed" fallback={Feed} />} />
+                            <Route path="/explore" element={<RouteEl name="Page.Explore" fallback={Explore} />} />
+                            <Route path="/notifications" element={<RouteEl name="Page.Notifications" fallback={Notifications} />} />
+                            <Route path="/music" element={<RouteEl name="Page.Music" fallback={Music} />} />
+                            <Route path="/profile/:username" element={<RouteEl name="Page.Profile" fallback={Profile} />} />
+                            <Route path="/post/:id" element={<RouteEl name="Page.PostDetails" fallback={PostDetails} />} />
+                            <Route path="/status" element={<StatusPage />} />
+                            <Route path="/downloads" element={<Downloads />} />
+                            <Route path="/bookmarks" element={<RouteEl name="Page.Bookmarks" fallback={Bookmarks} />} />
+                        </Route>
+
                         <Route path="/login" element={<Login />} />
+                        <Route path="/login/manual" element={<ManualLogin />} />
                         <Route path="/offline" element={<OfflinePage />} />
                         
                         <Route path="*" element={<Navigate to="/" replace />} />
                     </Routes>
-                </DynamicComponent>
+                </React.Fragment>
             </AuthFlow>
         </>
     );

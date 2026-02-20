@@ -1,11 +1,15 @@
-/* @source App.css */
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
-@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&display=swap');
+/* =========================================
+   1. ЛОКАЛЬНЫЕ ШРИФТЫ
+   ========================================= */
 
 /* =========================================
-   GLOBAL VARIABLES & THEMES
+   2. ГЛОБАЛЬНЫЕ ПЕРЕМЕННЫЕ
    ========================================= */
 :root {
+  
+  --font-emoji: 'LocalNotoEmoji', 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol', sans-serif;
+  --font-main: 'LocalInter', var(--font-emoji); 
+  
   
   --sidebar-width: 275px;
   --right-sidebar-width: 350px;
@@ -36,6 +40,10 @@
   --shadow-layered: 0 8px 24px rgba(0, 0, 0, 0.12);
   --shadow-card: 0 4px 12px rgba(0,0,0,0.03);
 }
+
+/* =========================================
+   3. ВАРИАНТЫ ТЕМ (ЦВЕТА)
+   ========================================= */
 
 
 :root, :root[data-bg='light'] {
@@ -82,19 +90,43 @@
 }
 
 /* =========================================
-   GLOBAL RESET & LAYOUT
+   4. ВАРИАНТЫ ШРИФТОВ (УПРАВЛЯЮТСЯ JS)
    ========================================= */
+
+html[data-font='inter'] {
+    --font-main: 'LocalInter', var(--font-emoji);
+    letter-spacing: -0.01em;
+}
+html[data-font='manrope'] {
+    --font-main: 'LocalManrope', var(--font-emoji);
+    letter-spacing: 0.01em;
+}
+html[data-font='system'] {
+    --font-main: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, var(--font-emoji);
+    letter-spacing: 0;
+}
+html[data-font='jetbrains'] {
+    --font-main: 'LocalJetBrains', var(--font-emoji);
+    letter-spacing: -0.03em;
+    font-size: 14px;
+}
+
+/* =========================================
+   5. ОСНОВНЫЕ СТИЛИ
+   ========================================= */
+
 html, body {
   height: 100vh;
   margin: 0;
   padding: 0;
   overflow: hidden; 
   background-color: var(--color-background);
-  font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
   color: var(--color-text);
-  letter-spacing: -0.01em;
   -webkit-font-smoothing: antialiased;
   transition: background-color 0.3s ease;  
+  
+  
+  font-family: var(--font-main) !important;
 }
 
 #root {
@@ -103,14 +135,21 @@ html, body {
   flex-direction: column;
 }
 
+
 * {
   box-sizing: border-box;
   -webkit-tap-highlight-color: transparent;
 }
 
+
+input, textarea, button, select {
+  font-family: var(--font-main) !important;
+}
+
 /* =========================================
-   CUSTOM BACKGROUND LOGIC (ОБОИ)
+   6. КАСТОМНЫЙ ФОН
    ========================================= */
+
 .global-custom-bg {
     position: fixed;
     inset: 0;
@@ -127,7 +166,6 @@ html, body {
     transition: filter 0.4s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.4s ease;
     will-change: filter, transform;
 }
-
 
 html[data-has-custom-bg="true"] body,
 html[data-has-custom-bg="true"] #root,
@@ -149,8 +187,10 @@ html[data-has-custom-bg="true"] .right-sidebar {
 }
 
 /* =========================================
-   UI HELPERS & SCROLLBARS
+   7. УТИЛИТАРНЫЕ И ОБЩИЕ СТИЛИ
    ========================================= */
+
+
 ::-webkit-scrollbar { width: 6px; height: 6px; }
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb { 
@@ -160,120 +200,60 @@ html[data-has-custom-bg="true"] .right-sidebar {
 ::-webkit-scrollbar-thumb:hover { background-color: var(--color-text-muted); }
 
 .page-container { width: 100%; height: 100%; }
+.content { scroll-behavior: smooth; -webkit-overflow-scrolling: touch; }
 
-.content {
-    scroll-behavior: smooth;
-    -webkit-overflow-scrolling: touch; 
-}
 
-/* =========================================
-   TYPOGRAPHY & MARKDOWN
-   ========================================= */
 .md-link, .md-tag, .md-mention {
-  color: var(--color-primary);
-  text-decoration: none;
-  font-weight: 500;
-  transition: var(--transition-fast);
+  color: var(--color-primary); text-decoration: none; font-weight: 500; transition: var(--transition-fast);
 }
-
-.md-link:hover, .md-tag:hover, .md-mention:hover {
-  text-decoration: underline;
-  opacity: 0.8;
-}
-
+.md-link:hover, .md-tag:hover, .md-mention:hover { text-decoration: underline; opacity: 0.8; }
 .md-bold { font-weight: 700; color: var(--color-text); }
 .md-italic { font-style: italic; }
 .md-code {
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 0.85em;
-  background-color: var(--color-input-bg);
-  color: var(--color-primary);
-  padding: 2px 6px;
-  border-radius: 6px;
-  border: 1px solid var(--color-border);
+  font-family: 'JetBrains Mono', monospace; font-size: 0.85em; background-color: var(--color-input-bg);
+  color: var(--color-primary); padding: 2px 6px; border-radius: 6px; border: 1px solid var(--color-border);
 }
-
 .md-spoiler {
-  background-color: var(--color-text);
-  color: transparent;
-  border-radius: 6px;
-  padding: 0 4px;
-  cursor: pointer;
-  transition: var(--transition-smooth);
+  background-color: var(--color-text); color: transparent; border-radius: 6px; padding: 0 4px;
+  cursor: pointer; transition: var(--transition-smooth);
 }
 .md-spoiler.revealed { background-color: var(--color-border); color: var(--color-text); }
 
-/* =========================================
-   STICKY HEADERS & TABS
-   ========================================= */
+
 .sticky-header {
-    position: sticky;
-    top: 0;
-    z-index: 10;
+    position: sticky; top: 0; z-index: 10;
     background-color: rgba(var(--glass-bg-rgb), 0.90);
-    backdrop-filter: blur(15px);
-    -webkit-backdrop-filter: blur(15px);
-    border-bottom: 1px solid var(--color-border);
-    transition: background-color 0.3s, border-color 0.3s;
+    backdrop-filter: blur(15px); -webkit-backdrop-filter: blur(15px);
+    border-bottom: 1px solid var(--color-border); transition: background-color 0.3s, border-color 0.3s;
 }
-
 .sticky-tab-btn {
-    flex: 1;
-    height: 52px;
-    border: none;
-    background: transparent;
-    color: var(--color-text-secondary);
-    font-weight: 500;
-    font-size: 15px;
-    cursor: pointer;
-    position: relative;
-    transition: color 0.2s, background-color 0.2s;
+    flex: 1; height: 52px; border: none; background: transparent; color: var(--color-text-secondary);
+    font-weight: 500; font-size: 15px; cursor: pointer; position: relative; transition: color 0.2s, background-color 0.2s;
 }
-
-.sticky-tab-btn.active {
-    color: var(--color-text);
-    font-weight: 700;
-}
-
+.sticky-tab-btn.active { color: var(--color-text); font-weight: 700; }
 .sticky-tab-btn.active::after {
-    content: '';
-    position: absolute;
-    bottom: 0;
-    left: 50%;
-    transform: translateX(-50%);
-    width: 56px;
-    height: 4px;
-    background-color: var(--color-primary);
-    border-radius: 4px 4px 0 0;
+    content: ''; position: absolute; bottom: 0; left: 50%; transform: translateX(-50%);
+    width: 56px; height: 4px; background-color: var(--color-primary); border-radius: 4px 4px 0 0;
 }
-
-/* =========================================
-   AVATARS
-   ========================================= */
 .avatar {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    background-color: var(--color-item-bg);
-    border: 1px solid var(--color-border);
-    border-radius: 50%; 
+    display: flex; align-items: center; justify-content: center; background-color: var(--color-item-bg);
+    border: 1px solid var(--color-border); border-radius: 50%; 
     background: linear-gradient(135deg, var(--color-item-bg), var(--color-border));
-    user-select: none;
-    color: var(--color-text);
-    flex-shrink: 0;
+    user-select: none; color: var(--color-text); flex-shrink: 0;
     transition: transform 0.2s cubic-bezier(0.2, 0.8, 0.2, 1.2);
 }
 .avatar:hover { transform: scale(1.05); }
 
 /* =========================================
-   PERFORMANCE MODES (LOW PERF)
+   8. СПЕЦИАЛЬНЫЕ РЕЖИМЫ
    ========================================= */
+
+
 [data-perf='low'] * {
     backdrop-filter: none !important;
     -webkit-backdrop-filter: none !important;
     transition-duration: 0.1s !important;
 }
-
 [data-perf='low'] .sticky-header,
 [data-perf='low'] .dock-glass-wrapper,
 [data-perf='low'] .modal-content,
@@ -283,23 +263,85 @@ html[data-has-custom-bg="true"] .right-sidebar {
     box-shadow: 0 4px 12px rgba(0,0,0,0.25); 
 }
 
-/* =========================================
-   MODAL SCROLL FIX (ГЛОБАЛЬНОЕ ИСПРАВЛЕНИЕ)
-   ========================================= */
+
 .modal-body {
-    overflow-y: auto !important;
-    max-height: 85vh; 
-    display: flex;
-    flex-direction: column;
+    overflow-y: auto !important; max-height: 85vh; 
+    display: flex; flex-direction: column;
 }
-
 .modal-content {
-    max-height: 90vh; 
-    display: flex;
-    flex-direction: column;
+    max-height: 90vh; display: flex; flex-direction: column;
 }
-
-
 body.modal-open {
     overflow: hidden !important;
+}
+
+
+.icon-wrapper-solar svg[data-variant="Linear"] *,
+.icon-wrapper-solar svg[data-variant="Outline"] *,
+.icon-wrapper-solar svg[data-variant="Broken"] * {
+    fill: none !important;
+    stroke: currentColor !important;
+    stroke-width: 1.5; 
+}
+
+
+.icon-wrapper-solar svg[data-variant="Bold"] *,
+.icon-wrapper-solar svg[data-variant="Bulk"] *,
+.icon-wrapper-solar svg[data-variant="TwoTone"] * {
+    stroke: none !important;
+    fill: currentColor !important;
+    stroke-width: 0 !important;
+}
+
+
+.sidebar-nav-item.active .icon-wrapper-solar {
+    color: var(--color-primary) !important;
+}
+
+
+.global-custom-bg .bg-media-layer {
+    transition: opacity 0.8s ease, filter 0.4s ease;
+    opacity: 0;
+}
+
+.global-custom-bg .bg-media-layer.loaded {
+    opacity: 1;
+}
+
+.global-custom-bg video {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+}
+
+.bg-vignette-layer {
+    position: absolute;
+    inset: 0;
+    z-index: 2;
+    background: radial-gradient(ellipse at center, transparent 50%, rgba(0,0,0,0.8) 100%);
+    pointer-events: none;
+    transition: opacity 0.4s ease;
+}
+
+.bg-grain-layer {
+    position: absolute;
+    inset: 0;
+    z-index: 3;
+    pointer-events: none;
+    background-image: url('data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAADIAAAAyCAMAAAAp4XiDAAAAUVBMVEWFhYWDg4N3d3dtbW17e3t1dXWBgYGHh4d5eXlzc3OLi4ubm5uVlZWYmJikpKSgoKCnp6e4uLijpaWoqKjp6ek8PDxHR0dISEhMTExSUlJSSkpNzc3Ozs7NzerJAAAAG3RSTlNAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEAvEOwtAAAFVklEQVR4XpWWB67c2BUFb3g557T/hRo9/WUMZHlgr4Bg8Z4qQgQJlHI4A8SzFVrapvmTF9O7dmYRFZ60YiBhJRCgh1FYhiLAmdvX0CzTOpNE77ME0Zty/nWWzchDtiqrmQDeuv3powQ5ta2eN0FY0InkqDD73lT9c9lEzwUNqgFHs9VQce3TVClFCQrSTfOiYkVJQBmpbq2L6iZavPnAPcoU0dSw0SUTtUl3gGRCKpvbsGEH5l+BeMgJw5B8HfghCwUhGkRuOpIsQgufkcc2bGUrPYHXbW+ZVsUYkkH2sI9Pso9I3gN9LSLCVH/TotallyFineCluékkXfs0AeV2SM5gtEWQGIl1VHrTl+tL2hBajYiBQCKyqKGxqS1Mf2+13BgtAk5jK5oIYDVtD1subQGGFBFEUTa44bD3EkDu3D1yQ5ZGMMNks3hfrHiMPCeo2YpbEWZWMSDRYvUEF9u5RBVecltintnF4NpUy9eWI6wI2SdmCaS3LDBxpARA0MrjcbOLMKovCiSyPV/nss7UnACdCrz8tVyFK5GtcWp9zut1a4334ZJyMCNo0Yx2u5fX5z8bnIZo8C8SHep1C8stLMAZnCVzKCKxPBbLPJIJ6unLgwREu0SbuHYXN2paM6O04Lh8cUyI4cZD+GjKb2YgkeMybHfB4j9EQ7OKj/HevSGwbC2Lh3Y7bsAnCo5HhYtiV4TbqepJzIPwZ9DyoGflowLayoutPanelChsFOflPSwK2u0MxeUGEIBuhS8sHby0tEpKGHiNRLBBEB3PJ23EVRj3L2oTUGs0eQxPfs0JkPxyDe9MvOBpA4hpQ3gI0gPxZWw3JzP5ff4QIeYE4HVtDdrfC4TfDViRRk1q9JPwK4ssxZ0YSAyL22yAMA5G5MnrCWN32j9F2C+N88eLy2AOg00xGnHj8Q5wA1R4hL0M1h7Uo2gZPT0FGzJS0fhBQ9kP/Q2+wD5C+g0z9sHHy28gDbq6gnT0gNnJ2FLv2SSYg3N5P+h8+H4B7G7h8H1cXL8P2cb3A9w9gV7+jw9x8fFw/D8+3g8/vI/3+w8GxgfB/ePO/a8nApkFWBwP1/0/jAxa2h4/04i/AGEH5A1x0WA9gGkC/gGZNwKdgB6h3M//gLeBNoG2gS0j4A3gD2C0h3MAYi0gLgA3M9mAFgD0A4g3gByAmAOoHkAyAdoBfheyGMA3QJgDOA+qX8A2ge0gBwAyAApAF4B8gB4AbgXwLgA2gMmAccv3APgA3ADgB2ALgB6APYDOA2gA8BOAFsBOAGsBOAGsBOAFsBOAGsBOAGsBOAFsBOAFsBOAFsBOAFsBOAFsBOAFsBOAGsBOAEsBOAGsBOAFsBOAFsBOAFsBOAFsBOAFsBOAFsBOAEsBOAGsBOAFsBOAFsBOAFsBOAFsBOAFsBOAFsBOAGsBOAFsBOAGsBOAFsBOAFsBOAFsBOAFsBOAFsBOAFsBOAGsBOAFsBOAGsBOAFsBOAFsBOAFsBOAFsBOAFsBOAFsBOAFsBOAFsBOAGsBOAFsBOAFsBOAFsBOAFsBOAFsBOAFsBOAFsBOAFsBOAFsBOAFsBOAFsBOAFsBOAFsBOAFsBOAFsBOAFsBOAFsBOAFsBOAFsBOAFsBOAFsBOAFsBOAFsBOAFsBOAFsBOAFsBOAFsBOAFsBOAFsBOAFsBOAFsBOAFsBOAFsBOAFsBOAFsBOAFsBOAFsBOAFsBOAFsBOAFsBOAFsBOAFsBOAFsBOAFsBOAFsBOAFsBOAFsBOAFsBOAFsBOAFsBOAFsBOAFsBOAFsBOAFsBOAFsBOAFsBOAFsBOAFsBOAFsBOAFsBOAFsBOAFsBOAFsBOAFsBOAFsBOAFsBOAFsBOAFsBOAFsBOAFsBOAFsBOAFsBOAFsBOAFsBOAFsBOAFsBO-gAAAABJRU5ErkJggg==');
+    animation: grainAnimation 0.3s steps(4) infinite;
+    opacity: 0.05;
+}
+
+@keyframes grainAnimation {
+    0%, 100% { transform: translate(0, 0); }
+    10% { transform: translate(-5%, -10%); }
+    30% { transform: translate(3%, -15%); }
+    50% { transform: translate(12%, 9%); }
+    70% { transform: translate(-10%, 8%); }
+    90% { transform: translate(5%, 2%); }
 }

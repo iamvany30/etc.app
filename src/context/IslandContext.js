@@ -4,6 +4,7 @@ const IslandContext = createContext();
 
 export const IslandProvider = ({ children }) => {
     const [alert, setAlert] = useState(null);
+    const [customColor, setCustomColor] = useState(null); 
     const timeoutRef = useRef(null);
 
     const showIslandAlert = useCallback((type, message, icon, duration = 4000) => {
@@ -16,8 +17,18 @@ export const IslandProvider = ({ children }) => {
         }, duration);
     }, []);
 
+    
+    const setIslandTheme = useCallback((color) => {
+        setCustomColor(color);
+    }, []);
+
     return (
-        <IslandContext.Provider value={{ alert, showIslandAlert }}>
+        <IslandContext.Provider value={{ 
+            alert, 
+            showIslandAlert, 
+            customColor,    
+            setIslandTheme  
+        }}>
             {children}
         </IslandContext.Provider>
     );

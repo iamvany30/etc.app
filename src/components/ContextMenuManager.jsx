@@ -10,12 +10,18 @@ const ContextMenuManager = () => {
     const { currentUser } = useUser();
     const navigate = useNavigate();
 
+    
+    const isDev = process.env.NODE_ENV === 'development';
+
     useEffect(() => {
         const handleContextMenu = (e) => {
             if (e.shiftKey) return; 
             
             e.preventDefault();
             const target = e.target;
+            const clickX = e.clientX;
+            const clickY = e.clientY;
+
             let items = [];
 
             
@@ -27,7 +33,6 @@ const ContextMenuManager = () => {
                 items.push({ isLabel: true, label: 'Ссылка' });
                 
                 if (isInternal) {
-                    
                     const path = linkEl.getAttribute('href').replace('#', '');
                     items.push({
                         label: 'Перейти',
@@ -79,6 +84,7 @@ const ContextMenuManager = () => {
                 });
             }
 
+            
             items.push({
                 label: 'Назад',
                 action: () => window.history.back()
@@ -90,14 +96,23 @@ const ContextMenuManager = () => {
                 action: () => window.location.reload()
             });
 
+            
+            if (isDev) {
+                items.push({ isSeparator: true });
+                items.push({
+                    label: '🔍 Inspect Element (Dev)',
+                    action: () => window.api.invoke('app:inspect-element', { x: clickX, y: clickY })
+                });
+            }
+
             if (items.length > 0) {
-                openContextMenu(e.clientX, e.clientY, items);
+                openContextMenu(clickX, clickY, items);
             }
         };
 
         window.addEventListener('contextmenu', handleContextMenu);
         return () => window.removeEventListener('contextmenu', handleContextMenu);
-    }, [openContextMenu, currentUser, navigate]);
+    }, [openContextMenu, currentUser, navigate, isDev]);
 
     return null;
 };

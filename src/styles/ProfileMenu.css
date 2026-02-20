@@ -88,3 +88,60 @@
         to { transform: translateY(0); }
     }
 }
+
+.accounts-list {
+    padding: 8px;
+    max-height: 200px;
+    overflow-y: auto;
+}
+
+.account-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    width: 100%;
+    padding: 8px 10px;
+    background: transparent;
+    border: none;
+    border-radius: 10px;
+    cursor: pointer;
+    text-align: left;
+    transition: background 0.2s;
+}
+
+.account-item:hover {
+    background: rgba(255, 255, 255, 0.05);
+}
+
+.account-item.active {
+    cursor: default;
+}
+
+.account-item .avatar.small {
+    width: 32px; 
+    height: 32px; 
+    font-size: 16px;
+}
+
+.account-info {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+}
+
+.acc-name {
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--color-text);
+}
+
+.acc-handle {
+    font-size: 11px;
+    color: var(--color-text-secondary);
+}
+
+.menu-divider {
+    height: 1px;
+    background: rgba(255, 255, 255, 0.1);
+    margin: 0 8px;
+}

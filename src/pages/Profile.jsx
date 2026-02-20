@@ -1,11 +1,11 @@
-/* @source src/pages/Profile.jsx */
 import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 import { Virtuoso } from 'react-virtuoso';
 import { apiClient } from '../api/client';
 import { useUser } from '../context/UserContext';
 import { useModal } from '../context/ModalContext';
-
+import { useIsland } from '../context/IslandContext'; 
+import { getAverageColor } from '../utils/colorUtils'; 
 
 import PostCard from '../components/PostCard';
 import { DynamicComponent } from '../core/ComponentRegistry';
@@ -16,9 +16,10 @@ import UserListModal from '../components/modals/UserListModal';
 import BannerEditorModal from '../components/modals/BannerEditorModal';
 import { ProfileSkeleton, PostSkeleton } from '../components/Skeletons';
 
-
 import { CameraIcon, SettingsIcon, CalendarIcon } from '../components/icons/CommonIcons';
 import { VerifiedBlue, VerifiedGold } from '../components/icons/VerifyIcons';
+import { IconDownload } from '../components/icons/SidebarIcons'; 
+import { BookmarkIcon } from '../components/icons/InteractionsIcons';
 
 import '../styles/Profile.css';
 
@@ -29,14 +30,11 @@ function declension(number, titles) {
     return titles[(number % 100 > 4 && number % 100 < 20) ? 2 : cases[(number % 10 < 5) ? number % 10 : 5]];
 }
 
-
 const loadedBannersCache = new Set();
 
 const BannerImage = React.memo(({ src, alt }) => {
-    
     const [isLoaded, setIsLoaded] = useState(() => !!src && loadedBannersCache.has(src));
 
-    
     useEffect(() => {
         if (src && !loadedBannersCache.has(src)) {
             setIsLoaded(false);
@@ -53,15 +51,12 @@ const BannerImage = React.memo(({ src, alt }) => {
     return (
         <>
             <div className={`profile-banner-placeholder ${isLoaded ? 'hidden' : ''}`} />
-            
             {src && (
                 <img 
                     src={src} 
                     alt={alt} 
                     className={`profile-banner-img ${isLoaded ? 'loaded' : ''}`}
                     onLoad={handleLoad}
-                    
-                    
                     ref={(img) => {
                         if (img && img.complete && !isLoaded) {
                             handleLoad();
@@ -75,16 +70,15 @@ const BannerImage = React.memo(({ src, alt }) => {
 
 const Profile = () => {
     const { username } = useParams();
+    const navigate = useNavigate();
     const { currentUser, setCurrentUser } = useUser();
     const { openModal } = useModal();
+    const { setIslandTheme } = useIsland(); 
     
     const [user, setUser] = useState(null);
     const [posts, setPosts] = useState([]);
     const [activeTab, setActiveTab] = useState('posts'); 
-    
     const [loadingProfile, setLoadingProfile] = useState(true);
-    
-    
     const [isFollowing, setIsFollowing] = useState(false);
     const [followersCount, setFollowersCount] = useState(0);
 
@@ -107,6 +101,7 @@ const Profile = () => {
         return [pinnedPost, ...otherPosts];
     }, [posts, user?.pinnedPostId, activeTab]);
 
+    
     const fetchProfile = useCallback(async () => {
         if (!username) return;
         setLoadingProfile(true);
@@ -136,13 +131,13 @@ const Profile = () => {
         }
     }, [username]);
 
+    
     const loadPosts = useCallback(async (isInitial = false) => {
         if (!username) return;
         if (isFetchingRef.current || (!isInitial && !hasMoreRef.current)) return;
 
         isFetchingRef.current = true;
         if (isInitial) {
-            
             setPosts([]);
             nextCursorRef.current = null;
             hasMoreRef.current = true;
@@ -151,7 +146,6 @@ const Profile = () => {
         try {
             const cursor = isInitial ? null : nextCursorRef.current;
             let res;
-            
             if (activeTab === 'posts') {
                 res = await apiClient.getUserPosts(username, cursor);
             } else {
@@ -172,10 +166,31 @@ const Profile = () => {
         } catch (e) {
             console.error("Ошибка загрузки постов:", e);
         } finally {
-            
             isFetchingRef.current = false;
         }
     }, [username, activeTab]);
+
+    
+    useEffect(() => {
+        let isCancelled = false;
+
+        const updateIslandColor = async () => {
+            if (user?.banner) {
+                const color = await getAverageColor(user.banner);
+                if (!isCancelled && color) {
+                    setIslandTheme(color);
+                }
+            } else {
+                if (!isCancelled) setIslandTheme(null);
+            }
+        };
+
+        updateIslandColor();
+        return () => {
+            isCancelled = true;
+            setIslandTheme(null);
+        };
+    }, [user?.banner, setIslandTheme]);
 
     useEffect(() => { fetchProfile(); }, [fetchProfile]);
     useEffect(() => { loadPosts(true); }, [username, activeTab, loadPosts]);
@@ -197,11 +212,8 @@ const Profile = () => {
         }
     };
 
-    
     const handleBannerUpdate = useCallback((newUrl) => {
         setUser(prev => ({ ...prev, banner: newUrl }));
-        
-        
         setCurrentUser(prev => {
             if (prev.username === username) { 
                 return { ...prev, banner: newUrl };
@@ -211,7 +223,6 @@ const Profile = () => {
     }, [setCurrentUser, username]);
     
     const handlePostCreated = useCallback((newPost) => {
-        
         setActiveTab(currentTab => {
             if (currentTab === 'posts') {
                 setPosts(prev => [newPost, ...prev]);
@@ -261,7 +272,6 @@ const Profile = () => {
         
         return (
             <div className="profile-header-container">
-                {}
                 {user.banner && (
                     <div className="profile-background-glow">
                         <img src={user.banner} alt="" aria-hidden="true" />
@@ -269,11 +279,9 @@ const Profile = () => {
                     </div>
                 )}
 
-                {}
                 <div className="profile-banner-group">
                     <div className="profile-banner">
                         <BannerImage src={user.banner} alt="Banner" />
-                        
                         <div className="profile-banner-fade" />
                         {isMyProfile && (
                             <button className="edit-banner-btn-modern" onClick={() => openModal(<BannerEditorModal onSaveSuccess={handleBannerUpdate} />)}>
@@ -348,6 +356,33 @@ const Profile = () => {
                                 <strong>{followersCount}</strong> <span>читателей</span>
                             </button>
                         </div>
+
+                        {}
+                        {isMyProfile && (
+                            <div className="profile-personal-menu">
+                                <button className="personal-menu-btn" onClick={() => navigate('/bookmarks')}>
+                                    <div className="icon-circle bookmark">
+                                        <BookmarkIcon size={20} active={true} />
+                                    </div>
+                                    <div className="personal-btn-text">
+                                        <span className="p-title">Закладки</span>
+                                        <span className="p-sub">Сохраненное</span>
+                                    </div>
+                                </button>
+
+                                <button className="personal-menu-btn" onClick={() => navigate('/downloads')}>
+                                    <div className="icon-circle download">
+                                        <IconDownload size={20} />
+                                    </div>
+                                    <div className="personal-btn-text">
+                                        <span className="p-title">Загрузки</span>
+                                        <span className="p-sub">Файлы</span>
+                                    </div>
+                                </button>
+                            </div>
+                        )}
+                        {}
+
                     </div>
                 </div>
 
@@ -370,7 +405,7 @@ const Profile = () => {
             </div>
         );
         
-    }, [user, isMyProfile, isFollowing, followersCount, activeTab, username, openModal, handleBannerUpdate, handlePostCreated, renderOnlineStatus]); 
+    }, [user, isMyProfile, isFollowing, followersCount, activeTab, username, openModal, handleBannerUpdate, handlePostCreated, renderOnlineStatus, navigate]); 
 
     if (loadingProfile) {
         return (

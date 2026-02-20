@@ -1,5 +1,5 @@
 import React from 'react';
-import { LikeIcon, CommentIcon, RepostIcon, ViewIcon } from '../icons/InteractionsIcons';
+import { LikeIcon, CommentIcon, RepostIcon, ViewIcon, BookmarkIcon  } from '../icons/InteractionsIcons';
 
 const PostFooter = ({ ctrl }) => {
     return (
@@ -35,6 +35,16 @@ const PostFooter = ({ ctrl }) => {
                     <LikeIcon active={ctrl.liked} />
                 </div>
                 <span>{ctrl.likesCount > 0 ? ctrl.likesCount : ''}</span>
+            </button>
+
+            <button 
+                className={`action-group bookmark ${ctrl.isSaved ? 'active' : ''}`} 
+                onClick={ctrl.handleSave}
+                title={ctrl.isSaved ? "Удалить из закладок" : "Сохранить"}
+            >
+                <div className="action-icon-wrapper">
+                    <BookmarkIcon active={ctrl.isSaved} />
+                </div>
             </button>
             
             <button className="action-group view" onClick={e => e.stopPropagation()} title="Просмотры">

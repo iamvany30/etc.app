@@ -33,8 +33,11 @@ contextBridge.exposeInMainWorld('api', {
             removeListener: () => ipcRenderer.removeListener('notification', subscription)
         };
     },
+    debug: {
+        openBrowser: (url) => ipcRenderer.invoke('debug:open-browser', url)
+    },
 
-    
+    dumpLogs: () => ipcRenderer.invoke('app:dump-logs'),
     on: (channel, callback) => {
         const subscription = (_event, ...args) => callback(...args);
         ipcRenderer.on(channel, subscription);

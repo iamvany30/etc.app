@@ -32,9 +32,7 @@ function createMainWindow() {
     
     
     mainWindow.webContents.session.on('will-download', (event, item, webContents) => {
-        
         const downloadsPath = app.getPath('downloads');
-        
         const saveDir = path.join(downloadsPath, 'etc.app');
 
         if (!fs.existsSync(saveDir)) {
@@ -43,33 +41,48 @@ function createMainWindow() {
         
         const fileName = item.getFilename();
         const fullPath = path.join(saveDir, fileName);
+        const url = item.getURL();
+        const startTime = Date.now();
 
         item.setSavePath(fullPath);
 
-        const downloadUrl = item.getURL();
         
-        webContents.send('download-progress', { percent: 0, url: downloadUrl });
+        webContents.send('download-progress', { 
+            url, 
+            fileName, 
+            path: fullPath, 
+            percent: 0, 
+            status: 'starting',
+            startTime
+        });
 
         item.on('updated', (event, state) => {
             if (state === 'progressing') {
-                if (item.getTotalBytes() > 0) {
-                    const percent = Math.floor((item.getReceivedBytes() / item.getTotalBytes()) * 100);
-                    webContents.send('download-progress', { percent, url: downloadUrl });
-                }
+                const percent = item.getTotalBytes() > 0 
+                    ? (item.getReceivedBytes() / item.getTotalBytes()) * 100 
+                    : 0;
+                
+                webContents.send('download-progress', { 
+                    url, 
+                    fileName,
+                    path: fullPath,
+                    percent, 
+                    status: 'progressing',
+                    startTime
+                });
             }
         });
 
         item.on('done', (event, state) => {
-            let finalStatus;
-            if (state === 'completed') {
-                finalStatus = { percent: 100, status: 'completed' };
-            } else if (state === 'cancelled') {
-                finalStatus = { percent: null, status: 'cancelled' };
-            } else {
-                finalStatus = { percent: null, status: 'failed' };
-            }
-            
-            webContents.send('download-progress', { ...finalStatus, url: downloadUrl });
+            const status = state === 'completed' ? 'completed' : state === 'cancelled' ? 'cancelled' : 'failed';
+            webContents.send('download-progress', { 
+                url, 
+                fileName,
+                path: fullPath,
+                percent: 100, 
+                status,
+                startTime
+            });
         });
     });
 
@@ -85,12 +98,30 @@ function createMainWindow() {
     ipcMain.on('nav-forward', () => mainWindow?.webContents.goForward());
     ipcMain.on('nav-reload', () => mainWindow?.webContents.reload());
 
+    mainWindow.webContents.on('before-input-event', (event, input) => {
+        if (input.type === 'keyDown') {
+            const { key, control, shift, meta } = input;
+            
+            
+            if (key === 'F12') {
+                mainWindow.webContents.toggleDevTools();
+                event.preventDefault();
+            }
+            
+            if (key.toLowerCase() === 'i' && ((control && shift) || (meta && input.alt))) {
+                mainWindow.webContents.toggleDevTools();
+                event.preventDefault();
+            }
+        }
+    });
+
     if (app.isPackaged) {
         mainWindow.loadFile(PATHS.BUILD_INDEX, {
             query: { v: app.getVersion() }
         });
     } else {
         mainWindow.loadURL('http://localhost:3000');
+        mainWindow.webContents.openDevTools(); 
     }
 
     mainWindow.once('ready-to-show', () => mainWindow.show());

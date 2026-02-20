@@ -12,7 +12,7 @@ import '../styles/Sidebar.css';
 
 
 import { MusicIcon } from './icons/MusicIcon';
-import { IconFeed, IconExplore, IconNotifications, IconProfile } from './icons/SidebarIcons';
+import { IconFeed, IconExplore, IconNotifications, IconBookmarks, IconProfile, IconDownload} from './icons/SidebarIcons';
 
 const Sidebar = () => {
     const { currentUser, setCurrentUser } = useUser();
@@ -74,6 +74,8 @@ const Sidebar = () => {
     const navItems = [
         { to: "/", label: "Лента", icon: <IconFeed /> },
         { to: "/music", label: "Музыка", icon: <MusicIcon /> },
+        { to: "/downloads", label: "Загрузки", icon: <IconDownload /> },
+        { to: "/bookmarks", label: "Закладки", icon: <IconBookmarks /> }, 
         { to: "/explore", label: "Обзор", icon: <IconExplore /> },
         { to: "/notifications", label: "События", icon: <IconNotifications />, badge: unreadCount },
         { to: `/profile/${currentUser.username}`, label: "Профиль", icon: <IconProfile /> }

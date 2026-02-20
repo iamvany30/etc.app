@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { ThemeLoader } from '../../../core/ThemeLoader';
-import { IconInfo, IconCheck } from '../SettingsIcons';
+import { IconInfo, IconCheck } from '../../icons/SettingsIcons'; 
 import { 
     IconDownload, 
     IconTrash, 

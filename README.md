@@ -1,6 +1,6 @@
 # итд.app (etc.app) - Windows App
 
-![Version](https://img.shields.io/badge/version-0.4.0-blue.svg)
+![Version](https://img.shields.io/badge/version-0.9.0-blue.svg)
 ![Electron](https://img.shields.io/badge/Electron-34.0-2F3336.svg?logo=electron)
 ![React](https://img.shields.io/badge/React-19.0-20232a.svg?logo=react)
 ![License](https://img.shields.io/badge/license-MIT-green.svg)

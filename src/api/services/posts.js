@@ -9,11 +9,18 @@ export const postsService = {
 
     getPostDetails: (postId) => request(`/posts/${postId}`, 'GET'),
     
-    createPost: (content, attachmentIds = [], poll = null, spans = []) => {
+    getPostHistory: (postId) => request(`/posts/${postId}/history`, 'GET'),
+    
+    createPost: (content, attachmentIds = [], poll = null, spans = [], wallUserId = null) => {
         const body = { content, attachmentIds, poll, spans };
         if (!attachmentIds || attachmentIds.length === 0) delete body.attachmentIds;
         if (!poll) delete body.poll;
         if (!spans || spans.length === 0) delete body.spans;
+        
+        if (wallUserId) {
+            body.wallUserId = wallUserId;
+        }
+
         return request('/posts', 'POST', body);
     },
     
@@ -29,11 +36,21 @@ export const postsService = {
     unpinPost: (postId) => request(`/posts/${postId}/pin`, 'DELETE'),
     viewPost: (postId) => request(`/posts/${postId}/view`, 'POST'),
      
-    
+    getComments: (postId, cursor = null, limit = 20) => {
+        let url = `/posts/${postId}/comments?limit=${limit}`;
+        if (cursor) url += `&cursor=${cursor}`;
+        return request(url, 'GET');
+    },
+
+    getReplies: (commentId, cursor = null, limit = 20) => {
+        let url = `/comments/${commentId}/replies?limit=${limit}`;
+        if (cursor) url += `&cursor=${cursor}`;
+        return request(url, 'GET');
+    },
+
     addComment: (postId, content, attachmentIds = []) => 
         request(`/posts/${postId}/comments`, 'POST', { content, attachmentIds }),
 
-    
     addReply: (commentId, content, attachmentIds = [], replyToUserId) => 
         request(`/comments/${commentId}/replies`, 'POST', { 
             content, 

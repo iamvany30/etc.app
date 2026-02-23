@@ -1,37 +1,34 @@
 import React, { useLayoutEffect, useState, useRef, useEffect } from 'react';
 import ReactDOM from 'react-dom';
 import ConfirmDeleteModal from '../modals/ConfirmDeleteModal';
+import ReportModal from '../modals/ReportModal'; 
 import { apiClient } from '../../api/client';
-import { ShareIcon, EditIcon, DeleteIcon, PinIcon } from '../icons/MenuIcons';
-import { useIsland } from '../../context/IslandContext';
-
+import { ShareIcon, EditIcon, DeleteIcon, PinIcon, ReportIcon } from '../icons/MenuIcons'; 
+import { useIslandStore } from '../../store/islandStore';
+import { useModalStore } from '../../store/modalStore'; 
 
 const PostMenu = ({ post, isOwner, isPinned, ctrl, onClose, anchorRef }) => {
     const [position, setPosition] = useState({ top: 0, left: 0 });
     const menuRef = useRef(null);
-    const { showIslandAlert } = useIsland();
+    const showIslandAlert = useIslandStore(state => state.showIslandAlert);
+    const openModal = useModalStore(state => state.openModal); 
 
-    
     useLayoutEffect(() => {
-        if (anchorRef.current) {
+        if (anchorRef.current && menuRef.current) {
             const rect = anchorRef.current.getBoundingClientRect();
+            const menuRect = menuRef.current.getBoundingClientRect();
             const scrollY = window.scrollY;
             const scrollX = window.scrollX;
 
-            
-            
-            
             setPosition({
-                top: rect.bottom + scrollY + 4,
-                left: rect.right + scrollX - 200 
+                top: rect.bottom + scrollY + 6,
+                left: rect.right + scrollX - menuRect.width
             });
         }
     }, [anchorRef]);
 
-    
     useEffect(() => {
         const handleClickOutside = (e) => {
-            
             if (
                 menuRef.current && 
                 !menuRef.current.contains(e.target) &&
@@ -42,9 +39,6 @@ const PostMenu = ({ post, isOwner, isPinned, ctrl, onClose, anchorRef }) => {
             }
         };
 
-        
-        
-        
         window.addEventListener('mousedown', handleClickOutside);
         window.addEventListener('scroll', onClose, { capture: true }); 
         window.addEventListener('resize', onClose);
@@ -53,13 +47,13 @@ const PostMenu = ({ post, isOwner, isPinned, ctrl, onClose, anchorRef }) => {
             window.removeEventListener('mousedown', handleClickOutside);
             window.removeEventListener('scroll', onClose, { capture: true });
             window.removeEventListener('resize', onClose);
-            
         };
     }, [onClose, anchorRef]);
 
     const handleShare = () => {
-        const url = `...`;
+        const url = `${window.location.origin}/#/post/${post.id}`;
         navigator.clipboard.writeText(url);
+        onClose();
         showIslandAlert('success', 'Ссылка скопирована', '🔗');
     };
 
@@ -84,9 +78,14 @@ const PostMenu = ({ post, isOwner, isPinned, ctrl, onClose, anchorRef }) => {
         );
     };
 
+    
+    const handleReport = () => {
+        onClose();
+        openModal(<ReportModal targetId={post.id} targetType="post" />);
+    };
+
     const isMusicPost = post.content?.includes('#nowkie_music_track');
 
-    
     return ReactDOM.createPortal(
         <div 
             ref={menuRef}
@@ -95,13 +94,14 @@ const PostMenu = ({ post, isOwner, isPinned, ctrl, onClose, anchorRef }) => {
                 top: position.top,
                 left: position.left,
                 position: 'absolute',
-                zIndex: 500, 
-                marginTop: 0 
+                zIndex: 9999, 
+                opacity: position.top === 0 ? 0 : 1
             }}
             onClick={(e) => e.stopPropagation()}
         >
             <button onClick={handleShare}><ShareIcon /> Поделиться</button>
-            {isOwner && (
+            
+            {isOwner ? (
                 <>
                     <button onClick={handlePin}>
                         <PinIcon pinned={isPinned} /> {isPinned ? 'Открепить' : 'Закрепить'}
@@ -111,8 +111,16 @@ const PostMenu = ({ post, isOwner, isPinned, ctrl, onClose, anchorRef }) => {
                             <EditIcon /> Редактировать
                         </button>
                     )}
+                    <div className="post-menu-separator" />
                     <button className="delete-btn" onClick={handleDelete}>
                         <DeleteIcon /> Удалить
+                    </button>
+                </>
+            ) : (
+                <>
+                    <div className="post-menu-separator" />
+                    <button className="delete-btn" onClick={handleReport}>
+                        <ReportIcon /> Пожаловаться
                     </button>
                 </>
             )}

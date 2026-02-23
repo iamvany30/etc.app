@@ -1,10 +1,11 @@
+/* @source src/pages/Profile.jsx */
 import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Virtuoso } from 'react-virtuoso';
 import { apiClient } from '../api/client';
-import { useUser } from '../context/UserContext';
-import { useModal } from '../context/ModalContext';
-import { useIsland } from '../context/IslandContext'; 
+import { useUserStore } from '../store/userStore';
+import { useModalStore } from '../store/modalStore';
+import { useIslandStore } from '../store/islandStore';
 import { getAverageColor } from '../utils/colorUtils'; 
 
 import PostCard from '../components/PostCard';
@@ -18,7 +19,8 @@ import { ProfileSkeleton, PostSkeleton } from '../components/Skeletons';
 
 import { CameraIcon, SettingsIcon, CalendarIcon } from '../components/icons/CommonIcons';
 import { VerifiedBlue, VerifiedGold } from '../components/icons/VerifyIcons';
-import { IconDownload } from '../components/icons/SidebarIcons'; 
+
+import { IconDownload, IconMusic } from '../components/icons/SidebarIcons'; 
 import { BookmarkIcon } from '../components/icons/InteractionsIcons';
 
 import '../styles/Profile.css';
@@ -71,12 +73,14 @@ const BannerImage = React.memo(({ src, alt }) => {
 const Profile = () => {
     const { username } = useParams();
     const navigate = useNavigate();
-    const { currentUser, setCurrentUser } = useUser();
-    const { openModal } = useModal();
-    const { setIslandTheme } = useIsland(); 
+    const currentUser = useUserStore(state => state.currentUser);
+    const setCurrentUser = useUserStore(state => state.setCurrentUser);
+    const openModal = useModalStore(state => state.openModal);
+    const setIslandTheme = useIslandStore(state => state.setIslandTheme);
     
     const [user, setUser] = useState(null);
     const [posts, setPosts] = useState([]);
+    const [pinnedPost, setPinnedPost] = useState(null);
     const [activeTab, setActiveTab] = useState('posts'); 
     const [loadingProfile, setLoadingProfile] = useState(true);
     const [isFollowing, setIsFollowing] = useState(false);
@@ -87,23 +91,33 @@ const Profile = () => {
     const isFetchingRef = useRef(false);
     const virtuosoRef = useRef(null);
 
+    const userRef = useRef(null);
+    const pinnedPostRef = useRef(null);
+
+    useEffect(() => { userRef.current = user; }, [user]);
+    useEffect(() => { pinnedPostRef.current = pinnedPost; }, [pinnedPost]);
+
     const isMyProfile = currentUser?.username === username;
 
+    const canPostOnWall = useMemo(() => {
+        if (!user) return false;
+        if (isMyProfile) return true;
+        return user.canPost === true;
+    }, [user, isMyProfile]);
+
     const displayPosts = useMemo(() => {
-        if (!user?.pinnedPostId || activeTab !== 'posts' || posts.length === 0) {
+        if (activeTab !== 'posts') {
             return posts;
         }
-        const pinnedIdx = posts.findIndex(p => p.id === user.pinnedPostId);
-        if (pinnedIdx === -1) return posts; 
-        
-        const pinnedPost = posts[pinnedIdx];
-        const otherPosts = posts.filter((_, i) => i !== pinnedIdx);
-        return [pinnedPost, ...otherPosts];
-    }, [posts, user?.pinnedPostId, activeTab]);
-
+        const regularPosts = posts.filter(p => p.id !== pinnedPost?.id);
+        if (pinnedPost) {
+            return [pinnedPost, ...regularPosts];
+        }
+        return posts;
+    }, [posts, pinnedPost, activeTab]);
     
     const fetchProfile = useCallback(async () => {
-        if (!username) return;
+        if (!username) return null;
         setLoadingProfile(true);
         try {
             const profileRes = await apiClient.getProfile(username);
@@ -120,19 +134,30 @@ const Profile = () => {
                 setUser(processedUser);
                 setIsFollowing(processedUser.isFollowing);
                 setFollowersCount(processedUser.followersCount || 0);
+
+                if (userData.pinnedPost && typeof userData.pinnedPost === 'object') {
+                    setPinnedPost(userData.pinnedPost);
+                } else if (userData.pinnedPostId === null) {
+                    setPinnedPost(null);
+                }
+
+                return processedUser;
+
             } else {
                 setUser(null);
+                setPinnedPost(null);
             }
         } catch (error) {
             console.error("Ошибка загрузки профиля:", error);
             setUser(null);
+            setPinnedPost(null);
         } finally {
             setLoadingProfile(false);
         }
+        return null;
     }, [username]);
-
     
-    const loadPosts = useCallback(async (isInitial = false) => {
+    const loadPosts = useCallback(async (isInitial = false, forcePinnedId = undefined) => {
         if (!username) return;
         if (isFetchingRef.current || (!isInitial && !hasMoreRef.current)) return;
 
@@ -147,13 +172,24 @@ const Profile = () => {
             const cursor = isInitial ? null : nextCursorRef.current;
             let res;
             if (activeTab === 'posts') {
-                res = await apiClient.getUserPosts(username, cursor);
+                let pinnedId = forcePinnedId;
+                if (pinnedId === undefined) {
+                    pinnedId = userRef.current?.pinnedPostId || userRef.current?.pinnedPost?.id || pinnedPostRef.current?.id || null;
+                }
+                res = await apiClient.getUserPosts(username, cursor, 20, pinnedId);
             } else {
                 res = await apiClient.getUserLikedPosts(username, cursor);
             }
 
             const responseData = res?.posts || res?.data?.posts || [];
             const pagination = res?.pagination || res?.data?.pagination;
+
+            if (isInitial && activeTab === 'posts') {
+                const foundPinned = responseData.find(p => p.isPinned === true);
+                if (foundPinned) {
+                    setPinnedPost(foundPinned);
+                }
+            }
 
             setPosts(prev => isInitial ? responseData : [...prev, ...responseData]);
 
@@ -169,8 +205,26 @@ const Profile = () => {
             isFetchingRef.current = false;
         }
     }, [username, activeTab]);
-
     
+    useEffect(() => {
+        let isCancelled = false;
+
+        const init = async () => {
+            let fetchedUser = userRef.current;
+            if (!fetchedUser || fetchedUser.username !== username) {
+                fetchedUser = await fetchProfile();
+            }
+            if (!isCancelled) {
+                const pId = fetchedUser?.pinnedPostId || fetchedUser?.pinnedPost?.id || null;
+                await loadPosts(true, pId);
+            }
+        };
+
+        init();
+
+        return () => { isCancelled = true; };
+    }, [username, activeTab, fetchProfile, loadPosts]);
+
     useEffect(() => {
         let isCancelled = false;
 
@@ -192,10 +246,7 @@ const Profile = () => {
         };
     }, [user?.banner, setIslandTheme]);
 
-    useEffect(() => { fetchProfile(); }, [fetchProfile]);
-    useEffect(() => { loadPosts(true); }, [username, activeTab, loadPosts]);
-
-    const handleFollowToggle = async () => {
+    const handleFollowToggle = useCallback(async () => {
         if (!user || isMyProfile) return;
         const prevState = isFollowing;
         const prevCount = followersCount;
@@ -210,7 +261,7 @@ const Profile = () => {
             setIsFollowing(prevState);
             setFollowersCount(prevCount);
         }
-    };
+    }, [user, isMyProfile, isFollowing, followersCount]);
 
     const handleBannerUpdate = useCallback((newUrl) => {
         setUser(prev => ({ ...prev, banner: newUrl }));
@@ -231,7 +282,7 @@ const Profile = () => {
         });
     }, []);
 
-    const renderOnlineStatus = () => {
+    const renderOnlineStatus = useCallback(() => {
         if (!user) return null;
         if (user.isOnline) return <div className="online-status-badge">В сети</div>;
         if (user.showLastSeen === false || !user.lastSeen) return <div className="offline-status-badge">Оффлайн</div>;
@@ -254,7 +305,7 @@ const Profile = () => {
         else timeText = date.toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' });
 
         return <div className="offline-status-badge">Был(а) {timeText}</div>;
-    };
+    }, [user]);
 
     const formatDate = (dateStr) => {
         if (!dateStr) return null;
@@ -297,7 +348,7 @@ const Profile = () => {
                         <div className="profile-avatar-main">
                             <div className="avatar" style={{ 
                                 width: '100%', height: '100%', fontSize: '60px',
-                                border: '4px solid var(--color-background)',
+                                border: '6px solid var(--color-background)',
                                 backgroundColor: 'var(--color-item-bg)'
                             }}>
                                 {user.avatar || "👤"}
@@ -357,7 +408,6 @@ const Profile = () => {
                             </button>
                         </div>
 
-                        {}
                         {isMyProfile && (
                             <div className="profile-personal-menu">
                                 <button className="personal-menu-btn" onClick={() => navigate('/bookmarks')}>
@@ -379,9 +429,18 @@ const Profile = () => {
                                         <span className="p-sub">Файлы</span>
                                     </div>
                                 </button>
+
+                                <button className="personal-menu-btn" onClick={() => navigate('/music')}>
+                                    <div className="icon-circle music">
+                                        <IconMusic size={20} />
+                                    </div>
+                                    <div className="personal-btn-text">
+                                        <span className="p-title">Музыка</span>
+                                        <span className="p-sub">Библиотека</span>
+                                    </div>
+                                </button>
                             </div>
                         )}
-                        {}
 
                     </div>
                 </div>
@@ -396,16 +455,22 @@ const Profile = () => {
                 </nav>
 
                 <div className="profile-posts-header">
-                    {isMyProfile && activeTab === 'posts' && (
+                    {activeTab === 'posts' && (isMyProfile || canPostOnWall) && (
                         <div className="profile-create-wrap">
-                            <DynamicComponent name="Components.CreatePost" fallback={CreatePostFallback} onPostCreated={handlePostCreated} />
+                            <DynamicComponent 
+                                name="Components.CreatePost" 
+                                fallback={CreatePostFallback} 
+                                onPostCreated={handlePostCreated}
+                                wallId={isMyProfile ? null : user.id}
+                                placeholder={isMyProfile ? "Что нового?" : `Написать @${user.username}...`}
+                            />
                         </div>
                     )}
                 </div>
             </div>
         );
         
-    }, [user, isMyProfile, isFollowing, followersCount, activeTab, username, openModal, handleBannerUpdate, handlePostCreated, renderOnlineStatus, navigate]); 
+    }, [user, isMyProfile, isFollowing, followersCount, activeTab, username, openModal, handleBannerUpdate, handlePostCreated, renderOnlineStatus, navigate, canPostOnWall, handleFollowToggle]);
 
     if (loadingProfile) {
         return (
@@ -446,7 +511,7 @@ const Profile = () => {
                     <PostCard 
                         post={post} 
                         key={post.id} 
-                        isPinned={user?.pinnedPostId === post.id} 
+                        isPinned={pinnedPost ? post.id === pinnedPost.id && activeTab === 'posts' : false} 
                     />
                 )}
             />

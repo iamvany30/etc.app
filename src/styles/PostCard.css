@@ -1,21 +1,30 @@
-/* @source PostCard.css */
+/* @source src/styles/PostCard.css */
 
-
+/* =========================================
+   1. БАЗОВЫЙ КОНТЕЙНЕР ПОСТА
+   ========================================= */
 .post-container {
     display: grid;
-    
-    grid-template-columns: 40px 1fr;
+    grid-template-columns: 44px 1fr;
     gap: 12px;
-    padding: 12px 16px;
+    padding: 16px 20px 0 20px; 
     border-bottom: 1px solid var(--color-border);
+    background-color: transparent;
     cursor: pointer;
-    background-color: var(--color-background);
-    transition: background-color 0.2s ease;
     position: relative;
-    overflow: visible; 
     text-decoration: none;
     color: inherit;
-    contain: layout paint; 
+    
+    
+    overflow-anchor: none;
+    
+    transition: background-color 0.2s ease;
+    animation: postEntrance 0.3s cubic-bezier(0.2, 0.8, 0.2, 1) backwards;
+}
+
+@keyframes postEntrance {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
 }
 
 .post-container:hover {
@@ -26,18 +35,9 @@
     background-color: rgba(0, 0, 0, 0.02);
 }
 
-
-.post-container.is-pinned-card {
-    
-}
-
-
-.action-group.bookmark:hover, .action-group.bookmark.active { color: var(--color-primary); }
-.action-group.bookmark:hover .action-icon-wrapper, .action-group.bookmark.active .action-icon-wrapper { 
-    background-color: var(--color-primary-alpha); 
-}
-.action-group.bookmark:active svg { transform: scale(0.9); }
-
+/* =========================================
+   2. МЕТА-ИНФОРМАЦИЯ (Закреп / Репост)
+   ========================================= */
 .post-meta-row {
     grid-column: 2 / 3; 
     display: flex;
@@ -47,132 +47,130 @@
     font-weight: 700;
     color: var(--color-text-secondary);
     margin-bottom: 4px;
+    margin-top: 16px; 
     line-height: 1;
 }
 
 .post-meta-row svg {
     color: var(--color-text-secondary);
-    width: 14px;
-    height: 14px;
+    width: 16px;
+    height: 16px;
     fill: currentColor;
 }
 
-
+/* =========================================
+   3. АВАТАРКА АВТОРА
+   ========================================= */
 .post-avatar-column {
     grid-column: 1 / 2;
     display: flex;
     flex-direction: column;
     align-items: center;
-    padding-top: 2px; 
+    padding-top: 16px; 
+}
+
+
+.post-container:has(.post-meta-row) .post-avatar-column {
+    padding-top: 0; 
 }
 
 .avatar-wrapper-post {
     position: relative;
-    width: 40px;
-    height: 40px;
-    transition: filter 0.2s;
+    width: 44px;
+    height: 44px;
     border-radius: 50%;
+    display: block;
+    transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1), filter 0.2s ease;
 }
 
 .avatar-wrapper-post:hover {
     filter: brightness(0.9);
+    transform: scale(1.05);
 }
-
-.post-avatar-img {
-    width: 100%;
-    height: 100%;
-    border-radius: 50%;
-    object-fit: cover;
-    background-color: var(--color-item-bg);
-}
-
 
 .online-indicator-post {
     position: absolute;
-    bottom: -1px;
-    right: -1px;
-    width: 12px;
-    height: 12px;
+    bottom: -2px;
+    right: -2px;
+    width: 14px;
+    height: 14px;
     background-color: #00ba7c;
-    border: 2px solid var(--color-background);
+    border: 3px solid var(--color-background);
     border-radius: 50%;
     z-index: 2;
+    transition: border-color 0.2s ease;
 }
 
+.post-container:hover .online-indicator-post {
+    border-color: var(--color-item-bg);
+}
 
+/* =========================================
+   4. ОСНОВНОЙ КОНТЕНТ ПОСТА
+   ========================================= */
 .post-content-column {
     grid-column: 2 / 3;
     display: flex;
     flex-direction: column;
     min-width: 0; 
+    padding-top: 16px;
+    padding-bottom: 16px;
+}
+
+.post-container:has(.post-meta-row) .post-content-column {
+    padding-top: 0;
 }
 
 
 .post-header-row {
     display: flex;
-    align-items: baseline;
+    align-items: center;
     justify-content: space-between;
-    font-size: 15px;
-    line-height: 20px;
+    margin-bottom: 4px;
     position: relative;
 }
 
 .post-header-info {
     display: flex;
-    align-items: baseline;
-    gap: 4px;
+    align-items: center;
+    gap: 6px;
     overflow: hidden;
     white-space: nowrap;
-    text-overflow: ellipsis;
     flex: 1;
-    margin-right: 24px; 
+    margin-right: 16px; 
 }
 
 .post-author {
-    font-weight: 700;
+    font-size: 15px;
+    font-weight: 800;
     color: var(--color-text);
     text-decoration: none;
     overflow: hidden;
     text-overflow: ellipsis;
-    white-space: nowrap;
 }
 
 .post-author:hover {
     text-decoration: underline;
 }
 
-.post-handle {
+.post-handle, .post-time {
     color: var(--color-text-secondary);
     font-weight: 400;
     font-size: 14px;
     overflow: hidden;
     text-overflow: ellipsis;
-    white-space: nowrap;
 }
 
 .post-dot {
     color: var(--color-text-secondary);
     font-size: 12px;
-    padding: 0 2px;
-}
-
-.post-time {
-    color: var(--color-text-secondary);
-    font-size: 14px;
-    white-space: nowrap;
-}
-
-.post-time:hover {
-    text-decoration: underline;
+    opacity: 0.6;
 }
 
 
 .post-menu-btn {
-    position: absolute;
-    top: -6px;
-    right: -8px;
-    width: 34px;
-    height: 34px;
+    width: 32px;
+    height: 32px;
     border-radius: 50%;
     background: transparent;
     border: none;
@@ -182,150 +180,58 @@
     justify-content: center;
     cursor: pointer;
     transition: color 0.2s, background-color 0.2s;
-    z-index: 5;
+    margin-right: -8px; 
+    margin-top: -4px;
 }
 
 .post-menu-btn:hover {
     color: var(--color-primary);
-    background-color: rgba(29, 155, 240, 0.1);
-}
-
-
-.post-dropdown-menu {
-    background-color: var(--color-background);
-    border: 1px solid var(--color-border);
-    border-radius: 12px;
-    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
-    overflow: hidden;
-    padding: 4px 0;
-    min-width: 220px;
-    
-    z-index: 500; 
-}
-
-.post-dropdown-menu button {
-    width: 100%;
-    padding: 12px 16px;
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    background: transparent;
-    border: none;
-    color: var(--color-text);
-    font-size: 15px;
-    font-weight: 500;
-    cursor: pointer;
-    text-align: left;
-    transition: background-color 0.2s;
-}
-
-.post-dropdown-menu button:hover {
-    background-color: var(--color-item-bg);
-}
-
-.post-dropdown-menu button.delete-btn {
-    color: #f4212e;
-}
-.post-dropdown-menu button.delete-btn:hover {
-    background-color: rgba(244, 33, 46, 0.05);
+    background-color: rgba(var(--color-primary-rgb), 0.1);
 }
 
 
 .post-text-content {
-    margin-top: 2px;
     font-size: 15px;
-    line-height: 20px;
+    line-height: 1.5;
     color: var(--color-text);
     white-space: pre-wrap;
     word-wrap: break-word;
+    margin-bottom: 8px; 
 }
 
-
-.edit-mode-wrapper {
-    margin-top: 4px;
-    border: 1px solid var(--color-primary);
-    border-radius: 12px;
-    padding: 8px;
-    background: var(--color-item-bg);
-}
-
-.edit-post-textarea {
-    width: 100%;
-    background: transparent;
-    border: none;
-    color: var(--color-text);
-    font-family: inherit;
-    font-size: 15px;
-    line-height: 20px;
-    resize: none;
-    outline: none;
-    min-height: 60px;
-}
-
-.edit-actions {
-    display: flex;
-    justify-content: flex-end;
-    gap: 8px;
-    margin-top: 8px;
-}
-
-.edit-actions button {
-    padding: 6px 16px;
-    border-radius: 99px;
-    font-weight: 700;
-    font-size: 13px;
-    cursor: pointer;
-    border: 1px solid var(--color-border);
-}
-
-.edit-actions .cancel-btn {
-    background: transparent;
-    color: var(--color-text);
-}
-
-.edit-actions .save-btn {
-    background-color: var(--color-text);
-    color: var(--color-background);
-    border-color: transparent;
-}
-
-
+/* =========================================
+   5. ЦИТАТЫ (РЕПОСТЫ)
+   ========================================= */
 .quote-container {
-    margin-top: 10px;
+    margin-top: 8px;
     border: 1px solid var(--color-border);
     border-radius: 16px;
-    padding: 12px;
+    padding: 12px 16px;
     cursor: pointer;
     background-color: transparent;
-    transition: background-color 0.2s, border-color 0.2s;
+    transition: background-color 0.2s ease, border-color 0.2s ease;
     overflow: hidden;
 }
 
 .quote-container:hover {
-    background-color: rgba(255, 255, 255, 0.015);
-    border-color: rgba(255, 255, 255, 0.2);
+    background-color: rgba(255, 255, 255, 0.02);
+    border-color: var(--color-text-secondary);
 }
+
 [data-bg='light'] .quote-container:hover {
-    background-color: rgba(0,0,0,0.015);
-    border-color: rgba(0,0,0,0.1);
+    background-color: rgba(0, 0, 0, 0.02);
 }
 
 .quote-header {
     display: flex;
     align-items: center;
-    gap: 6px;
-    margin-bottom: 4px;
+    gap: 8px;
+    margin-bottom: 6px;
     font-size: 14px;
 }
 
-.quote-header .avatar {
-    /* Стили для аватара внутри цитаты задаются инлайном в компоненте, 
-       но здесь можно добавить общие свойства если нужно */
-    flex-shrink: 0;
-}
-
 .quote-author {
-    font-weight: 700;
+    font-weight: 800;
     color: var(--color-text);
     overflow: hidden;
     text-overflow: ellipsis;
@@ -339,13 +245,15 @@
     white-space: nowrap;
 }
 
-
+/* =========================================
+   6. ПАНЕЛЬ ДЕЙСТВИЙ (ЛАЙКИ, КОММЕНТЫ)
+   ========================================= */
 .post-footer-actions {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-top: 10px;
-    max-width: 420px; 
+    margin-top: 8px;
+    max-width: 460px; 
 }
 
 .action-group {
@@ -357,8 +265,11 @@
     border: none;
     cursor: pointer;
     font-size: 13px;
-    padding: 0;
-    transition: color 0.2s;
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+    padding: 0 12px 0 0;
+    margin-left: -8px;
+    transition: color 0.2s ease;
     position: relative;
 }
 
@@ -369,79 +280,195 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    transition: background-color 0.2s;
-    position: relative;
+    transition: background-color 0.2s ease, transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
 }
 
 .action-icon-wrapper svg {
     width: 18px; 
     height: 18px;
-    transition: transform 0.2s;
+    transition: transform 0.2s ease;
 }
 
 
-
-
 .action-group.comment:hover { color: var(--color-primary); }
-.action-group.comment:hover .action-icon-wrapper { background-color: rgba(29, 155, 240, 0.1); }
+.action-group.comment:hover .action-icon-wrapper { background-color: rgba(var(--color-primary-rgb), 0.15); }
 .action-group.comment.active { color: var(--color-primary); }
 
-
 .action-group.repost:hover, .action-group.repost.active { color: #00ba7c; }
-.action-group.repost:hover .action-icon-wrapper, .action-group.repost.active .action-icon-wrapper { background-color: rgba(0, 186, 124, 0.1); }
-
+.action-group.repost:hover .action-icon-wrapper { background-color: rgba(0, 186, 124, 0.15); }
 
 .action-group.like:hover, .action-group.like.active { color: #f91880; }
-.action-group.like:hover .action-icon-wrapper, .action-group.like.active .action-icon-wrapper { background-color: rgba(249, 24, 128, 0.1); }
+.action-group.like:hover .action-icon-wrapper { background-color: rgba(249, 24, 128, 0.15); }
 
-.action-group.like:active svg { transform: scale(1.25); transition-timing-function: cubic-bezier(0.175, 0.885, 0.32, 1.275); }
-
+.action-group.bookmark:hover, .action-group.bookmark.active { color: var(--color-primary); }
+.action-group.bookmark:hover .action-icon-wrapper { background-color: rgba(var(--color-primary-rgb), 0.15); }
 
 .action-group.view:hover { color: var(--color-primary); }
-.action-group.view:hover .action-icon-wrapper { background-color: rgba(29, 155, 240, 0.1); }
+.action-group.view:hover .action-icon-wrapper { background-color: rgba(var(--color-primary-rgb), 0.15); }
 
+.action-group:active .action-icon-wrapper { transform: scale(0.85); }
+.action-group.like:active .action-icon-wrapper { transform: scale(1.2); }
 
+/* =========================================
+   7. ВЫПАДАЮЩЕЕ МЕНЮ (ПОСТ)
+   ========================================= */
+.post-dropdown-menu {
+    background-color: rgba(var(--glass-bg-rgb), 0.85);
+    backdrop-filter: blur(25px) saturate(200%);
+    -webkit-backdrop-filter: blur(25px) saturate(200%);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 16px;
+    box-shadow: 0 15px 35px rgba(0, 0, 0, 0.3), 0 0 0 1px rgba(255, 255, 255, 0.05);
+    padding: 6px; 
+    min-width: 220px;
+    transform-origin: top right;
+    animation: postMenuPopIn 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.1) forwards;
+}
 
+[data-bg='light'] .post-dropdown-menu {
+    background-color: rgba(255, 255, 255, 0.9);
+    border: 1px solid rgba(0, 0, 0, 0.08);
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+}
+
+@keyframes postMenuPopIn {
+    from { opacity: 0; transform: scale(0.95) translateY(-5px); }
+    to { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+.post-dropdown-menu button {
+    width: 100%;
+    padding: 10px 12px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    background: transparent;
+    border: none;
+    border-radius: 10px;
+    color: var(--color-text);
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    text-align: left;
+    transition: background-color 0.15s ease, color 0.15s ease;
+}
+
+.post-dropdown-menu button svg {
+    color: var(--color-text-secondary);
+    transition: color 0.15s ease;
+}
+
+.post-dropdown-menu button:hover {
+    background-color: var(--color-primary);
+    color: #ffffff !important;
+}
+
+.post-dropdown-menu button:hover svg {
+    color: #ffffff !important;
+}
+
+.post-dropdown-menu button:active {
+    transform: scale(0.98); 
+}
+
+.post-dropdown-menu button.delete-btn,
+.post-dropdown-menu button.delete-btn svg { color: #f4212e; }
+.post-dropdown-menu button.delete-btn:hover { background-color: #f4212e; color: #ffffff !important; }
+
+.post-menu-separator {
+    height: 1px;
+    background-color: rgba(255, 255, 255, 0.08);
+    margin: 4px 8px;
+}
+[data-bg='light'] .post-menu-separator { background-color: rgba(0, 0, 0, 0.06); }
+
+/* =========================================
+   8. КОНТЕЙНЕР КОММЕНТАРИЕВ (ИЗОЛИРОВАН ОТ СЕТКИ)
+   ========================================= */
 .comments-section-wrapper {
     grid-column: 1 / -1; 
     border-top: 1px solid var(--color-border);
-    margin-top: 8px;
-    padding-top: 12px;
-    padding-left: 52px; 
+    
+    padding-top: 16px; 
+    padding-bottom: 8px;
+    padding-left: 76px; 
+    background-color: transparent;
+    
+    
+    display: block;
+    overflow: hidden; 
+    
+    
+    animation: commentsFadeIn 0.25s ease-out forwards;
+}
+
+@keyframes commentsFadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
 }
 
 @media (max-width: 500px) {
     .comments-section-wrapper {
-        padding-left: 16px; 
+        padding-left: 20px; 
     }
 }
 
-
+/* =========================================
+   9. РЕДАКТИРОВАНИЕ И МУЗЫКА
+   ========================================= */
 .music-post-container {
     width: 100%;
     margin-top: 8px;
 }
 
-
-@keyframes postEntrance {
-    from {
-        opacity: 0;
-        transform: translateY(20px) scale(0.98);
-    }
-    to {
-        opacity: 1;
-        transform: translateY(0) scale(1);
-    }
+.edit-mode-wrapper {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-top: 8px;
 }
 
-.post-container {
-    animation: postEntrance 0.45s cubic-bezier(0.2, 0.8, 0.2, 1) backwards;
-    will-change: transform, opacity;
+.edit-post-textarea {
+    width: 100%;
+    background: var(--color-input-bg);
+    border: 1px solid var(--color-primary);
+    border-radius: 12px;
+    padding: 12px;
+    color: var(--color-text);
+    font-size: 15px;
+    font-family: inherit;
+    resize: none;
+    outline: none;
 }
 
-.post-container:hover {
-    background-color: rgba(var(--color-primary-rgb), 0.03);
-    border-left: 2px solid var(--color-primary); 
-    padding-left: 14px; 
-    transition: all 0.2s ease;
+.edit-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+}
+
+.edit-actions button {
+    padding: 6px 16px;
+    border-radius: 99px;
+    font-size: 13px;
+    font-weight: 700;
+    cursor: pointer;
+    border: none;
+}
+
+.edit-actions .cancel-btn {
+    background: transparent;
+    color: var(--color-text);
+    border: 1px solid var(--color-border);
+}
+
+.edit-actions .save-btn {
+    background: var(--color-primary);
+    color: #fff;
+}
+
+[data-perf='low'] .post-dropdown-menu {
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+    background-color: var(--color-item-bg) !important;
 }

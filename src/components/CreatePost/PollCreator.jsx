@@ -1,12 +1,6 @@
+/* @source src/components/CreatePost/PollCreator.jsx */
 import React from 'react';
-
-const RemoveIcon = () => (
-    <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
-);
-
-const AddIcon = () => (
-    <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
-);
+import { PollRemoveIcon, PollAddIcon } from '../icons/CustomIcons';
 
 const PollCreator = ({ pollData, onChange, onRemove }) => {
     
@@ -71,7 +65,7 @@ const PollCreator = ({ pollData, onChange, onRemove }) => {
                         </div>
                         {pollData.options.length > 2 && (
                             <button type="button" onClick={() => removeOption(idx)} style={{ color: '#f4212e', background: 'none', border: 'none', cursor: 'pointer', padding: 4 }}>
-                                <RemoveIcon />
+                                <PollRemoveIcon />
                             </button>
                         )}
                     </div>
@@ -85,7 +79,7 @@ const PollCreator = ({ pollData, onChange, onRemove }) => {
                         background: 'none', border: 'none', color: 'var(--color-primary)', 
                         fontWeight: '600', cursor: 'pointer', fontSize: '13px', display: 'flex', alignItems: 'center', gap: 4 
                     }}>
-                        <AddIcon /> Добавить вариант
+                        <PollAddIcon /> Добавить вариант
                     </button>
                 ) : <div />}
                 

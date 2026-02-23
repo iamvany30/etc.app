@@ -1,6 +1,6 @@
 /* @source src/components/CreatePost/CreatePost.jsx */
 import React from 'react';
-import { useUser } from '../../context/UserContext';
+import { useUserStore } from '../../store/userStore';
 import { useCreatePost, MAX_POST_LENGTH } from './useCreatePost';
 import Toolbar from './Toolbar';
 import Attachments from './Attachments';
@@ -8,8 +8,8 @@ import VoiceRecorder from './VoiceRecorder';
 import PollCreator from './PollCreator'; 
 import MentionSuggestions from './MentionSuggestions';
 import LinkPreviewCard from './LinkPreviewCard';
+import { DragDropIcon } from '../icons/CustomIcons';
 import '../../styles/CreatePost.css';
-
 
 const CircularProgress = ({ value, max, size = 20, stroke = 2 }) => {
     const radius = (size - stroke) / 2;
@@ -42,20 +42,20 @@ const CircularProgress = ({ value, max, size = 20, stroke = 2 }) => {
     );
 };
 
-const CreatePost = ({ onPostCreated }) => {
-    const { currentUser } = useUser();
+const CreatePost = ({ onPostCreated, wallId = null, placeholder }) => {
+    const currentUser = useUserStore(state => state.currentUser);
     const {
         text, setText, attachments, removeAttachment,
         isSending, isUploading, uploadStatus, openDrawingModal,
         isRecording, setIsRecording,
         pollData, togglePoll, updatePoll,
         handleFileSelect, handleMusicSelect, handleVoiceSent,
-        submitPost, insertMarkdown, textareaRef,
+        submitPost, insertMarkdown, insertEmoji, textareaRef,
         mentionResults, isMentionLoading, handleMentionSelect,
         linkPreview, isFetchingPreview, removeLinkPreview,
         isDragOver, dragEvents,
         handlePaste 
-    } = useCreatePost(onPostCreated);
+    } = useCreatePost(onPostCreated, wallId);
 
     if (!currentUser) return null;
 
@@ -84,27 +84,21 @@ const CreatePost = ({ onPostCreated }) => {
             )}
 
             <div className="create-post-inner">
-                {}
                 <div className="create-post-avatar">
                     <div className="avatar" style={{ width: 40, height: 40, fontSize: 18 }}>
                         {currentUser.avatar}
                     </div>
                 </div>
-
-                {}
                 <div className="create-post-right-col">
-                    <div style={{ position: 'relative', width: '100%' }}>
-                        
-                        {}
+                    <div style={{ width: '100%' }}>
                         <MentionSuggestions users={mentionResults} onSelect={handleMentionSelect} isLoading={isMentionLoading} />
-
-                        {}
                         {!isRecording ? (
                             <>
                                 <textarea 
                                     ref={textareaRef}
                                     className="create-post-textarea" 
-                                    placeholder="Что происходит?!"
+                                    
+                                    placeholder={placeholder || "Что происходит?!"}
                                     rows={1} 
                                     value={text} 
                                     onChange={handleTextChange}
@@ -120,8 +114,6 @@ const CreatePost = ({ onPostCreated }) => {
                             <VoiceRecorder onRecordComplete={handleVoiceSent} onCancel={() => setIsRecording(false)} />
                         )}
                     </div>
-
-                    {}
                     {!isRecording && (
                         <div className="create-post-footer">
                             <Toolbar 
@@ -135,10 +127,10 @@ const CreatePost = ({ onPostCreated }) => {
                                 isUploading={isUploading}
                                 attachmentsCount={attachments.length}
                                 onFormat={insertMarkdown}
+                                onEmojiSelect={insertEmoji}
                             />
                             
                             <div className="create-post-actions">
-                                {}
                                 {text.length > 0 && (
                                     <CircularProgress value={text.length} max={MAX_POST_LENGTH} />
                                 )}

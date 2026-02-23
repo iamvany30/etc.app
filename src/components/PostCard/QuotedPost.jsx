@@ -1,3 +1,4 @@
+/* @source src/components/PostCard/QuotedPost.jsx */
 import React, { useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import TimeAgo from './TimeAgo';
@@ -18,7 +19,11 @@ const QuotedPost = ({ post, onLinkClick }) => {
             navigate(`/post/${post.id}`);
         }}>
             <div className="quote-header">
-                <div className="avatar" style={{width: 20, height: 20, fontSize: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--color-item-bg)', borderRadius: '50%'}}>
+                <div className="avatar" style={{
+                    width: 24, height: 24, fontSize: 12, 
+                    display: 'flex', alignItems: 'center', justifyContent: 'center', 
+                    background: 'var(--color-background)', border: '1px solid var(--color-border)', borderRadius: '50%'
+                }}>
                     {post.author?.avatar || "👤"}
                 </div>
                 <span className="quote-author">{post.author?.displayName}</span>
@@ -30,7 +35,7 @@ const QuotedPost = ({ post, onLinkClick }) => {
             {post.content && <div className="post-text-content" style={{marginBottom: 8}}>{parsedContent}</div>}
             
             {post.attachments && post.attachments.length > 0 && (
-                <div style={{ marginTop: 4, borderRadius: 12, overflow: 'hidden' }}>
+                <div style={{ marginTop: 8, borderRadius: 16, overflow: 'hidden' }}>
                     <MediaGrid attachments={post.attachments.slice(0, 4)} />
                 </div>
             )}

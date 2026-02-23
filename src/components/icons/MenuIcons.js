@@ -1,15 +1,22 @@
 import React from 'react';
-import { MenuDots, Share, Pen, TrashBinMinimalistic, Pin } from "@solar-icons/react";
+import IconWrapper from './IconWrapper';
+import { MenuDots, Share, Pen, TrashBinMinimalistic, Pin, Flag } from "@solar-icons/react";
 
-export const MoreIcon = (props) => <MenuDots size={20} {...props} />;
-export const ShareIcon = (props) => <Share size={18} {...props} />;
-export const EditIcon = (props) => <Pen size={18} {...props} />;
-export const DeleteIcon = (props) => <TrashBinMinimalistic size={18} {...props} />;
+export const MoreIcon = (props) => <IconWrapper IconComponent={MenuDots} size={20} {...props} />;
+export const ShareIcon = (props) => <IconWrapper IconComponent={Share} size={18} {...props} />;
+export const EditIcon = (props) => <IconWrapper IconComponent={Pen} size={18} {...props} />;
+export const DeleteIcon = (props) => <IconWrapper IconComponent={TrashBinMinimalistic} size={18} {...props} />;
+export const ReportIcon = (props) => <IconWrapper IconComponent={Flag} size={18} {...props} />;
 
 export const PinIcon = ({ pinned, ...props }) => (
-    <Pin 
+    <IconWrapper 
+        IconComponent={Pin} 
         size={18} 
         {...props} 
-        style={{ transform: pinned ? 'rotate(45deg)' : 'none', transition: 'transform 0.2s' }}
+        style={{ 
+            transform: pinned ? 'rotate(45deg)' : 'none', 
+            transition: 'transform 0.2s',
+            ...props.style 
+        }}
     />
 );

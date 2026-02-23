@@ -1,72 +1,45 @@
-import React, { useMemo, useState, useEffect, useRef, useCallback } from 'react';
+/* @source src/components/DynamicIsland.jsx */
+import React, { useMemo, useState, useEffect, useRef } from 'react';
 import { useLocation } from 'react-router-dom';
-import { useIsland } from '../context/IslandContext';
-import { useUpload } from '../context/UploadContext';
-import { useDownload } from '../context/DownloadContext';
+import { useIslandStore } from '../store/islandStore';
+import { useUploadStore } from '../store/uploadStore';
+import { useDownloadStore } from '../store/downloadStore';
+import { WifiOffIcon, CopyIslandIcon, UpdateIslandIcon } from './icons/CustomIcons';
 import '../styles/DynamicIsland.css';
 
 
-const WifiOffIcon = () => (
-    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-        <line x1="1" y1="1" x2="23" y2="23" /><path d="M16.72 11.06A10.94 10.94 0 0 1 19 12.11M1 10.44a11.13 11.13 0 0 1 2.3-3.6M8.6 3.3a11.4 11.4 0 0 1 3.4-1.22M4.26 6.26A11.09 11.09 0 0 1 8 4.79" /><path d="M11.6 16.21A2.5 2.5 0 0 1 10.2 13M12.9 18.23a6.83 6.83 0 0 1-1.7.27c-3.87 0-7-3.13-7-7a7.07 7.07 0 0 1 2.05-4.94" /><path d="M17.74 17.74c1.1-1.1.92-3.34.22-4.83a7.48 7.48 0 0 0-4.13-4.13c-1.49-.7-3.73-.88-4.83.22" />
-    </svg>
-);
-const CopyIcon = () => (
-    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2" /><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" /></svg>
-);
-const UpdateIcon = () => (
-    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><polyline points="7 10 12 15 17 10" /><line x1="12" y1="15" x2="12" y2="3" /></svg>
-);
-
-
 const MORPHER_DIMS = {
-    idle:     { height: 'clamp(32px, 2.5vw, 40px)', width: 'clamp(140px, 14vw, 240px)' },
-    offline:  { height: 'clamp(44px, 3.5vw, 56px)', width: 'clamp(200px, 21vw, 300px)' },
-    alert:    { height: 'clamp(44px, 3.5vw, 56px)', width: 'clamp(220px, 23.5vw, 340px)' },
-    update:   { height: 'clamp(44px, 3.5vw, 56px)', width: 'clamp(190px, 20vw, 290px)' },
-    download: { height: 'clamp(44px, 3.5vw, 56px)', width: 'clamp(190px, 20vw, 290px)' },
-    upload:   { height: 'clamp(44px, 3.5vw, 56px)', width: 'clamp(190px, 20vw, 290px)' },
+    idle:          { height: 34, width: 170 },
+    offline:       { height: 44, width: 250 },
+    alert:         { height: 44, width: 330 }, 
+    update:        { height: 44, width: 260 },
+    download:      { height: 44, width: 260 },
+    upload:        { height: 44, width: 260 },
+    site_activity: { height: 44, width: 300 }, 
 };
-
-const MODE_DEBOUNCE_MS = 80;
-const EXIT_DURATION_MS = 260;
-
-const MODE_SIZE_RANK = {
-    offline:  5,
-    alert:    4,
-    update:   3,
-    download: 3,
-    upload:   3,
-    idle:     1,
-};
-
-const getShrinkDelay = (from, to) =>
-    (MODE_SIZE_RANK[to] ?? 1) < (MODE_SIZE_RANK[from] ?? 1)
-        ? EXIT_DURATION_MS - 40
-        : 0;
-
 
 const DynamicIsland = () => {
-    
     const location = useLocation();
-    const { alert, showIslandAlert, customColor } = useIsland();
-    const { uploads } = useUpload();
-    const { downloads } = useDownload();
+    
+    const alert = useIslandStore(state => state.alert);
+    const showIslandAlert = useIslandStore(state => state.showIslandAlert);
+    const customColor = useIslandStore(state => state.customColor);
+    const siteActivity = useIslandStore(state => state.siteActivity);
+    
+    const uploads = useUploadStore(state => state.uploads);
+    const downloads = useDownloadStore(state => state.downloads);
 
-    const [time, setTime] = useState(
-        new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-    );
+    const [time, setTime] = useState(new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }));
     const [isOffline, setIsOffline] = useState(!navigator.onLine);
     const [updateProgress, setUpdateProgress] = useState(null);
 
+    
     const [displayMode, setDisplayMode] = useState('idle');
+    const [sizeMode, setSizeMode] = useState('idle');
     const [phase, setPhase] = useState('stable'); 
     const [isShaking, setIsShaking] = useState(false);
     
-    const [morphDelay, setMorphDelay] = useState(0);
     const displayModeRef = useRef('idle'); 
-
-    const targetModeRef  = useRef('idle');
     const debounceTimer  = useRef(null);
     const exitTimer      = useRef(null);
     const enterTimer     = useRef(null);
@@ -81,32 +54,47 @@ const DynamicIsland = () => {
         if (updateProgress)           return 'update';
         if (activeDownloads.length > 0) return 'download';
         if (activeUploads.length > 0)   return 'upload';
+        if (siteActivity)               return 'site_activity'; 
         return 'idle';
-    }, [alert, activeDownloads, activeUploads, isOffline, updateProgress]);
+    }, [alert, activeDownloads, activeUploads, isOffline, updateProgress, siteActivity]);
+    
     
     useEffect(() => {
-        targetModeRef.current = targetMode;
+        const incoming = targetMode;
+        
+        
+        
         clearTimeout(debounceTimer.current);
+
+        
+        if (incoming === displayModeRef.current) return;
+        
+        
         debounceTimer.current = setTimeout(() => {
-            const incoming = targetModeRef.current;
-            const current  = displayModeRef.current;
-            if (incoming === current) return; 
-            const delay = getShrinkDelay(current, incoming);
-            setMorphDelay(delay);
+            
+            if (incoming === displayModeRef.current) return; 
+
+            
+            
+            setSizeMode(incoming);
             setPhase('exiting');
+            
             clearTimeout(exitTimer.current);
+            
             exitTimer.current = setTimeout(() => {
                 displayModeRef.current = incoming;
                 setDisplayMode(incoming);
-                setMorphDelay(0);    
                 setPhase('entering');
+                
                 clearTimeout(enterTimer.current);
-                enterTimer.current = setTimeout(() => { setPhase('stable'); }, 20);
-            }, EXIT_DURATION_MS);
-        }, MODE_DEBOUNCE_MS);
-        return () => { clearTimeout(debounceTimer.current); };
+                enterTimer.current = setTimeout(() => { 
+                    setPhase('stable'); 
+                }, 300); 
+            }, 150); 
+        }, 50); 
     }, [targetMode]); 
 
+    
     useEffect(() => {
         if (alert?.type === 'error') {
             setIsShaking(true);
@@ -115,20 +103,15 @@ const DynamicIsland = () => {
         }
     }, [alert]);
 
-    useEffect(() => () => {
-        clearTimeout(debounceTimer.current);
-        clearTimeout(exitTimer.current);
-        clearTimeout(enterTimer.current);
-        clearTimeout(shakeTimer.current);
-    }, []);
-
+    
     useEffect(() => {
         const timer = setInterval(() => {
             setTime(new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }));
-        }, 30000);
+        }, 10000);
         return () => clearInterval(timer);
     }, []);
 
+    
     useEffect(() => {
         const handleOnline  = () => { setIsOffline(false); showIslandAlert('success', 'Сеть восстановлена', 'ok', 2000); };
         const handleOffline = () => setIsOffline(true);
@@ -143,6 +126,7 @@ const DynamicIsland = () => {
         };
     }, [showIslandAlert]);
 
+    
     useEffect(() => {
         if (!window.api?.on) return;
         const removeProgress   = window.api.on('app-update-progress',   (data) => setUpdateProgress({ percent: Math.round(data.percent) }));
@@ -153,14 +137,16 @@ const DynamicIsland = () => {
         return () => { removeProgress?.(); removeDownloaded?.(); };
     }, [showIslandAlert]);
 
+    
     useEffect(() => {
         const original = navigator.clipboard.writeText;
         navigator.clipboard.writeText = async (text) => {
             await original.call(navigator.clipboard, text);
-            showIslandAlert('clipboard', 'Скопировано', <CopyIcon />, 1500);
+            showIslandAlert('clipboard', 'Скопировано', <CopyIslandIcon />, 1500);
         };
         return () => { navigator.clipboard.writeText = original; };
     }, [showIslandAlert]);
+    
     
     const pageMeta = useMemo(() => {
         const path = location.pathname;
@@ -175,26 +161,23 @@ const DynamicIsland = () => {
         return { name: 'итд.app', icon: '✨' };
     }, [location]);
 
+    
     const morpherStyle = useMemo(() => {
-        const dims = MORPHER_DIMS[displayMode] || MORPHER_DIMS.idle;
-        const style = { ...dims };
-        if (morphDelay > 0) {
-            style.transitionDelay = `${morphDelay}ms`;
-        } else {
-            style.transitionDelay = '0ms';
-        }
-        if (displayMode === 'idle' && customColor?.color1) {
+        const dims = MORPHER_DIMS[sizeMode] || MORPHER_DIMS.idle;
+        const style = { 
+            width: `${dims.width}px`,
+            height: `${dims.height}px`,
+            borderRadius: `${dims.height / 2}px` 
+        };
+        
+        if ((sizeMode === 'idle' || sizeMode === 'site_activity') && customColor?.color1) {
             style['--island-gradient'] = `linear-gradient(135deg, ${customColor.color1}, ${customColor.color2})`;
             style.boxShadow = `0 12px 40px -10px ${customColor.color1.replace('rgb', 'rgba').replace(')', ', 0.35)')}`;
         }
         return style;
-    }, [displayMode, customColor, morphDelay]);
+    }, [sizeMode, customColor]);
 
-    const contentClass = useMemo(() => {
-        if (phase === 'exiting')  return 'island-content-inner exiting';
-        if (phase === 'entering') return 'island-content-inner entering';
-        return 'island-content-inner';
-    }, [phase]);
+    const contentClass = `island-content-inner ${phase === 'exiting' ? 'exiting' : phase === 'entering' ? 'entering' : ''}`;
 
     const renderContent = () => {
         switch (displayMode) {
@@ -205,14 +188,58 @@ const DynamicIsland = () => {
                 return (<div className={`${contentClass} alert-${alert.type}`}><div className={`island-status-icon ${alert.type}`}>{alert.icon || (alert.type === 'success' ? '✓' : '!')}</div><div className="island-column"><span className="island-caption">{alert.type === 'success' ? 'Успешно' : alert.type === 'clipboard' ? 'Буфер обмена' : alert.type === 'discord' ? 'Discord' : 'Ошибка'}</span><span className="island-maintext">{alert.message}</span></div></div>);
             case 'update':
                 if (!updateProgress) return null;
-                return (<div className={contentClass}><div className="progress-stack"><svg className="island-ring" viewBox="0 0 36 36"><circle className="ring-track" cx="18" cy="18" r="16" /><circle className="ring-progress" cx="18" cy="18" r="16" style={{strokeDasharray: `${updateProgress.percent}, 100`, stroke: '#2AABEE'}}/></svg><span className="dir-arrow" style={{color: '#2AABEE'}}><UpdateIcon /></span></div><div className="island-column"><span className="island-maintext">Обновление</span><span className="island-caption">{updateProgress.percent}%</span></div></div>);
+                return (<div className={contentClass}><div className="progress-stack"><svg className="island-ring" viewBox="0 0 36 36"><circle className="ring-track" cx="18" cy="18" r="16" /><circle className="ring-progress" cx="18" cy="18" r="16" style={{strokeDasharray: `${updateProgress.percent}, 100`, stroke: 'var(--color-primary)'}}/></svg><span className="dir-arrow" style={{color: 'var(--color-primary)'}}><UpdateIslandIcon /></span></div><div className="island-column"><span className="island-maintext">Обновление</span><span className="island-caption">{updateProgress.percent}%</span></div></div>);
             case 'download': {
                 const dl = activeDownloads[0];
                 if (!dl) return null;
-                return (<div className={contentClass}><div className="progress-stack"><svg className="island-ring" viewBox="0 0 36 36"><circle className="ring-track" cx="18" cy="18" r="16" /><circle className="ring-progress" cx="18" cy="18" r="16" style={{strokeDasharray: `${dl.percent || 0}, 100`}} /></svg><span className="dir-arrow">↓</span></div><div className="island-column"><span className="island-maintext">Загрузка</span><span className="island-caption">{Math.round(dl.percent || 0)}%</span></div></div>);
+                const isIndeterminate = dl.percent < 0;
+                return (
+                    <div className={contentClass}>
+                        <div className="progress-stack">
+                            <svg className={`island-ring ${isIndeterminate ? 'spinning' : ''}`} viewBox="0 0 36 36">
+                                <circle className="ring-track" cx="18" cy="18" r="16" />
+                                <circle 
+                                    className="ring-progress" 
+                                    cx="18" cy="18" r="16" 
+                                    style={{
+                                        strokeDasharray: `${isIndeterminate ? 30 : (dl.percent || 0)}, 100`,
+                                        stroke: 'var(--color-text)'
+                                    }} 
+                                />
+                            </svg>
+                            <span className="dir-arrow">↓</span>
+                        </div>
+                        <div className="island-column">
+                            <span className="island-maintext">Загрузка</span>
+                            <span className="island-caption">
+                                {isIndeterminate ? 'В процессе...' : `${Math.round(dl.percent || 0)}%`}
+                            </span>
+                        </div>
+                    </div>
+                );
             }
             case 'upload':
                 return (<div className={contentClass}><div className="progress-stack"><div className="island-spinner-arc" /><span className="dir-arrow" style={{color: 'var(--color-primary)'}}>↑</span></div><div className="island-column"><span className="island-maintext">Публикация</span><span className="island-caption">Отправка...</span></div></div>);
+            case 'site_activity':
+                if (!siteActivity) return null;
+                return (
+                    <div className={contentClass}>
+                        <div className="island-status-icon" style={{ background: 'rgba(255,255,255,0.1)', color: '#fff' }}>
+                            {siteActivity.icon || '🌐'}
+                        </div>
+                        <div className="island-column">
+                            <span className="island-maintext">{siteActivity.title}</span>
+                            <span className="island-caption" style={{ color: 'var(--color-text-secondary)', textTransform: 'none' }}>
+                                {siteActivity.subtitle}
+                            </span>
+                        </div>
+                        {typeof siteActivity.progress === 'number' && (
+                            <div style={{ marginLeft: 'auto', width: '30px', height: '4px', background: 'rgba(255,255,255,0.2)', borderRadius: '2px', overflow: 'hidden' }}>
+                                <div style={{ width: `${siteActivity.progress}%`, height: '100%', background: 'var(--color-text)', borderRadius: '2px', transition: 'width 0.3s linear' }} />
+                            </div>
+                        )}
+                    </div>
+                );
             default: 
                 return (<div className={contentClass}><span className="island-time">{time}</span><div className="island-v-sep" /><div className="island-page-pill"><span className="island-page-icon">{pageMeta.icon}</span><span className="island-page-name">{pageMeta.name}</span></div></div>);
         }
@@ -220,7 +247,11 @@ const DynamicIsland = () => {
     
     return (
         <div className={`island-host ${isShaking ? 'shaking' : ''}`}>
-            <div className={`island-morpher ${customColor && displayMode === 'idle' ? 'has-gradient' : ''}`} data-mode={displayMode} style={morpherStyle}>
+            <div 
+                className={`island-morpher ${(customColor && (sizeMode === 'idle' || sizeMode === 'site_activity')) ? 'has-gradient' : ''}`} 
+                data-mode={sizeMode} 
+                style={morpherStyle}
+            >
                 {renderContent()}
             </div>
         </div>

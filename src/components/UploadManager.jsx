@@ -1,5 +1,6 @@
+/* @source src/components/UploadManager.jsx */
 import React from 'react';
-import { useUpload } from '../context/UploadContext';
+import { useUploadStore } from '../store/uploadStore'; 
 import '../styles/UploadManager.css';
 
 const getStatusInfo = (status) => {
@@ -27,17 +28,14 @@ const UploadItem = ({ upload }) => {
                 <span className="upload-status-text">{info.text}</span>
             </div>
             <div className="upload-progress-bar">
-                <div 
-                    className="upload-progress-fill" 
-                    style={{ width: `${info.p}%` }} 
-                />
+                <div className="upload-progress-fill" style={{ width: `${info.p}%` }} />
             </div>
         </div>
     );
 };
 
 const UploadManager = () => {
-    const { uploads } = useUpload();
+    const uploads = useUploadStore(state => state.uploads); 
     const activeUploads = Object.values(uploads);
 
     if (activeUploads.length === 0) return null;

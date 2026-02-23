@@ -1,13 +1,12 @@
 import React, { useState } from 'react';
-import { useUser } from '../../context/UserContext';
-import { useModal } from '../../context/ModalContext';
-
+import { useUserStore } from '../../store/userStore';
+import { useModalStore } from '../../store/modalStore';
 
 const EditProfileModal = () => {
-    const { currentUser, setCurrentUser } = useUser();
-    const { closeModal } = useModal();
+    const currentUser = useUserStore(state => state.currentUser);
+    const setCurrentUser = useUserStore(state => state.setCurrentUser);
+    const closeModal = useModalStore(state => state.closeModal);
     
-     
     const [name, setName] = useState(currentUser?.displayName || '');
     const [bio, setBio] = useState(currentUser?.bio || '');
     const [isLoading, setIsLoading] = useState(false);
@@ -15,16 +14,13 @@ const EditProfileModal = () => {
     const handleSave = async () => {
         setIsLoading(true);
         try {
-             
             const updatedUser = await window.api.call('/users/me', 'PUT', { 
                 displayName: name, 
                 bio: bio 
             });
 
             if (updatedUser && !updatedUser.error) {
-                 
-                setCurrentUser(prev => ({ ...prev, ...updatedUser }));
-                 
+                setCurrentUser({ ...currentUser, ...updatedUser });
                 closeModal();
             } else {
                 alert('Ошибка при сохранении');
@@ -40,7 +36,6 @@ const EditProfileModal = () => {
         <div style={{ padding: '20px' }}>
             <h2 style={{ margin: '0 0 20px 0', fontSize: '20px' }}>Редактировать профиль</h2>
             
-              
             <div style={{ marginBottom: '20px' }}>
                 <label style={{ display: 'block', color: 'var(--color-text-secondary)', fontSize: '13px', marginBottom: '4px' }}>Имя</label>
                 <input 
@@ -59,7 +54,6 @@ const EditProfileModal = () => {
                 />
             </div>
 
-              
             <div style={{ marginBottom: '20px' }}>
                 <label style={{ display: 'block', color: 'var(--color-text-secondary)', fontSize: '13px', marginBottom: '4px' }}>О себе</label>
                 <textarea 
@@ -79,7 +73,6 @@ const EditProfileModal = () => {
                 />
             </div>
 
-              
             <button 
                 onClick={handleSave} 
                 disabled={isLoading}

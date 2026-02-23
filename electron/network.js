@@ -1,3 +1,4 @@
+/* @source electron/network.js */
 const { net, session, app } = require('electron');
 const { SITE_DOMAIN, API_BASE, USER_AGENT } = require('./config');
 const store = require('./store');
@@ -6,8 +7,8 @@ const { logDebug } = require('./logger');
 let GLOBAL_USER_AGENT = USER_AGENT;
 let GLOBAL_ACCESS_TOKEN = null; 
 let isSessionRestored = false;
-let activeStreamRequest = null;
-let isStreamExpected = false;
+
+
 let isRefreshing = false;
 let refreshPromise = null;
 
@@ -15,14 +16,14 @@ function setGlobalAccessToken(token) {
     GLOBAL_ACCESS_TOKEN = token;
 }
 
+function getGlobalAccessToken() {
+    return GLOBAL_ACCESS_TOKEN;
+}
 
 async function captureAndSaveCookies() {
     try {
-        
         const cookies = await session.defaultSession.cookies.get({ domain: 'xn--d1ah4a.com' });
-        
         if (cookies && cookies.length > 0) {
-            
             store.updateActiveSessionCookies(cookies);
             logDebug(`[Network] Актуальные куки сохранены (${cookies.length} шт).`);
         }
@@ -56,7 +57,6 @@ async function applyCookiesToSession(cookies) {
                 else if (ssLower.includes('none')) sameSite = 'no_restriction';
             }
 
-            
             if (sameSite === 'no_restriction' && !cookie.secure) {
                 logDebug(`[Network] Пропуск небезопасной куки ${cookie.name} с SameSite=None`);
                 continue;
@@ -101,7 +101,8 @@ async function restoreSession() {
             session.defaultSession.setUserAgent(GLOBAL_USER_AGENT);
         }
 
-        await session.defaultSession.clearStorageData({ storages: ['cookies', 'localstorage'] });
+        
+        await session.defaultSession.clearStorageData({ storages: ['cookies'] });
 
         if (data.cookies && Array.isArray(data.cookies)) {
             await applyCookiesToSession(data.cookies);
@@ -119,17 +120,18 @@ async function switchUserSession(targetAccount) {
     logDebug(`[Network] Переключение сессии на: ${targetAccount?.user?.username}`);
     
     if (!targetAccount || !targetAccount.session) {
-        return { success: false, error: "Invalid account data" };
+        return { success: false, error: "INVALID_ACCOUNT_DATA" };
     }
 
     try {
-        stopStreamConnection();
         GLOBAL_ACCESS_TOKEN = null;
         isSessionRestored = false;
         
-        await session.defaultSession.clearStorageData();
-        logDebug("[Network] Хранилище сессии очищено.");
+        
+        await session.defaultSession.clearStorageData({ storages: ['cookies'] });
+        logDebug("[Network] Хранилище сессии (cookies) очищено.");
 
+        
         const sessionData = targetAccount.session;
         if (sessionData.userAgent) {
             GLOBAL_USER_AGENT = sessionData.userAgent;
@@ -143,7 +145,9 @@ async function switchUserSession(targetAccount) {
             await applyCookiesToSession(sessionData.cookies);
         }
 
-        logDebug("[Network] Проверка сессии после переключения...");
+        logDebug("[Network] Проверка сессии после переключения (Token Check)...");
+        
+        
         const refreshRes = await rawFetch('/v1/auth/refresh', { method: 'POST' });
         
         if (refreshRes.ok && refreshRes.data.accessToken) {
@@ -156,8 +160,8 @@ async function switchUserSession(targetAccount) {
             
             return { success: true };
         } else {
-            logDebug(`[Network] Сессия переключена, но токен не обновлен (Status: ${refreshRes.status}). Возможно, истек срок действия.`);
-            return { success: true, warning: "token_refresh_failed" };
+            logDebug(`[Network] Сессия мертва (Status: ${refreshRes.status}).`);
+            return { success: false, error: "TOKEN_DEAD", status: refreshRes.status };
         }
     } catch (e) {
         logDebug(`[Network] Ошибка при переключении сессии: ${e.message}`);
@@ -261,15 +265,11 @@ async function refreshSession() {
 
             if (refreshRes.ok && refreshRes.data.accessToken) {
                 GLOBAL_ACCESS_TOKEN = refreshRes.data.accessToken;
-                
-                
                 await captureAndSaveCookies();
-                
                 return { success: true };
             } else {
                 logDebug(`[Network] Ошибка обновления токена (Code: ${refreshRes.status}).`);
                 if (refreshRes.status !== 429) {  
-                    
                     store.clearRefreshToken();
                     isSessionRestored = false;
                 }
@@ -286,15 +286,14 @@ async function refreshSession() {
 
 async function apiCall(endpoint, method = 'GET', body = null) {
     if (endpoint === '/v1/auth/logout') {
-        stopStreamConnection();
-        
         if (store.getActiveAccount()) {
             store.removeAccount(store.getActiveAccount().user.id);
         }
         store.clearRefreshToken();
         isSessionRestored = false;
         GLOBAL_ACCESS_TOKEN = null;
-        await session.defaultSession.clearStorageData();
+        
+        await session.defaultSession.clearStorageData({ storages: ['cookies'] });
         return { success: true };
     }
 
@@ -306,17 +305,14 @@ async function apiCall(endpoint, method = 'GET', body = null) {
 
     let res = await rawFetch(endpoint, options);
     
-    
     if (res.status === 401) {
         logDebug(`[Network] 401 Unauthorized на ${endpoint}. Пробуем обновить токен...`);
         const refreshRes = await refreshSession();
         
         if (refreshRes.success) {
-            
             res = await rawFetch(endpoint, options);
         } else {
             logDebug(`[Network] Рефреш не удался. Сброс сессии.`);
-            
             isSessionRestored = false;
             GLOBAL_ACCESS_TOKEN = null;
             return { error: { code: "SESSION_EXPIRED", message: "Сессия истекла" } };
@@ -348,52 +344,6 @@ async function uploadFileInternal(fileBuffer, fileName, fileType) {
     }
 }
 
-function startStreamConnection() {
-    if (activeStreamRequest || !GLOBAL_ACCESS_TOKEN) return;
-    
-    isStreamExpected = true;
-    logDebug("[Network] Запуск SSE стрима...");
-    
-    const request = net.request({ 
-        method: 'GET', 
-        url: `${API_BASE}/notifications/stream`, 
-        useSessionCookies: true 
-    });
-    
-    request.setHeader('User-Agent', GLOBAL_USER_AGENT);
-    request.setHeader('Accept', 'text/event-stream');
-    request.setHeader('Authorization', `Bearer ${GLOBAL_ACCESS_TOKEN}`);
-    
-    request.on('response', (response) => {
-        if (response.statusCode === 200) {
-            response.on('data', () => {}); 
-            
-            response.on('end', () => { 
-                activeStreamRequest = null; 
-                if(isStreamExpected) setTimeout(startStreamConnection, 5000); 
-            });
-        } else { 
-            activeStreamRequest = null; 
-        }
-    });
-    
-    request.on('error', () => { 
-        activeStreamRequest = null; 
-        if(isStreamExpected) setTimeout(startStreamConnection, 10000); 
-    });
-    
-    request.end();
-    activeStreamRequest = request;
-}
-
-function stopStreamConnection() {
-    isStreamExpected = false;
-    if (activeStreamRequest) { 
-        try { activeStreamRequest.abort(); } catch(e){} 
-        activeStreamRequest = null; 
-    }
-}
-
 async function checkApiStatus() {
     const res = await rawFetch('/hashtags/trending?limit=1');
     return res.status < 500 && res.status !== 0;
@@ -414,10 +364,9 @@ module.exports = {
     apiCall, 
     quickInternetCheck, 
     checkApiStatus, 
-    startStreamConnection, 
-    stopStreamConnection, 
     uploadFileInternal,
-    setGlobalAccessToken, 
+    setGlobalAccessToken,
+    getGlobalAccessToken, 
     applyCookiesToSession,
     switchUserSession,
     captureAndSaveCookies 

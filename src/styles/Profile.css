@@ -529,3 +529,8 @@
     opacity: 0; 
     transition: opacity 0.5s ease 0.3s;
 }
+
+.icon-circle.music { 
+    background: rgba(121, 75, 196, 0.15); 
+    color: #794bc4; 
+}

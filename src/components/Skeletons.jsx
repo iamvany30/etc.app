@@ -1,11 +1,10 @@
-
 import React from 'react';
 import '../styles/Skeleton.css';
 
-const Shimmer = ({ className, style }) => (
+
+export const Shimmer = ({ className, style }) => (
     <div className={`skeleton-base ${className || ''}`} style={style} />
 );
-
 
 export const PostSkeleton = () => (
     <div className="skeleton-post">
@@ -28,7 +27,6 @@ export const PostSkeleton = () => (
     </div>
 );
 
-
 export const TrackSkeleton = () => (
     <div className="skeleton-track">
         <Shimmer className="skeleton-cover" />
@@ -38,7 +36,6 @@ export const TrackSkeleton = () => (
         </div>
     </div>
 );
-
 
 export const ProfileSkeleton = () => (
     <div className="profile-skeleton">
@@ -71,7 +68,6 @@ export const ProfileSkeleton = () => (
     </div>
 );
 
-
 export const NotificationSkeleton = () => (
     <div className="skeleton-notification">
         <Shimmer className="skeleton-avatar" />
@@ -81,7 +77,6 @@ export const NotificationSkeleton = () => (
         </div>
     </div>
 );
-
 
 export const WidgetSkeleton = () => (
     <div className="skeleton-widget">
@@ -109,7 +104,6 @@ export const WidgetSkeleton = () => (
         </div>
     </div>
 );
-
 
 export const ExploreSkeleton = () => (
     <div className="explore-skeleton">
@@ -140,4 +134,57 @@ export const ExploreSkeleton = () => (
             ))}
         </div>
     </div>
+);
+
+
+
+export const SettingsSkeleton = ({ count = 4 }) => (
+    <div className="settings-content" style={{ animation: 'none' }}>
+        {Array.from({ length: count }).map((_, i) => (
+            <div key={i} className="settings-option" style={{ pointerEvents: 'none', borderColor: 'transparent' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8, flex: 1, marginRight: 16 }}>
+                    <Shimmer className="skeleton-text w-50" style={{ height: 15, margin: 0 }} />
+                    <Shimmer className="skeleton-text w-80" style={{ height: 13, margin: 0, opacity: 0.6 }} />
+                </div>
+                {}
+                <Shimmer style={{ width: 48, height: 28, borderRadius: 99, flexShrink: 0 }} />
+            </div>
+        ))}
+    </div>
+);
+
+export const BlockedUsersSkeleton = ({ count = 3 }) => (
+    <div className="settings-content accounts-list-settings" style={{ animation: 'none' }}>
+        {Array.from({ length: count }).map((_, i) => (
+            <div key={i} className="account-card" style={{ pointerEvents: 'none', borderColor: 'transparent' }}>
+                <div className="account-card-left" style={{ flex: 1 }}>
+                    <Shimmer className="skeleton-avatar" style={{ width: 40, height: 40 }} />
+                    <div className="account-card-info" style={{ gap: 6, flex: 1, width: 120 }}>
+                        <Shimmer className="skeleton-text w-100" style={{ height: 14, margin: 0 }} />
+                        <Shimmer className="skeleton-text w-60" style={{ height: 12, margin: 0, opacity: 0.6 }} />
+                    </div>
+                </div>
+                <Shimmer style={{ width: 120, height: 32, borderRadius: 12, flexShrink: 0 }} />
+            </div>
+        ))}
+    </div>
+);
+
+export const ThemeSkeleton = ({ count = 3 }) => (
+    <>
+        {Array.from({ length: count }).map((_, i) => (
+            <div key={i} className="theme-card" style={{ pointerEvents: 'none', borderColor: 'transparent' }}>
+                <div className="theme-card-content">
+                    <div className="theme-header">
+                        <Shimmer className="skeleton-text w-40" style={{ height: 16, margin: 0 }} />
+                    </div>
+                    <Shimmer className="skeleton-text w-70" style={{ height: 13, marginTop: 8, marginBottom: 8 }} />
+                    <Shimmer className="skeleton-text w-20" style={{ height: 11, margin: 0, opacity: 0.5 }} />
+                </div>
+                <div className="theme-card-actions">
+                    <Shimmer style={{ width: 90, height: 32, borderRadius: 99 }} />
+                </div>
+            </div>
+        ))}
+    </>
 );

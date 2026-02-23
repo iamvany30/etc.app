@@ -8,9 +8,22 @@
     background-color: var(--color-background);
 }
 
+/* =========================================
+   ШАПКА И ПОИСК (HEADER)
+   ========================================= */
+.explore-sticky-header {
+    position: sticky;
+    top: 0;
+    z-index: 40;
+    background-color: rgba(var(--glass-bg-rgb), 0.85);
+    backdrop-filter: blur(24px) saturate(180%);
+    -webkit-backdrop-filter: blur(24px) saturate(180%);
+    border-bottom: 1px solid var(--color-border);
+    transition: background-color 0.3s ease;
+}
 
 .explore-search-container {
-    padding: 8px 16px;
+    padding: 12px 16px;
     width: 100%;
 }
 
@@ -31,15 +44,16 @@
 
 .explore-input {
     width: 100%;
-    height: 42px;
+    height: 44px;
     background-color: var(--color-input-bg);
     border: 1px solid transparent;
-    border-radius: 99px;
-    padding: 0 40px 0 44px;
+    border-radius: 14px;
+    padding: 0 44px;
     color: var(--color-text);
     font-size: 15px;
+    font-weight: 500;
     outline: none;
-    transition: all 0.2s cubic-bezier(0.2, 0.8, 0.2, 1);
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .explore-input:focus {
@@ -48,24 +62,34 @@
     box-shadow: 0 0 0 1px var(--color-primary);
 }
 
+.explore-input::placeholder {
+    color: var(--color-text-secondary);
+}
+
 .search-clear-btn {
     position: absolute;
-    right: 12px;
-    width: 24px;
-    height: 24px;
+    right: 10px;
+    width: 28px;
+    height: 28px;
     border-radius: 50%;
     border: none;
-    background: var(--color-primary);
-    color: #fff;
+    background: transparent;
+    color: var(--color-text-secondary);
     display: flex;
     align-items: center;
     justify-content: center;
     cursor: pointer;
-    transition: transform 0.2s;
+    transition: color 0.2s, transform 0.2s;
 }
-.search-clear-btn:hover { transform: scale(1.1); }
 
+.search-clear-btn:hover {
+    color: var(--color-text);
+    transform: scale(1.1);
+}
 
+/* =========================================
+   ОСНОВНОЙ КОНТЕЙНЕР
+   ========================================= */
 .explore-content-container {
     flex: 1;
     overflow: hidden;
@@ -77,94 +101,118 @@
     overflow-y: auto;
     padding-bottom: 140px; 
     scroll-behavior: smooth;
+    -webkit-overflow-scrolling: touch;
+}
+
+.explore-section {
+    padding-bottom: 16px;
+    border-bottom: 1px solid var(--color-border);
+    margin-bottom: 8px;
+}
+
+.explore-section:last-child {
+    border-bottom: none;
 }
 
 .explore-section-title {
-    font-size: 20px;
+    font-size: 18px;
     font-weight: 800;
     padding: 0 16px;
     margin: 20px 0 16px;
     color: var(--color-text);
+    display: flex;
+    align-items: center;
+    gap: 8px;
 }
 
-
-.clans-section {
-    padding-bottom: 16px;
-    border-bottom: 8px solid var(--color-border-light); 
+.section-icon {
+    color: var(--color-primary);
 }
 
+/* =========================================
+   КЛАНЫ / СООБЩЕСТВА
+   ========================================= */
 .clans-horizontal-scroll {
     display: flex;
     gap: 16px;
-    padding: 0 16px;
+    padding: 0 16px 10px 16px;
     overflow-x: auto;
     overflow-y: hidden;
-    scrollbar-width: none; 
-    -webkit-overflow-scrolling: touch;
     scroll-snap-type: x mandatory; 
 }
-.clans-horizontal-scroll::-webkit-scrollbar { display: none; }
+
+.custom-scrollbar-hide::-webkit-scrollbar { display: none; }
+.custom-scrollbar-hide { scrollbar-width: none; }
 
 .clan-card {
     display: flex;
     flex-direction: column;
     align-items: center;
-    width: 72px; 
+    width: 76px; 
     flex-shrink: 0;
     cursor: pointer;
     scroll-snap-align: start;
-    transition: transform 0.2s;
+    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .clan-card:hover {
-    transform: translateY(-2px);
+    transform: translateY(-4px);
 }
 
 .clan-avatar-ring {
     position: relative;
-    width: 68px;
-    height: 68px;
-    border-radius: 22px; 
-    padding: 2px;
+    width: 72px;
+    height: 72px;
+    border-radius: 24px; 
+    padding: 3px;
     border: 2px solid var(--color-border);
-    margin-bottom: 6px;
-    transition: border-color 0.2s;
+    margin-bottom: 8px;
+    transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.clan-card:hover .clan-avatar-ring {
+    border-color: var(--color-text-secondary);
+    box-shadow: 0 8px 16px rgba(0,0,0,0.1);
 }
 
 .clan-card.top-tier .clan-avatar-ring {
     border-color: #ffad1f; 
-    background: linear-gradient(135deg, rgba(255, 173, 31, 0.1), transparent);
+    background: linear-gradient(135deg, rgba(255, 173, 31, 0.15), transparent);
+}
+
+.clan-card.top-tier:hover .clan-avatar-ring {
+    box-shadow: 0 8px 20px rgba(255, 173, 31, 0.3);
 }
 
 .clan-avatar-inner {
     width: 100%;
     height: 100%;
     background-color: var(--color-item-bg);
-    border-radius: 18px;
+    border-radius: 20px;
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 28px;
+    font-size: 32px;
     overflow: hidden;
 }
 
 .clan-members-badge {
     position: absolute;
-    bottom: -4px;
-    right: -4px;
+    bottom: -6px;
+    right: -6px;
     background-color: var(--color-card);
     color: var(--color-text-secondary);
-    font-size: 10px;
-    font-weight: 700;
-    padding: 2px 4px;
-    border-radius: 6px;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+    font-size: 11px;
+    font-weight: 800;
+    padding: 2px 6px;
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.2);
     border: 1px solid var(--color-border);
 }
 
 .clan-name {
-    font-size: 12px;
-    font-weight: 600;
+    font-size: 13px;
+    font-weight: 700;
     text-align: center;
     color: var(--color-text);
     white-space: nowrap;
@@ -173,32 +221,37 @@
     width: 100%;
 }
 
-
+/* =========================================
+   ТРЕНДЫ (ХЕШТЕГИ)
+   ========================================= */
 .trends-list {
     display: flex;
     flex-direction: column;
+    gap: 4px;
+    padding: 0 8px;
 }
 
 .trend-item {
     display: flex;
-    padding: 16px;
+    align-items: center;
+    padding: 12px;
     gap: 16px;
     cursor: pointer;
+    border-radius: 14px;
     transition: background-color 0.2s;
-    position: relative;
 }
 
 .trend-item:hover {
-    background-color: rgba(255, 255, 255, 0.03);
+    background-color: var(--color-item-bg);
 }
 
-.trend-rank {
-    font-size: 15px;
-    font-weight: 400;
+.trend-number {
+    font-size: 16px;
+    font-weight: 800;
     color: var(--color-text-secondary);
-    min-width: 20px;
+    opacity: 0.5;
+    width: 20px;
     text-align: center;
-    opacity: 0.6;
 }
 
 .trend-info {
@@ -208,16 +261,8 @@
     flex: 1;
 }
 
-.trend-category {
-    font-size: 13px;
-    color: var(--color-text-secondary);
-    margin-bottom: 2px;
-    display: flex;
-    justify-content: space-between;
-}
-
 .trend-name {
-    font-weight: 700;
+    font-weight: 800;
     font-size: 16px;
     color: var(--color-text);
     margin-bottom: 2px;
@@ -228,30 +273,41 @@
     color: var(--color-text-secondary);
 }
 
-.trend-dots {
+.trend-arrow {
+    font-size: 20px;
     color: var(--color-text-secondary);
-    opacity: 0.5;
+    opacity: 0;
+    transition: opacity 0.2s, transform 0.2s;
+    transform: translateX(-10px);
 }
 
+.trend-item:hover .trend-arrow {
+    opacity: 1;
+    transform: translateX(0);
+}
 
+/* =========================================
+   РЕЗУЛЬТАТЫ ПОИСКА
+   ========================================= */
 .search-results-list {
     padding-top: 8px;
 }
 
 .search-group-header {
     padding: 16px 16px 8px;
-    font-size: 19px;
+    font-size: 14px;
     font-weight: 800;
-    color: var(--color-text);
-    border-bottom: 1px solid var(--color-border);
-    margin-bottom: 8px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: var(--color-text-secondary);
+    margin: 0 0 8px 0;
 }
 
 .search-result-item {
     display: flex;
     align-items: center;
     padding: 12px 16px;
-    gap: 12px;
+    gap: 14px;
     text-decoration: none;
     color: inherit;
     transition: background 0.2s;
@@ -261,18 +317,112 @@
     background-color: var(--color-item-bg);
 }
 
+.hashtag-icon-box {
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    background-color: var(--color-input-bg);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--color-text-secondary);
+    border: 1px solid var(--color-border);
+}
+
 .res-info {
     display: flex;
     flex-direction: column;
 }
 
 .res-name { font-weight: 700; font-size: 15px; }
-.res-sub { color: var(--color-text-secondary); font-size: 14px; }
+.res-sub { color: var(--color-text-secondary); font-size: 13px; margin-top: 2px; }
+
+/* =========================================
+   ШАПКА ЛЕНТЫ ПО ХЕШТЕГУ
+   ========================================= */
+.hashtag-feed-header {
+    padding: 24px 16px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    border-bottom: 1px solid var(--color-border);
+    background-color: var(--color-item-bg);
+}
+
+.hashtag-feed-icon {
+    width: 56px;
+    height: 56px;
+    background: linear-gradient(135deg, var(--color-primary), #794bc4);
+    color: #fff;
+    border-radius: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 12px;
+    box-shadow: 0 8px 24px var(--color-primary-alpha);
+}
+
+.hashtag-feed-header h2 {
+    margin: 0;
+    font-size: 24px;
+    font-weight: 800;
+}
+
+/* =========================================
+   ПУСТЫЕ СОСТОЯНИЯ (Empty States)
+   ========================================= */
+.explore-empty-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 80px 20px;
+    text-align: center;
+}
+
+.explore-empty-icon {
+    width: 80px;
+    height: 80px;
+    background: linear-gradient(135deg, rgba(var(--color-primary-rgb), 0.15), transparent);
+    color: var(--color-primary);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 24px;
+    border: 1px solid rgba(var(--color-primary-rgb), 0.2);
+    box-shadow: 0 10px 30px rgba(var(--color-primary-rgb), 0.1);
+}
+
+.explore-empty-state h3 {
+    font-size: 22px;
+    font-weight: 800;
+    margin: 0 0 12px 0;
+    color: var(--color-text);
+}
+
+.explore-empty-state p {
+    font-size: 15px;
+    color: var(--color-text-secondary);
+    line-height: 1.5;
+    max-width: 320px;
+    margin: 0 auto;
+}
 
 .end-msg {
     text-align: center;
     padding: 40px;
     color: var(--color-text-secondary);
     font-size: 14px;
-    font-weight: 500;
+    font-weight: 600;
+}
+
+.content-fade-in {
+    animation: exploreFadeIn 0.4s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+@keyframes exploreFadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
 }

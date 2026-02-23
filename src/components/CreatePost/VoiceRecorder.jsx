@@ -1,7 +1,8 @@
-/* @source src/components/CreatePost/VoiceRecorder.jsx */
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { apiClient } from '../../api/client';
 import { StopIcon, TrashIcon, SendIcon } from '../icons/CommonIcons';
+
+let globalAudioContext = null;
 
 const VoiceRecorder = ({ onRecordComplete, onCancel }) => {
     const [recordingState, setRecordingState] = useState('recording'); 
@@ -10,27 +11,17 @@ const VoiceRecorder = ({ onRecordComplete, onCancel }) => {
     const [time, setTime] = useState(0);
 
     const mediaRecorderRef = useRef(null);
-    const audioContextRef = useRef(null);
     const analyserRef = useRef(null);
     const animationFrameRef = useRef(null);
     const timerRef = useRef(null);
 
-    
     const cleanup = useCallback(() => {
-        
         if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
             mediaRecorderRef.current.stop();
             if (mediaRecorderRef.current.stream) {
                 mediaRecorderRef.current.stream.getTracks().forEach(t => t.stop());
             }
         }
-
-        
-        if (audioContextRef.current && audioContextRef.current.state !== 'closed') {
-            audioContextRef.current.close().catch(err => console.warn("AudioContext close error:", err));
-        }
-
-        
         if (animationFrameRef.current) cancelAnimationFrame(animationFrameRef.current);
         if (timerRef.current) clearInterval(timerRef.current);
     }, []);
@@ -44,14 +35,17 @@ const VoiceRecorder = ({ onRecordComplete, onCancel }) => {
         try {
             const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
             
-            
-            audioContextRef.current = new (window.AudioContext || window.webkitAudioContext)();
-            const source = audioContextRef.current.createMediaStreamSource(stream);
-            analyserRef.current = audioContextRef.current.createAnalyser();
+            if (!globalAudioContext || globalAudioContext.state === 'closed') {
+                globalAudioContext = new (window.AudioContext || window.webkitAudioContext)();
+            } else if (globalAudioContext.state === 'suspended') {
+                await globalAudioContext.resume();
+            }
+
+            const source = globalAudioContext.createMediaStreamSource(stream);
+            analyserRef.current = globalAudioContext.createAnalyser();
             analyserRef.current.fftSize = 64;
             source.connect(analyserRef.current);
 
-            
             mediaRecorderRef.current = new MediaRecorder(stream);
             const chunks = [];
             mediaRecorderRef.current.ondataavailable = e => chunks.push(e.data);
@@ -60,30 +54,24 @@ const VoiceRecorder = ({ onRecordComplete, onCancel }) => {
                 const blob = new Blob(chunks, { type: 'audio/webm' });
                 setAudioBlob(blob);
                 setRecordingState('preview');
-                
                 stream.getTracks().forEach(t => t.stop());
             };
 
             mediaRecorderRef.current.start();
-            
             
             const visualize = () => {
                 if (!analyserRef.current) return;
                 const data = new Uint8Array(analyserRef.current.frequencyBinCount);
                 analyserRef.current.getByteFrequencyData(data);
                 
-                
                 setWaveformData(Array.from(data).slice(0, 30).map(v => Math.max(0.1, v / 255)));
                 animationFrameRef.current = requestAnimationFrame(visualize);
             };
             visualize();
 
-            
             timerRef.current = setInterval(() => setTime(t => t + 1), 1000);
 
         } catch (e) {
-            console.error(e);
-            alert("Нет доступа к микрофону");
             onCancel();
         }
     };
@@ -93,28 +81,20 @@ const VoiceRecorder = ({ onRecordComplete, onCancel }) => {
             mediaRecorderRef.current.stop();
         }
         
-        
         if (animationFrameRef.current) cancelAnimationFrame(animationFrameRef.current);
         if (timerRef.current) clearInterval(timerRef.current);
-        
-        
-        if (audioContextRef.current && audioContextRef.current.state !== 'closed') {
-            audioContextRef.current.close().catch(() => {});
-        }
     };
 
     const handleSend = async () => {
         if (!audioBlob) return;
         setRecordingState('sending');
         try {
-            
             const file = new File([audioBlob], `voice-${Date.now()}.webm`, { type: 'audio/webm' });
             const res = await apiClient.uploadFile(file);
             if (res?.data?.id) {
                 onRecordComplete(res.data.id);
             }
         } catch (e) {
-            alert("Ошибка отправки голосового");
             setRecordingState('preview');
         }
     };
@@ -128,11 +108,11 @@ const VoiceRecorder = ({ onRecordComplete, onCancel }) => {
     return (
         <div className="voice-recorder-ui">
             {recordingState === 'recording' ? (
-                <button className="voice-btn stop" onClick={stopRecording} title="Остановить">
+                <button className="voice-btn stop" onClick={stopRecording}>
                     <StopIcon />
                 </button>
             ) : (
-                <button className="voice-btn delete" onClick={onCancel} title="Удалить">
+                <button className="voice-btn delete" onClick={onCancel}>
                     <TrashIcon />
                 </button>
             )}
@@ -153,7 +133,7 @@ const VoiceRecorder = ({ onRecordComplete, onCancel }) => {
             <div className="voice-time">{formatTime(time)}</div>
 
             {recordingState === 'preview' && (
-                <button className="voice-btn send" onClick={handleSend} title="Отправить">
+                <button className="voice-btn send" onClick={handleSend}>
                     <SendIcon />
                 </button>
             )}

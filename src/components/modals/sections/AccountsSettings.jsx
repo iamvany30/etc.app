@@ -1,15 +1,25 @@
-
+/* @source src/components/modals/sections/AccountsSettings.jsx */
 import React from 'react';
-import { useUser } from '../../../context/UserContext';
-import { useModal } from '../../../context/ModalContext';
+import { useUserStore } from '../../../store/userStore';
+import { useModalStore } from '../../../store/modalStore';
 import { useNavigate } from 'react-router-dom';
 import { IconCheck } from '../../icons/SettingsIcons';
 import { IconTrash } from '../../icons/ThemeIcons'; 
+import ConfirmActionModal from '../ConfirmActionModal';
+import '../../../styles/settings/Accounts.css';
 
-const AccountsSettings = ({ setStatus }) => {
-    const { accounts, currentUser, switchAccount, logoutAccount } = useUser();
-    const { closeModal } = useModal();
+const AccountsSettings = ({ setStatus, reopenModal }) => {
+    const accounts = useUserStore(state => state.accounts);
+    const currentUser = useUserStore(state => state.currentUser);
+    const switchAccount = useUserStore(state => state.switchAccount);
+    const logoutAccount = useUserStore(state => state.logoutAccount);
+    const closeModal = useModalStore(state => state.closeModal);
+    const openModal = useModalStore(state => state.openModal);
+    
     const navigate = useNavigate();
+
+    
+    if (!currentUser) return null;
 
     const handleAddAccount = () => {
         closeModal();
@@ -26,15 +36,23 @@ const AccountsSettings = ({ setStatus }) => {
         }
     };
 
-    const handleRemove = async (e, accountId) => {
+    const handleRemove = (e, accountId) => {
         e.stopPropagation();
-        if (window.confirm('Удалить этот аккаунт с устройства?')) {
-            await logoutAccount(accountId);
-            setStatus({ type: 'success', msg: 'Аккаунт удален' });
-        }
+        openModal(
+            <ConfirmActionModal 
+                title="Удалить этот аккаунт?"
+                message="Данные сессии будут удалены с устройства. Вам придется входить в этот аккаунт заново."
+                confirmText="Удалить"
+                onConfirm={async () => {
+                    reopenModal(); 
+                    await logoutAccount(accountId);
+                    setStatus({ type: 'success', msg: 'Аккаунт удален' });
+                }}
+                onCancel={reopenModal}
+            />
+        );
     };
 
-    
     const otherAccounts = Array.isArray(accounts) 
         ? accounts.filter(acc => acc.id !== currentUser.id) 
         : [];

@@ -1,7 +1,15 @@
+/* @source src/App.js */
 import React, { useEffect, useState, useCallback } from 'react';
-import { Routes, Route, Navigate, Outlet } from 'react-router-dom';
+import { Routes, Route, Navigate, Outlet, useNavigate, useLocation } from 'react-router-dom';
+
+
+import { useUserStore } from './store/userStore'; 
+import { useMusicStore } from './store/musicStore';
+import { useDownloadStore } from './store/downloadStore';
+
+
 import { DynamicComponent } from './core/ComponentRegistry';
-import { useUser } from './context/UserContext'; 
+import { updateRemoteAllowedLinks } from './utils/linkUtils';
 
 
 import Sidebar from './components/Sidebar';
@@ -16,9 +24,14 @@ import DynamicIsland from './components/DynamicIsland';
 import CustomBackground from './components/CustomBackground';
 import AuthFlow from './components/AuthFlow';
 import NotificationWatcher from './components/NotificationWatcher';
+import DownloadWatcher from './components/DownloadWatcher'; 
 import PresenceManager from './components/PresenceManager'; 
 import ContextMenuManager from './components/ContextMenuManager';
 import DiscordManager from './components/DiscordManager'; 
+import InternalBrowser from './components/InternalBrowser';
+import ModalManager from './components/ModalManager';
+import AccountSwitchOverlay from './components/AccountSwitchOverlay';
+import AnnouncementWatcher from './components/AnnouncementWatcher';
 
 
 import Feed from './pages/Feed';
@@ -28,20 +41,26 @@ import Notifications from './pages/Notifications';
 import PostDetails from './pages/PostDetails';
 import Music from './pages/Music';
 import Login from './pages/Login';
-import OfflinePage from './pages/OfflinePage';
-import StatusPage from './pages/StatusPage';
-import ManualLogin from './pages/ManualLogin';
 import Downloads from './pages/Downloads';
 import Bookmarks from './pages/Bookmarks';
+import DevPage from './pages/DevPage';
 
 import './App.css';
 import './styles/Layout.css';
 
 const DefaultLayout = () => {
+    const [contentKey, setContentKey] = useState(0);
+
+    useEffect(() => {
+        const handleRefresh = () => setContentKey(prev => prev + 1);
+        window.addEventListener('content-refresh', handleRefresh);
+        return () => window.removeEventListener('content-refresh', handleRefresh);
+    }, []);
+
     return (
         <div className="layout">
             <DynamicComponent name="Layout.Sidebar" fallback={Sidebar} />
-            <main className="content hide-scrollbar">
+            <main className="content hide-scrollbar" key={contentKey}>
                 <Outlet />
             </main>
             <DynamicComponent name="Layout.RightSidebar" fallback={RightSidebar} />
@@ -56,11 +75,36 @@ const RouteEl = ({ name, fallback: Fallback }) => (
 );
 
 function App() {
-    const { currentUser } = useUser(); 
+    const currentUser = useUserStore(state => state.currentUser);
+    const switchingTarget = useUserStore(state => state.switchingTarget);
+    const isOverlayExiting = useUserStore(state => state.isOverlayExiting);
+    
     const [snowEnabled, setSnowEnabled] = useState(localStorage.getItem('nowkie_snow_enabled') === 'true');
+    const navigate = useNavigate();
+    const location = useLocation();
+
+    const isDevWindow = location.pathname === '/dev' || location.pathname === '#/dev';
+
+    useEffect(() => {
+        if (isDevWindow || !window.api?.invoke) return;
+        const syncInterval = setInterval(() => {
+            try {
+                const sanitize = (obj) => {
+                    const result = {};
+                    for (const key in obj) { if (typeof obj[key] !== 'function') result[key] = obj[key]; }
+                    return result;
+                };
+                window.api.invoke('debug:update-state-snapshot', {
+                    user: sanitize(useUserStore.getState()),
+                    music: sanitize(useMusicStore.getState()),
+                    download: sanitize(useDownloadStore.getState())
+                });
+            } catch (e) {}
+        }, 1000);
+        return () => clearInterval(syncInterval);
+    }, [isDevWindow]);
 
     const applySettings = useCallback(() => {
-        
         const bgMode = localStorage.getItem('nowkie_bg') || 'dim';
         const accent = localStorage.getItem('nowkie_accent') || '#1d9bf0';
         const isSnow = localStorage.getItem('nowkie_snow_enabled') === 'true';
@@ -86,29 +130,53 @@ function App() {
 
     useEffect(() => {
         applySettings();
+        updateRemoteAllowedLinks();
         window.addEventListener('settingsUpdate', applySettings);
         return () => window.removeEventListener('settingsUpdate', applySettings);
     }, [applySettings]);
+    
+    useEffect(() => {
+        if (!window.api?.on) return;
+        const unsubscribe = window.api.on('navigate-to', (path) => {
+            if (path) setTimeout(() => navigate(path), 50);
+        });
+        return () => unsubscribe();
+    }, [navigate]);
+
+    if (isDevWindow) {
+        return (
+            <React.Fragment>
+                <ModalManager />
+                <DynamicIsland />
+                <ContextMenuManager />
+                <Routes>
+                    <Route path="/dev" element={<DevPage />} />
+                </Routes>
+            </React.Fragment>
+        );
+    }
 
     return (
         <>
             <CustomBackground />
+            <AccountSwitchOverlay targetUser={switchingTarget} isExiting={isOverlayExiting} />
             {snowEnabled && <Snowfall />}
-            
-            <ErrorBoundary>
-                <TitleBar />
-            </ErrorBoundary>
+            <ErrorBoundary><TitleBar /></ErrorBoundary>
+            <ModalManager />
 
             <AuthFlow>
                 <React.Fragment key={currentUser?.id || 'guest'}>
                     <DynamicIsland />
                     <ContextMenuManager />
                     <NotificationWatcher />
+                    <DownloadWatcher />
+                    <AnnouncementWatcher />
                     <PresenceManager />
                     <DiscordManager />
                     <ScrollToTop />
                     <BottomDock />
                     <UploadManager />
+                    <InternalBrowser />
 
                     <Routes>
                         <Route element={<DefaultLayout />}>
@@ -118,15 +186,11 @@ function App() {
                             <Route path="/music" element={<RouteEl name="Page.Music" fallback={Music} />} />
                             <Route path="/profile/:username" element={<RouteEl name="Page.Profile" fallback={Profile} />} />
                             <Route path="/post/:id" element={<RouteEl name="Page.PostDetails" fallback={PostDetails} />} />
-                            <Route path="/status" element={<StatusPage />} />
                             <Route path="/downloads" element={<Downloads />} />
                             <Route path="/bookmarks" element={<RouteEl name="Page.Bookmarks" fallback={Bookmarks} />} />
                         </Route>
 
                         <Route path="/login" element={<Login />} />
-                        <Route path="/login/manual" element={<ManualLogin />} />
-                        <Route path="/offline" element={<OfflinePage />} />
-                        
                         <Route path="*" element={<Navigate to="/" replace />} />
                     </Routes>
                 </React.Fragment>

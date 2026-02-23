@@ -1,0 +1,200 @@
+.internal-browser-wrapper {
+    position: fixed;
+    top: 42px; 
+    left: 0;
+    right: 0;
+    height: calc(100vh - 56px);
+    z-index: 8500;
+    background-color: var(--color-background);
+    display: flex;
+    flex-direction: column;
+    
+    
+    border-top-left-radius: 16px;
+    border-top-right-radius: 16px;
+    border: 1px solid var(--color-border);
+    border-bottom: none;
+    box-shadow: 0 -10px 40px rgba(0, 0, 0, 0.5);
+    
+    transform: translateY(100vh);
+    transition: transform 0.4s cubic-bezier(0.2, 0.8, 0.2, 1);
+    overflow: hidden;
+}
+
+.internal-browser-wrapper.open {
+    transform: translateY(0);
+}
+
+.browser-toolbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    height: 60px;
+    padding: 0 16px;
+    gap: 12px;
+    background-color: var(--color-item-bg);
+    border-bottom: 1px solid var(--color-border);
+    position: relative;
+    flex-shrink: 0;
+    z-index: 10;
+}
+
+.browser-nav-btns, 
+.browser-action-btns {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-shrink: 0;
+}
+
+.br-icon-btn {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    border: none;
+    background: transparent;
+    color: var(--color-text-secondary);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s ease;
+    flex-shrink: 0;
+}
+
+.br-icon-btn:hover:not(:disabled) {
+    background-color: rgba(255, 255, 255, 0.08);
+    color: var(--color-text);
+}
+
+[data-bg='light'] .br-icon-btn:hover:not(:disabled) {
+    background-color: rgba(0, 0, 0, 0.05);
+}
+
+.br-icon-btn:disabled {
+    opacity: 0.3;
+    cursor: default;
+}
+
+.browser-address-bar {
+    flex: 1;
+    min-width: 0;
+    height: 36px;
+    background-color: var(--color-input-bg);
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0 16px;
+    border: 1px solid transparent;
+    transition: border-color 0.2s;
+}
+
+.browser-address-bar:hover {
+    border-color: var(--color-border);
+}
+
+.br-url-text {
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--color-text);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    text-align: center;
+    width: 100%;
+}
+
+.br-close-btn {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    background-color: rgba(244, 33, 46, 0.1);
+    color: #f4212e;
+    border: 1px solid rgba(244, 33, 46, 0.2);
+    padding: 0 16px;
+    height: 36px;
+    border-radius: 99px;
+    font-weight: 700;
+    font-size: 14px;
+    cursor: pointer;
+    transition: all 0.2s;
+    flex-shrink: 0;
+}
+
+.br-close-btn:hover {
+    background-color: #f4212e;
+    color: #fff;
+    border-color: transparent;
+}
+
+.br-loader-line {
+    position: absolute;
+    bottom: -1px;
+    left: 0;
+    height: 2px;
+    background-color: var(--color-primary);
+    width: 30%;
+    animation: br-loading-anim 1.5s infinite cubic-bezier(0.4, 0, 0.2, 1);
+    z-index: 2;
+}
+
+@keyframes br-loading-anim {
+    0% { left: -30%; width: 30%; }
+    50% { width: 60%; }
+    100% { left: 100%; width: 30%; }
+}
+
+.webview-container {
+    flex: 1;
+    width: 100%;
+    min-height: 0; 
+    background-color: #ffffff;  
+    display: flex;
+    flex-direction: column;
+}
+
+.webview-container webview {
+    flex: 1 !important;
+    width: 100% !important;
+    height: 100% !important;
+    background-color: #ffffff !important;
+    border: none !important;
+}
+
+@media (max-width: 600px) {
+    .browser-toolbar {
+        padding: 0 8px;
+        gap: 8px;
+        height: 52px;
+    }
+    .br-close-text { display: none; }
+    .br-close-btn {
+        padding: 0;
+        width: 36px;
+        height: 36px;
+        border-radius: 50%;
+        justify-content: center;
+    }
+    .br-close-btn svg { margin: 0; }
+    .mobile-hide { display: none; }
+    .br-url-text { font-size: 13px; }
+    .browser-address-bar { padding: 0 10px; }
+}
+
+.br-url-input {
+    width: 100%;
+    background: transparent;
+    border: none;
+    color: var(--color-text);
+    font-size: 14px;
+    font-weight: 500;
+    outline: none;
+    text-align: center;
+    text-overflow: ellipsis;
+}
+
+.br-url-input:focus {
+    text-align: left;
+    color: var(--color-primary);
+}

@@ -1,21 +1,11 @@
-import React, { useState } from 'react';
-import { useUser } from '../../context/UserContext';
-import { useModal } from '../../context/ModalContext';
-import '../../styles/SettingsModal.css';
-
+import React, { useState, useMemo } from 'react';
+import { useUserStore } from '../../store/userStore';
+import { useModalStore } from '../../store/modalStore';
 import { 
-    IconBack, 
-    IconChevron, 
-    IconUser, 
-    IconLock, 
-    IconPalette, 
-    IconMedia, 
-    IconLogout, 
-    IconInfo,
-    IconShield,
-    IconUsers
+    IconBack, IconUser, IconLock, IconPalette, IconMedia, 
+    IconLogout, IconInfo, IconShield, IconUsers, IconChevron,
+    IconBell, IconBlock 
 } from '../icons/SettingsIcons';
-
 
 import AccountsSettings from './sections/AccountsSettings'; 
 import AccountSettings from './sections/AccountSettings';
@@ -25,41 +15,32 @@ import AppearanceSettings from './sections/AppearanceSettings';
 import MediaSettings from './sections/MediaSettings';
 import InfoSettings from './sections/InfoSettings';
 import ThemeSettings from './sections/ThemeSettings';
-
+import NotificationSettings from './sections/NotificationSettings';
+import BlockedUsersSettings from './sections/BlockedUsersSettings';
 import LogoutConfirmModal from './LogoutConfirmModal';
+import '../../styles/settings/Layout.css';
+import '../../styles/settings/UI.css'; 
 
 const SettingsModal = () => {
-    const { currentUser, setCurrentUser } = useUser();
-    const { openModal, closeModal } = useModal();
-    const [view, setView] = useState('main'); 
+    const currentUser = useUserStore(state => state.currentUser);
+    const setCurrentUser = useUserStore(state => state.setCurrentUser);
+    
+    const openModal = useModalStore(state => state.openModal);
+    const closeModal = useModalStore(state => state.closeModal);
+    
+    const isDesktop = window.innerWidth > 768;
+    const [activeTabId, setActiveTabId] = useState(isDesktop ? 'accounts_manage' : null);
     const [status, setStatus] = useState({ type: '', msg: '' });
 
-    
-    const titles = {
-        main: 'Настройки',
-        accounts_manage: 'Управление аккаунтами',
-        account: 'Ваш аккаунт',
-        security: 'Пароль',
-        private: 'Приватность',
-        appearance: 'Внешний вид',
-        themes: 'Оболочки',
-        media: 'Медиа и данные',
-        info: 'О приложении' 
-    };
-
-    
     const handleLogoutTrigger = () => {
         openModal(
             <LogoutConfirmModal 
                 onConfirm={async () => {
                     try {
-                        await window.api.call('/v1/auth/logout', 'POST');
-                        setCurrentUser(null);
-                        localStorage.removeItem('nowkie_user');
+                        await useUserStore.getState().logoutAccount(currentUser.id);
                         closeModal();
-                        window.location.reload();
                     } catch (e) {
-                        console.error("Logout failed", e);
+                        console.error(e);
                     }
                 }} 
                 onCancel={() => openModal(<SettingsModal />)}
@@ -67,130 +48,122 @@ const SettingsModal = () => {
         );
     };
 
-    
-    const MenuItem = ({ id, icon, label, desc, isDanger, onClick }) => (
-        <button 
-            className={`settings-option ${isDanger ? 'danger-zone' : ''}`} 
-            onClick={onClick || (() => { setView(id); setStatus({type:'', msg:''}); })}
-        >
-            <div className="settings-option-left">
-                <div className={`settings-icon ${isDanger ? 'danger' : ''}`}>{icon}</div>
-                <div className="settings-option-info">
-                    <span className={`settings-option-name ${isDanger ? 'danger' : ''}`}>{label}</span>
-                    {desc && <span className="settings-option-desc">{desc}</span>}
-                </div>
-            </div>
-            {!isDanger && <span className="settings-arrow"><IconChevron /></span>}
-        </button>
-    );
-
-    
-    const renderContent = () => {
-        switch (view) {
-            case 'main':
-                return (
-                    <div className="settings-content">
-                        <div className="settings-section-title">Аккаунт</div>
-                        
-                        <MenuItem 
-                            id="accounts_manage" 
-                            icon={<IconUsers />} 
-                            label="Мои аккаунты" 
-                            desc="Переключение и добавление" 
-                        />
-
-                        <MenuItem 
-                            id="account" 
-                            icon={<IconUser />} 
-                            label="Личная информация" 
-                            desc="Имя, юзернейм и описание" 
-                        />
-                        <MenuItem 
-                            id="security" 
-                            icon={<IconLock />} 
-                            label="Безопасность" 
-                            desc="Смена пароля" 
-                        />
-                        <MenuItem 
-                            id="private" 
-                            icon={<IconShield />} 
-                            label="Приватность" 
-                            desc="Стена и статус в сети" 
-                        />
-                        
-                        <div className="settings-section-title">Интерфейс</div>
-                        <MenuItem 
-                            id="appearance" 
-                            icon={<IconPalette />} 
-                            label="Оформление" 
-                            desc="Цвета и спецэффекты" 
-                        />
-                        <MenuItem 
-                            id="themes" 
-                            icon={<IconPalette />} 
-                            label="Оболочки" 
-                            desc="Кастомные темы сообщества" 
-                        />
-                        <MenuItem 
-                            id="media" 
-                            icon={<IconMedia />} 
-                            label="Медиа" 
-                            desc="Сжатие и работа GPU" 
-                        />
-
-                        <div className="settings-section-title">Система</div>
-                        <MenuItem 
-                            id="info" 
-                            icon={<IconInfo />} 
-                            label="О приложении" 
-                            desc="Версия, команда и правовая инфо" 
-                        />
-
-                        <div style={{ marginTop: '12px', borderTop: '1px solid var(--color-border-light)' }}>
-                            <MenuItem 
-                                icon={<IconLogout />} 
-                                label="Выйти из аккаунта" 
-                                isDanger={true}
-                                onClick={handleLogoutTrigger}
-                            />
-                        </div>
-                    </div>
-                );
-            
-            case 'accounts_manage': return <AccountsSettings setStatus={setStatus} />;
-            case 'account': return <AccountSettings user={currentUser} setCurrentUser={setCurrentUser} setStatus={setStatus} />;
-            case 'security': return <SecuritySettings setStatus={setStatus} />;
-            case 'private': return <PrivacySettings setStatus={setStatus} />;
-            case 'appearance': return <AppearanceSettings />;
-            case 'themes': return <ThemeSettings setStatus={setStatus} />;
-            case 'media': return <MediaSettings />;
-            case 'info': return <InfoSettings />;
-            default: return null;
+    const TABS = useMemo(() => [
+        {
+            category: 'Аккаунт',
+            items: [
+                { id: 'accounts_manage', label: 'Мои аккаунты', icon: <IconUsers />, component: AccountsSettings },
+                { id: 'account', label: 'Профиль', icon: <IconUser />, component: AccountSettings, props: { user: currentUser, setCurrentUser } },
+                { id: 'security', label: 'Безопасность', icon: <IconLock />, component: SecuritySettings },
+                { id: 'private', label: 'Приватность', icon: <IconShield />, component: PrivacySettings },
+                { id: 'blocked', label: 'Заблокированные', icon: <IconBlock />, component: BlockedUsersSettings },
+            ]
+        },
+        {
+            category: 'Интерфейс',
+            items: [
+                { id: 'appearance', label: 'Внешний вид', icon: <IconPalette />, component: AppearanceSettings },
+                { id: 'themes', label: 'Оболочки', icon: <IconPalette />, component: ThemeSettings },
+                { id: 'media', label: 'Медиа и данные', icon: <IconMedia />, component: MediaSettings },
+            ]
+        },
+        {
+            category: 'Система',
+            items: [
+                { id: 'notifications', label: 'Уведомления', icon: <IconBell />, component: NotificationSettings },
+                { id: 'info', label: 'О приложении', icon: <IconInfo />, component: InfoSettings },
+            ]
         }
+    ], [currentUser, setCurrentUser]);
+
+    const activeItem = useMemo(() => {
+        for (const group of TABS) {
+            const found = group.items.find(i => i.id === activeTabId);
+            if (found) return found;
+        }
+        return null;
+    }, [activeTabId, TABS]);
+
+    const handleTabChange = (id) => {
+        setActiveTabId(id);
+        setStatus({ type: '', msg: '' });
+    };
+
+    const handleBack = () => {
+        setActiveTabId(null);
+        setStatus({ type: '', msg: '' });
+    };
+
+    const sliderClass = activeTabId && !isDesktop ? 'show-content' : 'show-sidebar';
+
+    const renderContent = () => {
+        if (!activeItem) return null;
+        const Component = activeItem.component;
+        return <Component 
+            setStatus={setStatus} 
+            reopenModal={() => openModal(<SettingsModal />)} 
+            {...(activeItem.props || {})} 
+        />;
     };
 
     return (
-        <div className="settings-modal">
-            <header className="settings-header">
-                {view !== 'main' && (
-                    <button 
-                        className="settings-back-btn" 
-                        onClick={() => { setView('main'); setStatus({type:'', msg:''}); }}
-                    >
-                        <IconBack />
-                    </button>
-                )}
-                <h2 className="settings-title">{titles[view]}</h2>
-            </header>
-
-            {status.msg && (
-                <div className={`status-message ${status.type}`}>
-                    {status.msg}
+        <div className="settings-modal-new">
+            <div className={`settings-container ${sliderClass}`}>
+                <div className="settings-sidebar-pane">
+                    <div className="settings-sidebar-header">
+                        <h2>Настройки</h2>
+                    </div>
+                    <div className="settings-nav-scroll">
+                        {TABS.map((group, idx) => (
+                            <div key={idx} className="settings-group">
+                                <div className="group-title">{group.category}</div>
+                                {group.items.map(item => (
+                                    <button 
+                                        key={item.id}
+                                        className={`nav-item ${activeTabId === item.id ? 'active' : ''}`}
+                                        onClick={() => handleTabChange(item.id)}
+                                    >
+                                        <span className="nav-icon">{item.icon}</span>
+                                        <span className="nav-label">{item.label}</span>
+                                        <IconChevron className="mobile-chevron" />
+                                    </button>
+                                ))}
+                            </div>
+                        ))}
+                        
+                        <div className="settings-group">
+                            <div className="group-title">Действия</div>
+                            <button className="nav-item danger" onClick={handleLogoutTrigger}>
+                                <span className="nav-icon"><IconLogout /></span>
+                                <span className="nav-label">Выйти</span>
+                            </button>
+                        </div>
+                    </div>
                 </div>
-            )}
 
-            <div key={view} className="settings-content-wrapper">
-                {renderContent()}
+                <div className="settings-content-pane">
+                    <div className="mobile-header">
+                        <button className="back-button" onClick={handleBack}>
+                            <IconBack />
+                        </button>
+                        <h3>{activeItem?.label || 'Настройки'}</h3>
+                    </div>
+
+                    <div className="desktop-header">
+                        <h3>{activeItem?.label || 'Выберите пункт'}</h3>
+                    </div>
+
+                    <div className="content-scroller">
+                        {status.msg && (
+                            <div className={`status-message-inline ${status.type}`}>
+                                {status.msg}
+                            </div>
+                        )}
+                        <div className="settings-form-wrapper">
+                            {renderContent()}
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
     );

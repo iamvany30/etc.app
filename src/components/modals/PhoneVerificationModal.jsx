@@ -1,11 +1,10 @@
 import React from 'react';
-import { useModal } from '../../context/ModalContext';
+import { useModalStore } from '../../store/modalStore';
 
 const PhoneVerificationModal = ({ user }) => {
-    const { closeModal } = useModal();
+    const closeModal = useModalStore(state => state.closeModal);
 
     const handleVerify = () => {
-        
         const telegramLink = `https://t.me/itd_verification_bot?start=${user.id}`;
         window.api.openExternalLink(telegramLink);
         closeModal();

@@ -1,155 +1,206 @@
-/* @source Notifications.css */
+/* @source src/styles/Notifications.css */
 
 .notifications-page {
     height: 100%;
     display: flex;
     flex-direction: column;
     overflow: hidden;
+    background-color: var(--color-background);
 }
 
-.notifications-list-scroll {
-    flex: 1;
-    overflow-y: auto;
-    overflow-x: hidden;
-    -webkit-overflow-scrolling: touch;
+/* =========================================
+   HEADER
+   ========================================= */
+.notif-sticky-header {
+    position: sticky;
+    top: 0;
+    z-index: 40;
+    background-color: rgba(var(--glass-bg-rgb), 0.85);
+    backdrop-filter: blur(24px) saturate(180%);
+    -webkit-backdrop-filter: blur(24px) saturate(180%);
+    border-bottom: 1px solid var(--color-border);
+    transition: background-color 0.3s ease;
 }
 
-.notifications-top-bar {
+.notif-header-top {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding-right: 8px;
+    padding: 12px 16px 8px;
 }
 
-.mark-all-read-btn {
+.header-title {
+    margin: 0;
+    font-size: 20px;
+    font-weight: 800;
+    color: var(--color-text);
+}
+
+.mark-read-btn {
     background: transparent;
     border: none;
     color: var(--color-primary);
-    font-size: 14px;
-    font-weight: 600;
     cursor: pointer;
-    padding: 8px 12px;
-    border-radius: 20px;
+    padding: 8px;
+    border-radius: 50%;
     transition: background 0.2s;
+    display: flex;
 }
 
-.mark-all-read-btn:hover {
+.mark-read-btn:hover {
     background: rgba(var(--color-primary-rgb), 0.1);
 }
 
+.notif-tabs-wrapper {
+    padding: 0 16px 12px;
+}
+
+.notif-tabs {
+    display: flex;
+    background-color: var(--color-input-bg);
+    border-radius: 14px;
+    padding: 4px;
+    gap: 4px;
+}
+
+.notif-tab {
+    flex: 1;
+    background: transparent;
+    border: none;
+    padding: 8px 16px;
+    border-radius: 10px;
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--color-text-secondary);
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.notif-tab:hover:not(.active) {
+    color: var(--color-text);
+}
+
+.notif-tab.active {
+    background-color: var(--color-card);
+    color: var(--color-text);
+    box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+}
+
+/* =========================================
+   LIST ITEM
+   ========================================= */
+.notifications-list-scroll {
+    flex: 1;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+}
+
+.notifications-list {
+    display: flex;
+    flex-direction: column;
+}
 
 .notification-item {
-    position: relative; 
     display: flex;
-    padding: 16px;
-    gap: 12px;
+    padding: 14px 16px;
+    gap: 14px;
     border-bottom: 1px solid var(--color-border);
-    transition: background 0.2s;
+    cursor: pointer;
+    transition: background-color 0.2s ease;
+    position: relative;
     text-decoration: none;
     color: inherit;
 }
 
 .notification-item:hover {
-    background: rgba(255, 255, 255, 0.02);
-}
-
-.notification-item.unread {
-    background: rgba(var(--color-primary-rgb), 0.05);
-}
-
-
-.notification-item.unread::after {
-    content: "";
-    position: absolute;
-    right: 16px;
-    top: 50%;
-    transform: translateY(-50%);
-    width: 8px;
-    height: 8px;
-    background-color: var(--color-primary);
-    border-radius: 50%;
-    box-shadow: 0 0 8px var(--color-primary);
-}
-
-
-
-.notif-avatar-container {
-    padding-top: 2px; 
-}
-
-.notif-avatar-wrap {
-    position: relative;
-    width: 48px;
-    height: 48px;
-}
-
-.notif-avatar-img {
-    width: 100%;
-    height: 100%;
-    border-radius: 50%;
-    overflow: hidden;
     background-color: var(--color-item-bg);
 }
 
-.notif-avatar-img img {
+.notification-item.unread {
+    background-color: rgba(var(--color-primary-rgb), 0.04);
+}
+
+
+.notif-avatar-section {
+    flex-shrink: 0;
+    padding-top: 2px;
+}
+
+.notif-avatar-wrapper {
+    position: relative;
+    cursor: pointer;
+    transition: transform 0.1s;
+}
+
+.notif-avatar-wrapper:active {
+    transform: scale(0.95);
+}
+
+.notif-avatar {
+    width: 44px !important;
+    height: 44px !important;
+    font-size: 20px !important;
+    border-radius: 50%;
+    background-color: var(--color-input-bg);
+}
+
+.notif-avatar img {
     width: 100%;
     height: 100%;
     object-fit: cover;
 }
 
 
-
-.notif-type-badge {
+.notif-badge {
     position: absolute;
-    bottom: -2px;
+    bottom: -4px;
     right: -4px;
-    width: 24px;
-    height: 24px;
+    width: 22px;
+    height: 22px;
     border-radius: 50%;
     display: flex;
     align-items: center;
     justify-content: center;
     color: #fff;
     border: 2px solid var(--color-background);
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
-    z-index: 2;
+    
+    box-shadow: 0 2px 4px rgba(0,0,0,0.2); 
 }
 
 
-.badge-like {
-    background: linear-gradient(135deg, #f91880, #ff5c8a);
-}
-.badge-comment, .badge-reply {
-    background: linear-gradient(135deg, #1d9bf0, #71c9f8);
-}
-.badge-repost {
-    background: linear-gradient(135deg, #00ba7c, #00e699);
-}
-.badge-follow {
-    background: #1d9bf0;
-}
-.badge-mention {
-    background: linear-gradient(135deg, #ff7a00, #ffb347);
-}
-.badge-wall {
-    background: linear-gradient(135deg, #794bc4, #a389d4);
-}
+.badge-like    { background: linear-gradient(135deg, #f91880, #ff5c8a); }
+.badge-comment { background: linear-gradient(135deg, #1d9bf0, #71c9f8); }
+.badge-reply   { background: linear-gradient(135deg, #794bc4, #a389d4); }
+.badge-repost  { background: linear-gradient(135deg, #00ba7c, #00e699); }
+.badge-follow  { background: #1d9bf0; }
+.badge-mention { background: linear-gradient(135deg, #ff7a00, #ffb347); }
+.badge-wall    { background: linear-gradient(135deg, #794bc4, #a389d4); }
+.badge-default { background: #8899a6; }
 
 
-.notif-body {
+.notif-content {
     flex: 1;
     min-width: 0;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    gap: 4px;
 }
 
-.notif-header {
+.notif-header-line {
     font-size: 15px;
-    line-height: 20px;
-    margin-bottom: 2px;
+    line-height: 1.3;
 }
 
-.notif-actor-name {
+.notif-actor-link {
     font-weight: 800;
-    margin-right: 4px;
+    color: var(--color-text);
+    margin-right: 5px;
+    cursor: pointer;
+}
+
+.notif-actor-link:hover {
+    text-decoration: underline;
 }
 
 .notif-action-text {
@@ -162,34 +213,76 @@
 }
 
 .notif-time {
-    color: var(--color-text-secondary);
-    font-size: 14px;
+    color: var(--color-text-muted);
+    font-size: 13px;
 }
 
-.notif-preview-text {
-    font-size: 15px;
-    color: var(--color-text-muted);
+
+.notif-preview-bubble {
+    font-size: 14px;
+    color: var(--color-text-secondary);
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
-    margin-top: 2px;
+    opacity: 0.9;
 }
 
 
+.notif-unread-dot {
+    width: 8px;
+    height: 8px;
+    background-color: var(--color-primary);
+    border-radius: 50%;
+    align-self: center;
+    flex-shrink: 0;
+}
+
+/* =========================================
+   ПУСТОЕ СОСТОЯНИЕ
+   ========================================= */
 .notif-empty-state {
-    padding: 60px 40px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 80px 20px;
     text-align: center;
-    color: var(--color-text-secondary);
 }
 
 .notif-empty-icon {
-    font-size: 48px;
-    margin-bottom: 16px;
+    width: 80px;
+    height: 80px;
+    background: linear-gradient(135deg, rgba(var(--color-primary-rgb), 0.15), transparent);
+    color: var(--color-primary);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 24px;
+    border: 1px solid rgba(var(--color-primary-rgb), 0.2);
+    box-shadow: 0 10px 30px rgba(var(--color-primary-rgb), 0.1);
 }
 
-.notif-more-loader {
-    text-align: center;
-    padding: 20px;
-    font-size: 13px;
+.notif-empty-state h3 {
+    font-size: 22px;
+    font-weight: 800;
+    margin: 0 0 12px 0;
+    color: var(--color-text);
+}
+
+.notif-empty-state p {
+    font-size: 15px;
     color: var(--color-text-secondary);
+    line-height: 1.5;
+    max-width: 320px;
+    margin: 0 auto;
+}
+
+.content-fade-in {
+    animation: fadeIn 0.4s cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
 }

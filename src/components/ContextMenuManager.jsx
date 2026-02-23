@@ -1,16 +1,17 @@
 import { useEffect } from 'react';
 import { useContextMenu } from '../context/ContextMenuContext';
-import { useUser } from '../context/UserContext';
+import { useUserStore } from '../store/userStore';
 import { useNavigate } from 'react-router-dom';
 import * as Icons from './icons/CommonIcons';
 import * as MenuIcons from './icons/MenuIcons';
 
+import { CommentIcon } from './icons/InteractionsIcons';
+
 const ContextMenuManager = () => {
     const { openContextMenu } = useContextMenu();
-    const { currentUser } = useUser();
+    const currentUser = useUserStore(state => state.currentUser);
     const navigate = useNavigate();
 
-    
     const isDev = process.env.NODE_ENV === 'development';
 
     useEffect(() => {
@@ -65,7 +66,7 @@ const ContextMenuManager = () => {
                 items.push({ isLabel: true, label: 'Пост' });
                 items.push({
                     label: 'Открыть обсуждение',
-                    icon: <Icons.CommentIcon />,
+                    icon: <CommentIcon />, 
                     action: () => navigate(`/post/${contextPostId}`)
                 });
                 
@@ -84,7 +85,6 @@ const ContextMenuManager = () => {
                 });
             }
 
-            
             items.push({
                 label: 'Назад',
                 action: () => window.history.back()
@@ -96,7 +96,6 @@ const ContextMenuManager = () => {
                 action: () => window.location.reload()
             });
 
-            
             if (isDev) {
                 items.push({ isSeparator: true });
                 items.push({

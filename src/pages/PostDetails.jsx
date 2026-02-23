@@ -4,6 +4,7 @@ import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { apiClient } from '../api/client';
 import PostCard from '../components/PostCard';
 import { PostSkeleton } from '../components/Skeletons';
+import { PostBackIcon } from '../components/icons/CustomIcons';
 import '../styles/PostDetails.css';
 
 const PostDetails = () => {
@@ -43,9 +44,7 @@ const PostDetails = () => {
             <div className="post-details-page">
                 <header className="post-details-header">
                     <button className="back-btn" onClick={() => navigate(-1)} style={{opacity: 0.5}}>
-                        <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" strokeWidth="2.5">
-                            <path d="M19 12H5M12 19l-7-7 7-7"/>
-                        </svg>
+                        <PostBackIcon />
                     </button>
                     <h2 className="header-title">Пост</h2>
                 </header>

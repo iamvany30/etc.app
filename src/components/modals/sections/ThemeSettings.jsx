@@ -1,15 +1,15 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { ThemeLoader } from '../../../core/ThemeLoader';
 import { IconInfo, IconCheck } from '../../icons/SettingsIcons'; 
-import { 
-    IconDownload, 
-    IconTrash, 
-    IconRefresh, 
-    IconSearch, 
-    IconPalette 
-} from '../../icons/ThemeIcons';
+import { IconDownload, IconTrash, IconRefresh, IconSearch, IconPalette } from '../../icons/ThemeIcons';
+import { ThemeSkeleton } from '../../Skeletons';
+import ConfirmActionModal from '../ConfirmActionModal';
+import { useModalStore } from '../../../store/modalStore';
+import '../../../styles/settings/Themes.css';
 
-const ThemeSettings = ({ setStatus }) => {
+const ThemeSettings = ({ setStatus, reopenModal }) => {
+    const openModal = useModalStore(state => state.openModal);
+
     const [themes, setThemes] = useState([]);
     const [isLoading, setIsLoading] = useState(true);
     const [activeTheme, setActiveTheme] = useState(localStorage.getItem('itd_current_theme_folder') || 'default');
@@ -31,7 +31,6 @@ const ThemeSettings = ({ setStatus }) => {
 
             const mergedThemes = remoteList.map(remote => {
                 const local = localList.find(l => l.name === remote.name);
-                 
                 const hasCustomColors = remote.colors && (remote.colors.accent || remote.colors.background);
                 
                 return {
@@ -74,10 +73,8 @@ const ThemeSettings = ({ setStatus }) => {
                 localStorage.setItem('itd_current_theme_folder', folderName);
             }
 
-             
             await ThemeLoader.init();
 
-             
             window.dispatchEvent(new Event('settingsUpdate')); 
             window.dispatchEvent(new Event('content-refresh'));
             window.dispatchEvent(new Event('app-soft-reload'));
@@ -116,15 +113,25 @@ const ThemeSettings = ({ setStatus }) => {
         setProcessingTheme(null);
     };
 
-    const handleDelete = async (theme) => {
-        if (!window.confirm(`Удалить тему "${theme.name}" с диска?`)) return;
-        setProcessingTheme(theme.name);
-        if (activeTheme === theme.folderName) {
-            await applyTheme('default');
-        }
-        await window.api.invoke('themes:delete', theme.folderName);
-        await loadThemes();
-        setProcessingTheme(null);
+    const handleDelete = (theme) => {
+        openModal(
+            <ConfirmActionModal 
+                title={`Удалить тему "${theme.name}"?`}
+                message="Оболочка будет удалена с вашего устройства. Вы сможете загрузить её снова из каталога."
+                confirmText="Удалить"
+                onConfirm={async () => {
+                    reopenModal();
+                    setProcessingTheme(theme.name);
+                    if (activeTheme === theme.folderName) {
+                        await applyTheme('default');
+                    }
+                    await window.api.invoke('themes:delete', theme.folderName);
+                    await loadThemes();
+                    setProcessingTheme(null);
+                }}
+                onCancel={reopenModal}
+            />
+        );
     };
 
     const filteredThemes = useMemo(() => {
@@ -166,7 +173,7 @@ const ThemeSettings = ({ setStatus }) => {
                     </div>
                 )}
 
-                {isLoading ? <div className="loading-state">Загрузка списка...</div> : 
+                {isLoading ? <ThemeSkeleton count={3} /> : 
                  filteredThemes.length === 0 ? <div className="empty-state">Ничего не найдено</div> : 
                  filteredThemes.map(theme => (
                     <div key={theme.name} className={`theme-card ${activeTheme === theme.folderName ? 'active' : ''}`}>
@@ -174,7 +181,6 @@ const ThemeSettings = ({ setStatus }) => {
                             <div className="theme-header">
                                 <span className="theme-title">{theme.name}</span>
                                 <div style={{display: 'flex', gap: 6}}>
-                                      
                                     {theme.hasCustomColors && (
                                         <span className="badge-colors" title="Меняет цвета интерфейса">
                                             <IconPalette />

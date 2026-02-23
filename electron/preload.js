@@ -34,7 +34,8 @@ contextBridge.exposeInMainWorld('api', {
         };
     },
     debug: {
-        openBrowser: (url) => ipcRenderer.invoke('debug:open-browser', url)
+        openBrowser: (url) => ipcRenderer.invoke('debug:open-browser', url),
+        testSplash: () => ipcRenderer.invoke('debug:test-splash')
     },
 
     dumpLogs: () => ipcRenderer.invoke('app:dump-logs'),

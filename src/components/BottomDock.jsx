@@ -1,26 +1,29 @@
+/* @source src/components/BottomDock.jsx */
 import React from 'react';
 import { useLocation } from 'react-router-dom'; 
-import { useMusic } from '../context/MusicContext';
-import { useUser } from '../context/UserContext';
-import { useUpload } from '../context/UploadContext'; 
+import { useMusicStore } from '../store/musicStore';   
+import { useUserStore } from '../store/userStore';
+import { useUploadStore } from '../store/uploadStore'; 
+import { useBrowser } from '../context/BrowserContext'; 
 import GlobalPlayer from './GlobalPlayer';
 import MobileNav from './MobileNav';
 import '../styles/BottomDock.css';
 
 const BottomDock = () => {
-    const { currentUser } = useUser();
-    const { currentTrack } = useMusic();
-    const { uploads } = useUpload();
+    const currentUser = useUserStore(state => state.currentUser);
+    const currentTrack = useMusicStore(state => state.currentTrack); 
+    const uploads = useUploadStore(state => state.uploads);          
+    
+    const { isOpen, isMinimized, maximizeBrowser } = useBrowser(); 
     const location = useLocation(); 
 
-    
     if (!currentUser || location.pathname.startsWith('/login')) return null;
 
-    
     const activeUploads = Object.values(uploads).filter(u => u.status !== 'complete' && u.status !== 'error');
     const hasUploads = activeUploads.length > 0;
+    const showBrowserMini = isOpen && isMinimized;
+    const showPlayer = !!currentTrack;
 
-    
     const getMiniStatusText = (status) => {
         switch (status) {
             case 'reading_tags': return 'Метаданные...';
@@ -32,19 +35,32 @@ const BottomDock = () => {
     };
 
     return (
-        <div className={`bottom-dock-container ${currentTrack ? 'has-player' : ''} ${hasUploads ? 'has-uploads' : ''}`}>
+        <div className={`bottom-dock-container ${showBrowserMini ? 'has-browser-mini' : ''}`}>
             <div className="dock-glass-wrapper">
                 
                 {}
-                {currentTrack && (
-                    <div className="dock-player-section">
-                        <GlobalPlayer />
+                <div className={`dock-dynamic-section ${showBrowserMini ? 'visible' : ''}`}>
+                    <div className="dock-dynamic-content">
+                        <div 
+                            className="dock-browser-section" 
+                            onClick={maximizeBrowser}
+                        >
+                            <span style={{fontSize: 16}}>🌐</span>
+                            <span className="dock-browser-text">Вернуться в браузер</span>
+                        </div>
                     </div>
-                )}
+                </div>
 
                 {}
-                {hasUploads && (
-                    <div className="dock-upload-section">
+                <div className={`dock-dynamic-section ${showPlayer ? 'visible' : ''}`}>
+                    <div className="dock-dynamic-content dock-player-section">
+                        <GlobalPlayer />
+                    </div>
+                </div>
+
+                {}
+                <div className={`dock-dynamic-section ${hasUploads ? 'visible' : ''}`}>
+                    <div className="dock-dynamic-content dock-upload-section">
                         {activeUploads.slice(0, 1).map(u => (
                             <div key={u.id} className="dock-upload-mini">
                                 <div className="upload-pulse-dot"></div>
@@ -57,7 +73,7 @@ const BottomDock = () => {
                             </div>
                         ))}
                     </div>
-                )}
+                </div>
 
                 {}
                 <div className="dock-nav-section">

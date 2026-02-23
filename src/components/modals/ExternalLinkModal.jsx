@@ -1,41 +1,57 @@
-import React from 'react';
-import { useModal } from '../../context/ModalContext';
+import React, { useState } from 'react';
+import { useModalStore } from '../../store/modalStore';
+import { checkIsTrusted } from '../../utils/linkUtils';
 import '../../styles/ExternalLinkModal.css'; 
 
-
-const TRUSTED_DOMAINS = [
-    'youtube.com',
-    'youtu.be',
-    'google.com',
-    'github.com',
-    'итд.com',
-];
-
-export const isTrustedLink = (url) => {
-    try {
-        const hostname = new URL(url).hostname;
-        return TRUSTED_DOMAINS.some(trustedDomain => hostname.endsWith(trustedDomain));
-    } catch (e) {
-        return false;
-    }
-};
+export const isTrustedLink = (url) => checkIsTrusted(url);
 
 const ExternalLinkModal = ({ url }) => {
-    const { closeModal } = useModal();
+    const closeModal = useModalStore(state => state.closeModal);
+    const [alwaysTrust, setAlwaysTrust] = useState(false);
 
     const handleProceed = () => {
-        window.api.openExternalLink(url);
+        if (alwaysTrust) {
+            try {
+                const { hostname } = new URL(url);
+                const whiteList = JSON.parse(localStorage.getItem('itd_whitelist') || '[]');
+                if (!whiteList.includes(hostname)) {
+                    whiteList.push(hostname);
+                    localStorage.setItem('itd_whitelist', JSON.stringify(whiteList));
+                }
+            } catch (e) {}
+        }
+        
+        
+        const useInternalBrowser = localStorage.getItem('itd_use_internal_browser') === 'true';
+        
+        if (useInternalBrowser) {
+            window.dispatchEvent(new CustomEvent('open-internal-browser', { detail: url }));
+        } else {
+            if (window.api?.openExternalLink) {
+                window.api.openExternalLink(url);
+            } else {
+                window.open(url, '_blank');
+            }
+        }
+        
         closeModal();
     };
 
     return (
         <div className="external-link-modal">
-            <h4>Переход на внешний сайт</h4>
-            <p>Вы собираетесь перейти по ссылке:</p>
+            <h4>Внешний переход</h4>
             <div className="link-preview">{url}</div>
-            <p className="warning-text">
-                Будьте осторожны, не вводите свои личные данные на незнакомых сайтах.
-            </p>
+            <p className="warning-text">Будьте осторожны, не вводите свои данные на незнакомых сайтах.</p>
+            
+            <label className="trust-checkbox-label">
+                <input 
+                    type="checkbox" 
+                    checked={alwaysTrust} 
+                    onChange={e => setAlwaysTrust(e.target.checked)} 
+                />
+                <span>Доверять этому сайту всегда</span>
+            </label>
+
             <div className="modal-actions">
                 <button className="cancel-btn" onClick={closeModal}>Отмена</button>
                 <button className="proceed-btn" onClick={handleProceed}>Перейти</button>

@@ -1,0 +1,105 @@
+.report-modal {
+    padding: 24px;
+    width: 100%;
+}
+
+.report-title {
+    margin: 0 0 8px 0;
+    font-size: 20px;
+    font-weight: 800;
+    color: var(--color-text);
+}
+
+.report-subtitle {
+    margin: 0 0 20px 0;
+    font-size: 14px;
+    color: var(--color-text-secondary);
+}
+
+.report-reasons {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-bottom: 20px;
+}
+
+.reason-item {
+    display: flex;
+    align-items: center;
+    padding: 12px;
+    background: var(--color-input-bg);
+    border-radius: 12px;
+    cursor: pointer;
+    transition: background 0.2s;
+    border: 1px solid transparent;
+}
+
+.reason-item:hover {
+    background: rgba(255, 255, 255, 0.05);
+}
+
+.reason-item.active {
+    border-color: var(--color-primary);
+    background: rgba(var(--color-primary-rgb), 0.1);
+}
+
+.reason-item input {
+    margin-right: 12px;
+    accent-color: var(--color-primary);
+}
+
+.reason-label {
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--color-text);
+}
+
+.report-desc {
+    width: 100%;
+    padding: 12px;
+    background: var(--color-input-bg);
+    border: 1px solid var(--color-border);
+    border-radius: 12px;
+    color: var(--color-text);
+    font-family: inherit;
+    font-size: 14px;
+    resize: none;
+    margin-bottom: 24px;
+    outline: none;
+}
+
+.report-desc:focus {
+    border-color: var(--color-primary);
+}
+
+.report-actions {
+    display: flex;
+    gap: 12px;
+}
+
+.report-actions button {
+    flex: 1;
+    padding: 12px;
+    border-radius: 99px;
+    font-weight: 700;
+    font-size: 14px;
+    cursor: pointer;
+    border: none;
+    transition: opacity 0.2s;
+}
+
+.report-actions .cancel-btn {
+    background: transparent;
+    border: 1px solid var(--color-border);
+    color: var(--color-text);
+}
+
+.report-actions .submit-btn {
+    background: #f4212e; 
+    color: #fff;
+}
+
+.report-actions button:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}

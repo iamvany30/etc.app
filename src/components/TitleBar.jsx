@@ -1,16 +1,20 @@
+/* @source src/components/TitleBar.jsx */
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import '../styles/TitleBar.css';
+import { useQueryClient } from '@tanstack/react-query';
+import { FeedCache } from '../core/FeedCache';
 import { NavBackIcon, NavForwardIcon, NavReloadIcon } from './icons/CommonIcons';
+import { WinMinimizeIcon, WinMaximizeIcon, WinCloseIcon } from './icons/CustomIcons';
+import '../styles/TitleBar.css';
 
 const TitleBar = () => {
     const navigate = useNavigate();
     const location = useLocation();
+    const queryClient = useQueryClient();
     
     const [networkStatus, setNetworkStatus] = useState('online');
     const [canGoBack, setCanGoBack] = useState(false);
     const [isScrolled, setIsScrolled] = useState(false);
-
 
     useEffect(() => {
         setCanGoBack(window.history.state && window.history.state.idx > 0);
@@ -35,6 +39,20 @@ const TitleBar = () => {
         };
     }, []);
 
+    const handleReload = (e) => {
+        
+        if (e.ctrlKey || e.metaKey) {
+            window.location.reload();
+        } else {
+            
+            FeedCache.clear(); 
+            queryClient.invalidateQueries(); 
+            
+            
+            window.dispatchEvent(new Event('content-refresh'));
+        }
+    };
+
     return (
         <header className={`app-titlebar status-${networkStatus} ${isScrolled ? 'is-scrolled' : ''}`}>
             
@@ -45,20 +63,24 @@ const TitleBar = () => {
                 <button className="nav-btn" onClick={() => navigate(1)}>
                     <NavForwardIcon />
                 </button>
-                <button className="nav-btn reload" onClick={() => window.location.reload()}>
+                <button 
+                    className="nav-btn reload" 
+                    onClick={handleReload}
+                    title="Обновить (Ctrl+Клик для полной перезагрузки окна)"
+                >
                     <NavReloadIcon />
                 </button>
             </div>
 
             <div className="window-controls">
                 <button className="win-btn minimize" onClick={() => window.api?.window?.minimize()}>
-                    <svg width="10" height="1" viewBox="0 0 10 1"><path d="M0 0h10v1H0z" fill="currentColor"/></svg>
+                    <WinMinimizeIcon />
                 </button>
                 <button className="win-btn maximize" onClick={() => window.api?.window?.maximize()}>
-                    <svg width="10" height="10" viewBox="0 0 10 10"><path d="M0 0v10h10V0H0zm9 9H1V1h8v8z" fill="currentColor"/></svg>
+                    <WinMaximizeIcon />
                 </button>
                 <button className="win-btn close" onClick={() => window.api?.window?.close()}>
-                    <svg width="10" height="10" viewBox="0 0 10 10"><path d="M10 1.41L8.59 0 5 3.59 1.41 0 0 1.41 3.59 5 0 8.59 1.41 10 5 6.41 8.59 10 10 8.59 6.41 5z" fill="currentColor"/></svg>
+                    <WinCloseIcon />
                 </button>
             </div>
         </header>

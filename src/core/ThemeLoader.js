@@ -1,6 +1,7 @@
 import { ComponentRegistry } from './ComponentRegistry';
 import { setupExposedContext } from './ExposedContext';
 import * as Babel from '@babel/standalone';
+import { themeCache } from '../utils/themeCache';
 
 export const ThemeLoader = {
     async init() {
@@ -26,7 +27,6 @@ export const ThemeLoader = {
 
             const manifest = data.manifest || {};
 
-            
             if (manifest.colors) {
                 if (manifest.colors.accent) {
                     const color = manifest.colors.accent;
@@ -54,36 +54,30 @@ export const ThemeLoader = {
                 document.head.appendChild(s);
             }
 
-            
             if (data.jsFiles && data.jsFiles.length > 0) {
-                
                 const cacheKeyBase = `theme_cache_${themeFolder}_${manifest.version || '0.0.0'}_`;
 
                 for (const file of data.jsFiles) {
                     try {
                         let compiled;
                         const fileCacheKey = cacheKeyBase + file.name;
-                        const cached = localStorage.getItem(fileCacheKey);
+                        
+                        const cached = await themeCache.get(fileCacheKey);
 
-                        
-                        
                         if (cached) {
                             const [len, code] = cached.split('|||SPLIT|||');
                             if (parseInt(len) === file.content.length) {
                                 compiled = code;
-                                
                             }
                         }
 
                         if (!compiled) {
-                            
                             compiled = Babel.transform(file.content, {
                                 presets: ['react', 'env'],
                                 filename: file.name
                             }).code;
                             
-                            
-                            localStorage.setItem(fileCacheKey, `${file.content.length}|||SPLIT|||${compiled}`);
+                            await themeCache.set(fileCacheKey, `${file.content.length}|||SPLIT|||${compiled}`);
                         }
 
                         const runScript = new Function(compiled);

@@ -2,7 +2,6 @@ import React from 'react';
 import IconWrapper from './IconWrapper';
 import { Home, MusicNote, CompassBig, Bell, User, Download, BookmarkSquareMinimalistic } from "@solar-icons/react";
 
-
 export const IconFeed = (props) => <IconWrapper IconComponent={Home} size={26} {...props} />;
 export const IconMusic = (props) => <IconWrapper IconComponent={MusicNote} size={26} {...props} />;
 export const IconDownload = (props) => <IconWrapper IconComponent={Download} size={26} {...props} />;

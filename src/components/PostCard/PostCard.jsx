@@ -1,3 +1,4 @@
+/* @source src/components/PostCard/PostCard.jsx */
 import React, { memo } from 'react';
 import { Link } from 'react-router-dom';
 import { usePostCard } from './usePostCard';
@@ -9,21 +10,12 @@ import { PinIcon } from '../icons/MenuIcons';
 import { RepostIcon } from '../icons/InteractionsIcons';
 import '../../styles/PostCard.css';
 
-/**
- * Улучшенная карточка поста:
- * - Использует только Клан-Эмодзи (текстовые аватары)
- * - Идеальное центрирование символов
- * - Индикатор онлайна
- */
 const PostCard = ({ post, initialShowComments = false, highlightCommentId = null, isPinned = false }) => {
     const ctrl = usePostCard(post, initialShowComments, highlightCommentId);
 
-    
     if (ctrl.isDeleted || !ctrl.localPost) return null;
 
     const { localPost } = ctrl;
-    
-    
     const isRepost = !localPost.content && localPost.originalPost;
 
     return (
@@ -31,12 +23,9 @@ const PostCard = ({ post, initialShowComments = false, highlightCommentId = null
             ref={ctrl.postRef} 
             className={`post-container ${isPinned ? 'is-pinned-card' : ''}`}
             onClick={() => ctrl.navigate(`/post/${ctrl.localPost.id}`)}
-            
-            
             data-context-post-id={localPost.id}
             data-context-author-username={localPost.author?.username}
         >
-            {}
             {(isPinned || isRepost) && (
                 <div className="post-meta-row">
                     {isPinned ? (
@@ -53,22 +42,19 @@ const PostCard = ({ post, initialShowComments = false, highlightCommentId = null
                 </div>
             )}
 
-            {}
             <div className="post-avatar-column">
                 <Link 
                     to={`/profile/${localPost.author?.username}`} 
                     className="avatar-wrapper-post"
                     onClick={e => e.stopPropagation()}
                 >
-                    {}
                     <div className="avatar" style={{
-                        width: '40px', 
-                        height: '40px', 
+                        width: '100%', 
+                        height: '100%', 
                         fontSize: '22px',
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'center',
-                        lineHeight: '1',
                         backgroundColor: 'var(--color-item-bg)',
                         borderRadius: '50%',
                         border: '1px solid var(--color-border)',
@@ -76,25 +62,15 @@ const PostCard = ({ post, initialShowComments = false, highlightCommentId = null
                     }}>
                         {localPost.author?.avatar || "👤"}
                     </div>
-
-                    {}
                     {localPost.author?.online && (
                         <div className="online-indicator-post" title="В сети" />
                     )}
                 </Link>
             </div>
 
-            {}
             <div className="post-content-column">
+                <PostHeader post={localPost} ctrl={ctrl} isPinned={isPinned} />
                 
-                {}
-                <PostHeader 
-                    post={localPost} 
-                    ctrl={ctrl} 
-                    isPinned={isPinned}
-                />
-
-                {}
                 <PostContent 
                     post={localPost}
                     isEditing={ctrl.isEditing}
@@ -107,11 +83,9 @@ const PostCard = ({ post, initialShowComments = false, highlightCommentId = null
                     textareaRef={ctrl.textareaRef}
                 />
 
-                {}
                 <PostFooter ctrl={ctrl} />
             </div>
 
-            {}
             {ctrl.showComments && (
                 <div className="comments-section-wrapper" onClick={e => e.stopPropagation()}>
                     <CommentsSection 

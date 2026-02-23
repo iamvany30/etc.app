@@ -1,10 +1,12 @@
 import React from 'react';
+import IconWrapper from './IconWrapper';
 import { VerifiedCheck } from "@solar-icons/react";
 
+
 export const VerifiedBlue = (props) => (
-  <VerifiedCheck size={20} color="#1d9bf0" variant="bold" {...props} />
+  <IconWrapper IconComponent={VerifiedCheck} size={20} color="#1d9bf0" variant="Bold" {...props} />
 );
 
 export const VerifiedGold = (props) => (
-  <VerifiedCheck size={22} color="#ffad1f" variant="bold" {...props} />
+  <IconWrapper IconComponent={VerifiedCheck} size={22} color="#ffad1f" variant="Bold" {...props} />
 );

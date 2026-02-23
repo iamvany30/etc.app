@@ -2,18 +2,18 @@
 import React, { useState, useCallback, useRef, useEffect } from 'react';
 import { apiClient } from '../../api/client';
 import { request } from '../../api/core'; 
-import { useModal } from '../../context/ModalContext';
-import { useUser } from '../../context/UserContext';
-import { useIsland } from '../../context/IslandContext';
+import { useModalStore } from '../../store/modalStore';
+import { useUserStore } from '../../store/userStore';
+import { useIslandStore } from '../../store/islandStore';
 import PhoneVerificationModal from '../modals/PhoneVerificationModal';
 import DrawingBoard from '../DrawingBoard';
 import { parseAndCleanForBackend, MARKDOWN_CONFIG } from '../../utils/markdownUtils';
+import { storage } from '../../utils/storage';
 
 export const MAX_POST_LENGTH = 400;
 
 const DRAFT_TEXT_KEY = 'itd_post_draft_text';
 const DRAFT_POLL_KEY = 'itd_post_draft_poll';
-
 
 const useDebounce = (value, delay) => {
     const [debouncedValue, setDebouncedValue] = useState(value);
@@ -24,55 +24,63 @@ const useDebounce = (value, delay) => {
     return debouncedValue;
 };
 
-export const useCreatePost = (onPostCreated) => {
-    const { currentUser } = useUser();
-    const { openModal, closeModal } = useModal();
-    const { showIslandAlert } = useIsland();
+export const useCreatePost = (onPostCreated, wallId = null) => {
+    const currentUser = useUserStore(state => state.currentUser);
+    const openModal = useModalStore(state => state.openModal);
+    const closeModal = useModalStore(state => state.closeModal);
+    const showIslandAlert = useIslandStore(state => state.showIslandAlert);
+    
     const textareaRef = useRef(null);
 
-    
-    const [text, setTextState] = useState(() => localStorage.getItem(DRAFT_TEXT_KEY) || "");
-    const [pollData, setPollData] = useState(() => {
-        try {
-            const saved = localStorage.getItem(DRAFT_POLL_KEY);
-            return saved ? JSON.parse(saved) : null;
-        } catch (e) { return null; }
-    });
+    const [text, setTextState] = useState("");
+    const [pollData, setPollData] = useState(null);
 
-    
     useEffect(() => {
-        localStorage.setItem(DRAFT_TEXT_KEY, text);
+        let isMounted = true;
+        const loadDrafts = async () => {
+            try {
+                const savedText = await storage.get(DRAFT_TEXT_KEY);
+                const savedPoll = await storage.get(DRAFT_POLL_KEY);
+                
+                if (isMounted) {
+                    if (savedText && !text) setTextState(savedText);
+                    if (savedPoll && !pollData) setPollData(savedPoll); 
+                }
+            } catch (e) {
+                console.error("[useCreatePost] Ошибка загрузки черновика:", e);
+            }
+        };
+        loadDrafts();
+        return () => { isMounted = false; };
+    }, []);
+
+    useEffect(() => {
+        storage.set(DRAFT_TEXT_KEY, text).catch(e => console.error(e));
     }, [text]);
 
     useEffect(() => {
         if (pollData) {
-            localStorage.setItem(DRAFT_POLL_KEY, JSON.stringify(pollData));
+            storage.set(DRAFT_POLL_KEY, pollData).catch(e => console.error(e));
         } else {
-            localStorage.removeItem(DRAFT_POLL_KEY);
+            storage.remove(DRAFT_POLL_KEY).catch(e => console.error(e));
         }
     }, [pollData]);
 
-    
     const [attachments, setAttachments] = useState([]);
     const [isSending, setIsSending] = useState(false);
     const [isRecording, setIsRecording] = useState(false); 
     const [isDragOver, setIsDragOver] = useState(false); 
 
-    
     const [mentionQuery, setMentionQuery] = useState(null);
     const [mentionResults, setMentionResults] = useState([]);
     const [isMentionLoading, setIsMentionLoading] = useState(false);
     const [mentionCursorPos, setMentionCursorPos] = useState(null);
     const debouncedMentionQuery = useDebounce(mentionQuery, 300);
 
-    
     const [linkPreview, setLinkPreview] = useState(null);
     const [isFetchingPreview, setIsFetchingPreview] = useState(false);
     const checkedLinksRef = useRef(new Set());
 
-    
-
-    
     useEffect(() => {
         const searchUsers = async () => {
             if (!debouncedMentionQuery) {
@@ -92,7 +100,6 @@ export const useCreatePost = (onPostCreated) => {
         searchUsers();
     }, [debouncedMentionQuery]);
 
-    
     const detectAndFetchLink = async (inputText) => {
         const urlRegex = /(https?:\/\/[^\s]+)/g;
         const match = inputText.match(urlRegex);
@@ -110,7 +117,6 @@ export const useCreatePost = (onPostCreated) => {
             } catch (e) {} finally { setIsFetchingPreview(false); }
         }
     };
-    
     
     const processFiles = useCallback(async (files) => {
         if (!files || files.length === 0) return;
@@ -173,7 +179,6 @@ export const useCreatePost = (onPostCreated) => {
 
     }, [attachments.length, showIslandAlert]);
 
-    
     const handlePaste = useCallback((e) => {
         if (e.clipboardData && e.clipboardData.files.length > 0) {
             e.preventDefault();
@@ -181,7 +186,6 @@ export const useCreatePost = (onPostCreated) => {
         }
     }, [processFiles]);
 
-    
     const setText = useCallback((valOrEvent) => {
         const value = valOrEvent?.target?.value ?? valOrEvent;
         setTextState(value);
@@ -199,7 +203,6 @@ export const useCreatePost = (onPostCreated) => {
             }
         }
     }, []);
-    
     
     const handleMentionSelect = (username) => {
         if (!username || mentionCursorPos === null || !textareaRef.current) return;
@@ -224,7 +227,6 @@ export const useCreatePost = (onPostCreated) => {
         }, 0);
     };
 
-    
     const insertMarkdown = useCallback((type) => {
         const textarea = textareaRef.current;
         if (!textarea) return;
@@ -238,7 +240,28 @@ export const useCreatePost = (onPostCreated) => {
         setText(newText);
     }, [text, setText]);
 
-    
+    const insertEmoji = useCallback((emoji) => {
+        const textarea = textareaRef.current;
+        if (!textarea) {
+            setText(text + emoji);
+            return;
+        }
+
+        const start = textarea.selectionStart;
+        const end = textarea.selectionEnd;
+        const currentText = textarea.value;
+        const newText = currentText.substring(0, start) + emoji + currentText.substring(end);
+        
+        setText(newText);
+        
+        setTimeout(() => {
+            textarea.focus();
+            textarea.selectionStart = textarea.selectionEnd = start + emoji.length;
+            textarea.style.height = 'auto';
+            textarea.style.height = textarea.scrollHeight + 'px';
+        }, 0);
+    }, [text, setText]);
+
     const submitPost = async (contentOverride = null, attachmentIdsOverride = null) => {
         const rawContent = contentOverride !== null ? contentOverride : text;
         if (!rawContent.trim() && !pollData && (attachmentIdsOverride || attachments.filter(a => !a.status)).length === 0) return;
@@ -264,12 +287,12 @@ export const useCreatePost = (onPostCreated) => {
                 ? parseAndCleanForBackend(rawContent) 
                 : { cleanText: rawContent, spans: [] };
             
-            const res = await apiClient.createPost(cleanText, ids, pollPayload, spans);
+            const res = await apiClient.createPost(cleanText, ids, pollPayload, spans, wallId);
 
             if (res && !res.error) {
+                storage.remove(DRAFT_TEXT_KEY);
+                storage.remove(DRAFT_POLL_KEY);
                 
-                localStorage.removeItem(DRAFT_TEXT_KEY);
-                localStorage.removeItem(DRAFT_POLL_KEY);
                 setTextState("");
                 setAttachments([]);
                 setPollData(null);
@@ -281,7 +304,10 @@ export const useCreatePost = (onPostCreated) => {
             } else if (res?.error?.code === 'PHONE_VERIFICATION_REQUIRED') {
                 openModal(<PhoneVerificationModal user={currentUser} />);
             } else {
-                showIslandAlert('error', res?.error?.message || 'Ошибка публикации', '❌');
+                const msg = res?.error?.code === 'ACCESS_DENIED' 
+                    ? 'Доступ к стене ограничен автором' 
+                    : (res?.error?.message || 'Ошибка публикации');
+                showIslandAlert('error', msg, '❌');
             }
         } catch (e) {
             showIslandAlert('error', 'Сбой при отправке', '📡');
@@ -290,11 +316,12 @@ export const useCreatePost = (onPostCreated) => {
         }
     };
     
-    
     const openDrawingModal = () => {
         openModal(
-            <div style={{ padding: '20px', background: '#0f0f0f', borderRadius: '16px', width: '100%', maxWidth: '800px' }}>
-                <h2 style={{ marginBottom: '16px', color: 'white', fontSize: '18px', fontWeight: '800' }}>Создать рисунок</h2>
+            <div className="drawing-modal-wrapper">
+                <div className="drawing-modal-header">
+                    <h2>Создать рисунок</h2>
+                </div>
                 <DrawingBoard 
                     aspectRatio={1.77}
                     onSave={async (blob) => {
@@ -307,7 +334,6 @@ export const useCreatePost = (onPostCreated) => {
         );
     };
 
-    
     const handleFileSelect = (e) => { processFiles(e.target.files); e.target.value = ''; };
     const removeAttachment = (id) => setAttachments(prev => prev.filter(a => (a.id || a.localId) !== id));
     const handleVoiceSent = (attachmentId) => { setIsRecording(false); submitPost("#voice_message", [attachmentId]); };
@@ -315,9 +341,8 @@ export const useCreatePost = (onPostCreated) => {
     const togglePoll = () => setPollData(p => p ? null : { question: '', options: ['', ''], multiple: false });
     const updatePoll = (newData) => setPollData(newData);
     
-    
     return {
-        text, setText, textareaRef, insertMarkdown, handlePaste,
+        text, setText, textareaRef, insertMarkdown, insertEmoji, handlePaste,
         attachments, removeAttachment, handleFileSelect,
         isSending,
         isRecording, setIsRecording, handleVoiceSent,

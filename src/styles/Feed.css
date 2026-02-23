@@ -1,307 +1,211 @@
-/* @source Feed.css */
+/* @source src/styles/Feed.css */
 
-.feed-tabs {
+.feed-page {
+    height: 100%;
     display: flex;
+    flex-direction: column;
+    background-color: var(--color-background);
+    position: relative;
+}
+
+/* =========================================
+   СТРОКА ВКЛАДОК (HEADER)
+   ========================================= */
+.feed-header {
     position: sticky;
     top: 0;
-    z-index: 10;
-    background-color: rgba(16, 18, 20, 0.85); 
-    backdrop-filter: blur(12px);
-    -webkit-backdrop-filter: blur(12px);
+    z-index: 40;
+    background-color: rgba(var(--glass-bg-rgb), 0.85);
+    backdrop-filter: blur(24px) saturate(180%);
+    -webkit-backdrop-filter: blur(24px) saturate(180%);
     border-bottom: 1px solid var(--color-border);
-    height: 53px;
+    padding: 8px 16px;
+    transition: background-color 0.3s ease;
+}
+
+.feed-tabs-container {
+    display: flex;
+    background-color: var(--color-input-bg);
+    border-radius: 14px;
+    padding: 4px;
+    gap: 4px;
 }
 
 .feed-tab {
     flex: 1;
     background: transparent;
     border: none;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    padding: 0;
-    transition: background-color 0.2s ease;
-}
-
-.feed-tab:hover {
-    background-color: rgba(231, 233, 234, 0.1);
-}
-
- 
-.tab-content {
-    position: relative;
-    height: 100%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    padding: 0 4px;
-    font-size: 15px;
-    font-weight: 500;
-    color: var(--color-text-secondary);
-    transition: color 0.2s ease;
-}
-
- 
-.feed-tab.active .tab-content {
-    color: var(--color-text);
-    font-weight: 700;
-}
-
- 
-.feed-tab.active .tab-content::after {
-    content: "";
-    position: absolute;
-    bottom: 0;
-    left: 50%;
-    transform: translateX(-50%);
-    width: 56px;
-    height: 4px;
-    background-color: var(--color-primary);
-    border-radius: 9999px;
-}
-
- 
-.create-post-card {
-    padding: 16px;
-    border-bottom: 1px solid var(--color-border);
-    background-color: var(--color-background);
-}
-
-.create-post-inner {
-    display: flex;
-    gap: 12px;
-}
-
-.create-post-content {
-    flex: 1;
-    padding-top: 4px;
-}
-
-.create-post-textarea {
-    width: 100%;
-    border: none;
-    background: transparent;
-    color: var(--color-text);
-    font-size: 20px;
-    font-family: inherit;
-    resize: none;
-    outline: none;
-    min-height: 28px;
-    line-height: 24px;
-}
-
-.create-post-textarea::placeholder {
-    color: var(--color-text-secondary);
-}
-
-.create-post-footer {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-top: 12px;
-    padding-left: 52px;  
-}
-
-.create-post-tools {
-    display: flex;
-    gap: 4px;
-    margin-left: -8px;  
-}
-
-.tool-btn {
-    width: 36px;
-    height: 36px;
-    border-radius: 50%;
-    border: none;
-    background: none;
-    color: var(--color-primary);
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    transition: background-color 0.2s;
-}
-
-.tool-btn:hover {
-    background-color: rgba(29, 155, 240, 0.1);
-}
-
-.tool-btn svg {
-    fill: currentColor;
-}
-
-.create-post-submit {
-    background-color: var(--color-primary);
-    color: #ffffff;
-    border: none;
     padding: 8px 16px;
-    border-radius: 9999px;
+    border-radius: 10px;
+    font-size: 14px;
     font-weight: 700;
-    font-size: 15px;
-    cursor: pointer;
-    transition: background-color 0.2s, opacity 0.2s;
-}
-
-.create-post-submit:hover:not(:disabled) {
-    background-color: var(--color-primary-hover);
-}
-
-.create-post-submit:disabled {
-    opacity: 0.5;
-    cursor: default;
-}
-
- 
-
- 
-.feed-spinner {
-    display: flex;
-    justify-content: center;
-    padding: 32px;
-    color: var(--color-primary);
-}
-
-.feed-spinner svg {
-    animation: feed-spin 0.75s linear infinite;
-}
-
-@keyframes feed-spin {
-    to { transform: rotate(360deg); }
-}
-
- 
-.feed-error {
-    text-align: center;
-    padding: 40px 20px;
     color: var(--color-text-secondary);
+    cursor: pointer;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: 0 0 0 transparent;
 }
 
-.retry-btn {
-    margin-top: 16px;
-    padding: 10px 24px;
-    background-color: transparent;
-    border: 1px solid var(--color-border);
+.feed-tab:hover:not(.active) {
     color: var(--color-text);
-    border-radius: 99px;
-    font-weight: 600;
-    cursor: pointer;
-    transition: background-color 0.2s;
+    background-color: rgba(255, 255, 255, 0.05);
 }
 
-.retry-btn:hover {
-    background-color: rgba(231, 233, 234, 0.1);
+[data-bg='light'] .feed-tab:hover:not(.active) {
+    background-color: rgba(0, 0, 0, 0.03);
 }
 
- 
-.feed-end-message {
-    padding: 48px 20px;
-    text-align: center;
-    color: var(--color-text-secondary);
-    font-size: 15px;
+.feed-tab.active {
+    background-color: var(--color-card);
+    color: var(--color-text);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
 }
 
- 
+/* =========================================
+   ОБЕРТКА СОЗДАНИЯ ПОСТА
+   ========================================= */
+.feed-create-post-wrapper {
+    margin-bottom: 0px; 
+    background: var(--color-background);
+}
+
+/* =========================================
+   ПУСТОЕ СОСТОЯНИЕ (Empty State)
+   ========================================= */
 .empty-state {
-    padding: 40px 20px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 60px 20px;
     text-align: center;
+    animation: feedFadeIn 0.5s ease forwards;
+}
+
+.empty-state-icon {
+    width: 80px;
+    height: 80px;
+    background: linear-gradient(135deg, rgba(var(--color-primary-rgb), 0.15), transparent);
+    color: var(--color-primary);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 24px;
+    border: 1px solid rgba(var(--color-primary-rgb), 0.2);
+    box-shadow: 0 10px 30px rgba(var(--color-primary-rgb), 0.1);
 }
 
 .empty-state h3 {
-    font-size: 31px;
+    font-size: 22px;
     font-weight: 800;
-    margin-bottom: 8px;
+    margin: 0 0 12px 0;
     color: var(--color-text);
+    letter-spacing: -0.5px;
 }
 
 .empty-state p {
-    color: var(--color-text-secondary);
     font-size: 15px;
-    line-height: 20px;
+    color: var(--color-text-secondary);
+    line-height: 1.5;
+    max-width: 320px;
+    margin: 0 auto;
 }
 
 .empty-feed-link {
     color: var(--color-primary);
     text-decoration: none;
+    font-weight: 600;
 }
 
 .empty-feed-link:hover {
     text-decoration: underline;
 }
 
- 
-.attachments-preview {
+/* =========================================
+   СОСТОЯНИЕ ОШИБКИ
+   ========================================= */
+.feed-error-state {
     display: flex;
-    gap: 8px;
-    margin-top: 12px;
-    overflow-x: auto;
-    padding-bottom: 4px;
+    flex-direction: column;
+    align-items: center;
+    padding: 40px 20px;
+    background: rgba(244, 33, 46, 0.05);
+    border: 1px solid rgba(244, 33, 46, 0.1);
+    border-radius: 20px;
+    margin: 20px;
+    text-align: center;
+    animation: feedFadeIn 0.4s ease forwards;
 }
 
-.attachment-item {
-    position: relative;
-    width: fit-content;
+.error-icon {
+    color: #f4212e;
+    margin-bottom: 12px;
 }
 
-.attachment-item img {
-    height: 200px;
-    border-radius: 16px;
-    border: 1px solid var(--color-border);
-    object-fit: cover;
+.feed-error-state h3 {
+    color: #f4212e;
+    font-size: 18px;
+    margin: 0 0 8px 0;
 }
 
-.remove-att-btn {
-    position: absolute;
-    top: 4px;
-    right: 4px;
-    background-color: rgba(0, 0, 0, 0.7);
+.feed-error-state p {
+    color: var(--color-text-secondary);
+    font-size: 14px;
+    margin: 0 0 20px 0;
+}
+
+.retry-btn {
+    padding: 10px 24px;
+    background: #f4212e;
+    color: white;
     border: none;
-    border-radius: 50%;
-    width: 28px;
-    height: 28px;
+    border-radius: 99px;
+    font-weight: 700;
+    font-size: 14px;
+    cursor: pointer;
+    transition: opacity 0.2s, transform 0.1s;
+    box-shadow: 0 4px 15px rgba(244, 33, 46, 0.3);
+}
+
+.retry-btn:hover { opacity: 0.9; }
+.retry-btn:active { transform: scale(0.96); }
+
+/* =========================================
+   КОНЕЦ ЛЕНТЫ
+   ========================================= */
+.feed-end-message {
     display: flex;
     align-items: center;
     justify-content: center;
-    cursor: pointer;
-    transition: background-color 0.2s;
-}
-
-.remove-att-btn:hover {
-    background-color: rgba(0, 0, 0, 0.9);
-}
-
-.feed-end-message {
-    padding: 48px 20px;
-    text-align: center;
+    gap: 12px;
+    padding: 40px 20px 80px;
     color: var(--color-text-secondary);
-    font-size: 15px;
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-    opacity: 0.8;
+    font-weight: 600;
+    font-size: 14px;
+    opacity: 0.7;
 }
 
-.feed-end-message span {
-    font-size: 24px;
+.feed-end-message::before, 
+.feed-end-message::after {
+    content: '';
+    height: 1px;
+    width: 60px;
+    background: var(--color-border);
+}
+
+.feed-end-message svg {
+    color: var(--color-primary);
+}
+
+/* =========================================
+   АНИМАЦИИ И СКЕЛЕТОНЫ
+   ========================================= */
+@keyframes feedFadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
 }
 
 .skeleton-list {
     display: flex;
     flex-direction: column;
-}
-
-.feed-error {
-    padding: 32px;
-    text-align: center;
-}
-
-.retry-btn {
-    margin-top: 12px;
-    padding: 8px 20px;
-    background: var(--color-primary);
-    color: white;
-    border: none;
-    border-radius: 20px;
-    font-weight: bold;
-    cursor: pointer;
 }

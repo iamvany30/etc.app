@@ -1,50 +1,29 @@
-/* @source GlobalPlayer.jsx */
-import React, { useState, useEffect, useMemo } from 'react';
-import { useMusic } from '../context/MusicContext';
-import { PlayIcon, PauseIcon } from './icons/MediaIcons';
+/* @source src/components/GlobalPlayer.jsx */
+import React, { useState, useEffect } from 'react';
+import { useMusicStore } from '../store/musicStore';
+import { PlayIcon, PauseIcon, PrevIcon, NextIcon } from './icons/MediaIcons';
 import '../styles/GlobalPlayer.css';
 
 const GlobalPlayer = () => {
-    const { currentTrack, isPlaying, togglePlay, nextTrack, prevTrack, progress, duration, seek } = useMusic();
+    
+    const currentTrack = useMusicStore(state => state.currentTrack);
+    const isPlaying = useMusicStore(state => state.isPlaying);
+    const progress = useMusicStore(state => state.progress);
+    const duration = useMusicStore(state => state.duration);
     
     
-    const [colors, setColors] = useState(['#15202b', '#1e2732', '#15202b', '#1e2732', '#101214']);
+    const togglePlay = useMusicStore(state => state.togglePlay);
+    const nextTrack = useMusicStore(state => state.nextTrack);
+    const prevTrack = useMusicStore(state => state.prevTrack);
+    const seek = useMusicStore(state => state.seek);
 
+    const [isDragging, setIsDragging] = useState(false);
+    const [localProgress, setLocalProgress] = useState(0);
+
+    
     useEffect(() => {
-        if (!currentTrack?.cover) {
-            setColors(['#15202b', '#1e2732', '#15202b', '#1e2732', '#101214']);
-            return;
-        }
-
-        const img = new Image();
-        
-        img.crossOrigin = "anonymous"; 
-        img.src = currentTrack.cover;
-        
-        img.onload = () => {
-            try {
-                const canvas = document.createElement('canvas');
-                const ctx = canvas.getContext('2d', { willReadFrequently: true });
-                canvas.width = 10; 
-                canvas.height = 10;
-                ctx.drawImage(img, 0, 0, 10, 10);
-
-                const data = ctx.getImageData(0, 0, 10, 10).data;
-                const newColors = [];
-                
-                for (let i = 0; i < 5; i++) {
-                    const idx = i * 20 * 4;
-                    newColors.push(`rgb(${data[idx]}, ${data[idx+1]}, ${data[idx+2]})`);
-                }
-                setColors(newColors);
-            } catch (e) {
-                console.warn("CORS error: using theme colors", e);
-                
-                const primary = getComputedStyle(document.documentElement).getPropertyValue('--color-primary');
-                setColors([primary, '#15202b', primary, '#101214', '#15202b']);
-            }
-        };
-    }, [currentTrack?.cover]);
+        if (!isDragging) setLocalProgress(progress);
+    }, [progress, isDragging]);
 
     const formatTime = (t) => {
         if (!t) return "0:00";
@@ -53,56 +32,96 @@ const GlobalPlayer = () => {
         return `${m}:${s.toString().padStart(2, '0')}`;
     };
 
+    const handleSeekStart = () => setIsDragging(true);
+    
+    const handleSeekMove = (e) => {
+        const rect = e.currentTarget.getBoundingClientRect();
+        const percent = Math.min(Math.max((e.clientX - rect.left) / rect.width, 0), 1);
+        setLocalProgress(percent * duration);
+    };
+
+    const handleSeekEnd = (e) => {
+        const rect = e.currentTarget.getBoundingClientRect();
+        const percent = Math.min(Math.max((e.clientX - rect.left) / rect.width, 0), 1);
+        seek(percent * duration);
+        setIsDragging(false);
+    };
+
     if (!currentTrack) return null;
+
+    const coverUrl = currentTrack.cover || ''; 
 
     return (
         <div 
-            className={`gp-widget ${isPlaying ? 'playing' : ''}`}
-            style={{
-                '--c1': colors[0], '--c2': colors[1], 
-                '--c3': colors[2], '--c4': colors[3], '--c5': colors[4]
+            className={`gp-glass-card ${isPlaying ? 'playing' : ''}`}
+            style={{ 
+                '--cover-url': coverUrl ? `url(${coverUrl})` : 'none',
+                '--fallback-gradient': 'linear-gradient(135deg, #1d9bf0, #794bc4)'
             }}
         >
             {}
-            <div className="gp-background">
-                <div className="gp-blob b1"></div>
-                <div className="gp-blob b2"></div>
-                <div className="gp-blob b3"></div>
-            </div>
-
-            <div className="gp-inner">
+            <div className="gp-glass-bg" />
+            
+            <div className="gp-glass-content">
                 {}
-                <div className="gp-info-side">
-                    <div className="gp-cover">
-                        {currentTrack.cover ? <img src={currentTrack.cover} alt="" /> : <span>♪</span>}
+                <div className="gp-main-row">
+                    <div className="gp-track-info">
+                        <div className="gp-cover-wrap">
+                            {currentTrack.cover ? (
+                                <img src={currentTrack.cover} alt="" className="gp-cover-img" />
+                            ) : (
+                                <div className="gp-cover-placeholder">♪</div>
+                            )}
+                            {}
+                            {isPlaying && (
+                                <div className="gp-mini-visualizer">
+                                    <div className="bar"></div>
+                                    <div className="bar"></div>
+                                    <div className="bar"></div>
+                                </div>
+                            )}
+                        </div>
+                        <div className="gp-text-col">
+                            <span className="gp-title">{currentTrack.title}</span>
+                            <span className="gp-artist">{currentTrack.artist}</span>
+                        </div>
                     </div>
-                    <div className="gp-text">
-                        <span className="gp-name">{currentTrack.title}</span>
-                        <span className="gp-author">{currentTrack.artist}</span>
+
+                    <div className="gp-controls-row">
+                        <button onClick={prevTrack} className="gp-ctrl-btn small">
+                            <PrevIcon />
+                        </button>
+                        <button onClick={togglePlay} className="gp-ctrl-btn main">
+                            {isPlaying ? <PauseIcon size={20} /> : <PlayIcon size={20} style={{marginLeft: 2}} />}
+                        </button>
+                        <button onClick={nextTrack} className="gp-ctrl-btn small">
+                            <NextIcon />
+                        </button>
                     </div>
                 </div>
 
                 {}
-                <div className="gp-controls">
-                    <button onClick={prevTrack} className="gp-btn-small">
-                        <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M6 6h2v12H6zm3.5 6l8.5 6V6z"/></svg>
-                    </button>
-                    <button onClick={togglePlay} className="gp-btn-main">
-                        {isPlaying ? <PauseIcon size={20} /> : <PlayIcon size={20} style={{marginLeft: 2}} />}
-                    </button>
-                    <button onClick={nextTrack} className="gp-btn-small">
-                        <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M6 18l8.5-6L6 6v12zM16 6v12h2V6h-2z"/></svg>
-                    </button>
+                <div className="gp-progress-container">
+                    <span className="gp-time-text">{formatTime(localProgress)}</span>
+                    <div 
+                        className="gp-slider-track" 
+                        onMouseDown={handleSeekStart}
+                        onClick={handleSeekEnd}
+                        onMouseMove={isDragging ? handleSeekMove : undefined}
+                        onMouseUp={isDragging ? handleSeekEnd : undefined}
+                        onMouseLeave={() => isDragging && setIsDragging(false)}
+                    >
+                        <div 
+                            className="gp-slider-fill" 
+                            style={{ width: `${duration ? (localProgress / duration) * 100 : 0}%` }} 
+                        />
+                        <div 
+                            className="gp-slider-thumb"
+                            style={{ left: `${duration ? (localProgress / duration) * 100 : 0}%` }} 
+                        />
+                    </div>
+                    <span className="gp-time-text">{formatTime(duration)}</span>
                 </div>
-            </div>
-
-            {}
-            <div className="gp-progress-area">
-                <span className="gp-time">{formatTime(progress)}</span>
-                <div className="gp-track" onClick={(e) => seek((e.nativeEvent.offsetX / e.currentTarget.offsetWidth) * duration)}>
-                    <div className="gp-fill" style={{ width: `${(progress / duration) * 100}%` }} />
-                </div>
-                <span className="gp-time">{formatTime(duration)}</span>
             </div>
         </div>
     );

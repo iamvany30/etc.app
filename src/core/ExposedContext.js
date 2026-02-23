@@ -1,15 +1,15 @@
-
 import React from 'react';
 import ReactDOM from 'react-dom/client';
 import * as RouterDOM from 'react-router-dom';
 import { Virtuoso, VirtuosoGrid, GroupedVirtuoso } from 'react-virtuoso';
 
-
 import { apiClient } from '../api/client';
-import { useUser } from '../context/UserContext';
-import { useModal } from '../context/ModalContext';
-import { useMusic } from '../context/MusicContext';
-import { useUpload } from '../context/UploadContext';
+import { useUserStore } from '../store/userStore';
+import { useMusicStore } from '../store/musicStore';
+import { useUploadStore } from '../store/uploadStore';
+import { useDownloadStore } from '../store/downloadStore';
+import { useModalStore } from '../store/modalStore';
+import { useIslandStore } from '../store/islandStore';
 
 import * as CommonIcons from '../components/icons/CommonIcons';
 import * as MediaIcons from '../components/icons/MediaIcons';
@@ -20,7 +20,6 @@ import * as NotificationIcons from '../components/icons/NotificationIcons';
 import * as SettingsIcons from '../components/icons/SettingsIcons';
 import * as ThemeIcons from '../components/icons/ThemeIcons';
 import { MusicIcon } from '../components/icons/MusicIcon';
-
 
 import PostCard from '../components/PostCard';
 import CreatePost from '../components/CreatePost';
@@ -35,7 +34,6 @@ import VoicePlayer from '../components/VoicePlayer';
 import MusicPlayer from '../components/MusicPlayer';
 import DrawingBoard from '../components/DrawingBoard';
 
-
 import SettingsModal from '../components/modals/SettingsModal';
 import EditProfileModal from '../components/modals/EditProfileModal';
 import ImageModal from '../components/modals/ImageModal';
@@ -44,27 +42,21 @@ import ConfirmDeleteModal from '../components/modals/ConfirmDeleteModal';
 import UserListModal from '../components/modals/UserListModal';
 import ExternalLinkModal from '../components/modals/ExternalLinkModal';
 
-
 import { ComponentRegistry, DynamicComponent } from './ComponentRegistry';
 
-
 const utils = {
-    
     formatNumber: (num) => {
         if (!num) return '0';
         if (num >= 1000000) return (num / 1000000).toFixed(1) + 'M';
         if (num >= 1000) return (num / 1000).toFixed(1) + 'K';
         return num.toString();
     },
-    
     formatDuration: (seconds) => {
         const min = Math.floor(seconds / 60);
         const sec = Math.floor(seconds % 60);
         return `${min}:${sec.toString().padStart(2, '0')}`;
     },
-    
     clsx: (...args) => args.filter(Boolean).join(' '),
-    
     debounce: (func, wait) => {
         let timeout;
         return function(...args) {
@@ -74,43 +66,46 @@ const utils = {
     }
 };
 
-
 const system = {
-    
     copyToClipboard: (text) => navigator.clipboard.writeText(text).catch(console.error),
-    
     openExternal: (url) => {
         if (window.api?.openExternalLink) window.api.openExternalLink(url);
         else window.open(url, '_blank');
     }
 };
 
-/**
- * Главная функция, которая собирает все экспорты в единый глобальный объект `window.ItdApp`
- */
+const useModalShim = () => {
+    const open = useModalStore(s => s.openModal);
+    const close = useModalStore(s => s.closeModal);
+    return { openModal: open, closeModal: close };
+};
+
+const useIslandShim = () => {
+    const alert = useIslandStore(s => s.alert);
+    const show = useIslandStore(s => s.showIslandAlert);
+    return { alert, showIslandAlert: show };
+};
+
 export const setupExposedContext = () => {
     window.ItdApp = {
-        
         React,
         ReactDOM,
         RouterDOM,
         Virtuoso: { Virtuoso, VirtuosoGrid, GroupedVirtuoso },
 
-        
         DynamicComponent,
         register: ComponentRegistry.register,
         getComponent: ComponentRegistry.get,
         
-        
         api: apiClient,
         
-        
         hooks: {
-            
-            useUser, 
-            useModal, 
-            useMusic,
-            useUpload,
+            useUser: useUserStore,
+            useMusic: useMusicStore,
+            useUpload: useUploadStore,
+            useDownload: useDownloadStore,
+            useModal: useModalShim,
+            useIsland: useIslandShim,
             
             useState: React.useState,
             useEffect: React.useEffect,
@@ -121,18 +116,15 @@ export const setupExposedContext = () => {
             useLayoutEffect: React.useLayoutEffect,
             useReducer: React.useReducer,
             
-            
             useNavigate: RouterDOM.useNavigate,
             useLocation: RouterDOM.useLocation,
             useParams: RouterDOM.useParams,
             useSearchParams: RouterDOM.useSearchParams
         },
 
-        
         utils,
         system,
 
-        
         unload: (fileList) => {
             if (!Array.isArray(fileList)) return;
             document.querySelectorAll('style, link[rel="stylesheet"]').forEach(el => {
@@ -150,7 +142,6 @@ export const setupExposedContext = () => {
             });
         },
 
-        
         Icons: { 
             ...CommonIcons,
             ...MediaIcons, 
@@ -162,7 +153,6 @@ export const setupExposedContext = () => {
             ...ThemeIcons,
             MusicIcon 
         },
-        
         
         Components: { 
             PostCard, 
@@ -178,7 +168,6 @@ export const setupExposedContext = () => {
             MusicPlayer,
             DrawingBoard
         },
-        
         
         Modals: { 
             SettingsModal, 

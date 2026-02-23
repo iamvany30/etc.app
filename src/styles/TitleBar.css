@@ -1,7 +1,7 @@
-/* @source TitleBar.css */
+/* @source src/styles/TitleBar.css */
 
 :root {
-    --titlebar-height: 42px;
+    --titlebar-height: 56px; 
     --win-close-hover: #e81123;
     --btn-hover-bg: rgba(255, 255, 255, 0.1);
     --btn-active-color: var(--color-primary);
@@ -35,16 +35,16 @@
     display: flex;
     align-items: center;
     height: 100%;
-    padding: 0 12px;
-    gap: 8px;
+    padding: 0 16px; 
+    gap: 12px;
     min-width: 140px;
     flex-shrink: 0;
     -webkit-app-region: no-drag;
 }
 
 .nav-btn {
-    width: 32px;
-    height: 32px;
+    width: 36px; 
+    height: 36px;
     border-radius: 8px;
     border: none;
     background: transparent;
@@ -68,47 +68,6 @@
     cursor: default;
 }
 
-.titlebar-center {
-    position: absolute;
-    left: 50%;
-    transform: translateX(-50%);
-    height: 100%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    pointer-events: none;
-}
-
-.app-name {
-    font-size: 13px;
-    font-weight: 800;
-    text-transform: uppercase;
-    letter-spacing: 1px;
-    color: var(--color-text);
-    opacity: 0.4;
-    transition: opacity 0.3s ease;
-}
-
-.is-scrolled .app-name {
-    opacity: 1;
-}
-
-.network-dot {
-    width: 8px;
-    height: 8px;
-    border-radius: 50%;
-    background-color: #f4212e;
-    margin-right: 8px;
-    box-shadow: 0 0 8px #f4212e;
-    animation: pulse-dot 2s infinite;
-}
-
-@keyframes pulse-dot {
-    0% { opacity: 1; }
-    50% { opacity: 0.5; }
-    100% { opacity: 1; }
-}
-
 .window-controls {
     display: flex;
     align-items: center;
@@ -119,7 +78,7 @@
 }
 
 .win-btn {
-    width: 46px;
+    width: 50px; 
     height: 100%;
     border: none;
     background: transparent;

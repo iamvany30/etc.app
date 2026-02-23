@@ -2,32 +2,31 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { Virtuoso } from 'react-virtuoso';
 import { apiClient } from '../api/client';
+import { storage } from '../utils/storage'; 
 import PostCard from '../components/PostCard'; 
 import { PostSkeleton, ExploreSkeleton, WidgetSkeleton } from '../components/Skeletons';
+
+import { 
+    Magnifer, 
+    CloseCircle, 
+    Hashtag, 
+    UsersGroupTwoRounded, 
+    Ghost,
+    Fire
+} from "@solar-icons/react";
 import '../styles/Explore.css';
 
 const CACHE_KEY = 'itd_explore_data_v1';
 const CACHE_TTL = 24 * 60 * 60 * 1000; 
-
-const SearchIcon = () => (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-        <circle cx="11" cy="11" r="8"></circle>
-        <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
-    </svg>
-);
-
-const ClearIcon = () => (
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
-        <line x1="18" y1="6" x2="6" y2="18"></line>
-        <line x1="6" y1="6" x2="18" y2="18"></line>
-    </svg>
-);
 
 const Explore = () => {
     const [searchParams, setSearchParams] = useSearchParams();
     const queryFromUrl = searchParams.get('q') || "";
 
     const [searchQuery, setSearchQuery] = useState(queryFromUrl);
+    const [searchType, setSearchType] = useState('all');
+    const [searchSort, setSearchSort] = useState('relevance');
+
     const [trendsData, setTrendsData] = useState({ trending: [], clans: [] });
     const [searchResults, setSearchResults] = useState(null); 
     const [hashtagPosts, setHashtagPosts] = useState([]); 
@@ -43,7 +42,6 @@ const Explore = () => {
 
     const isHashtagFeedMode = searchQuery.trim().startsWith('#');
 
-    
     useEffect(() => {
         const loadInitialData = async () => {
             if (searchQuery) {
@@ -52,9 +50,9 @@ const Explore = () => {
             }
 
             try {
-                const cachedRaw = localStorage.getItem(CACHE_KEY);
+                const cachedRaw = await storage.get(CACHE_KEY);
                 if (cachedRaw) {
-                    const { data, timestamp } = JSON.parse(cachedRaw);
+                    const { data, timestamp } = cachedRaw; 
                     const age = Date.now() - timestamp;
 
                     if (age < CACHE_TTL) {
@@ -64,7 +62,7 @@ const Explore = () => {
                     }
                 }
             } catch (e) {
-                localStorage.removeItem(CACHE_KEY);
+                storage.remove(CACHE_KEY);
             }
 
             try {
@@ -80,10 +78,10 @@ const Explore = () => {
 
                 setTrendsData(newData);
                 
-                localStorage.setItem(CACHE_KEY, JSON.stringify({
+                storage.set(CACHE_KEY, {
                     data: newData,
                     timestamp: Date.now()
-                }));
+                });
 
             } catch (err) { 
                 console.error(err); 
@@ -95,9 +93,7 @@ const Explore = () => {
         loadInitialData();
     }, [searchQuery]);
 
-    
     const loadHashtagFeed = useCallback(async (isInitial = false) => {
-        
         if (!searchQuery.trim().startsWith('#') || isFetchingRef.current) return;
         if (!isInitial && !hasMoreRef.current) return;
 
@@ -115,8 +111,6 @@ const Explore = () => {
 
         try {
             const res = await apiClient.getHashtagPosts(tag, nextCursorRef.current);
-            
-            
             if (activeSearchRef.current !== searchQuery) return;
 
             const data = res?.data || res;
@@ -134,7 +128,6 @@ const Explore = () => {
         }
     }, [searchQuery]);
 
-    
     useEffect(() => {
         const query = searchQuery.trim();
         activeSearchRef.current = query;
@@ -154,19 +147,17 @@ const Explore = () => {
             setSearchParams({ q: query }, { replace: true });
 
             if (query.startsWith('#')) {
-                
-                
-                if (!isCancelled) {
-                    loadHashtagFeed(true);
-                }
+                if (!isCancelled) loadHashtagFeed(true);
             } else {
-                
                 if (!isCancelled) setLoading(true);
                 try {
-                    const res = await apiClient.search(query);
-                    if (!isCancelled) {
-                        setSearchResults(res?.data || res);
-                    }
+                    const res = await apiClient.advancedSearch({ 
+                        q: query, 
+                        type: searchType, 
+                        sort: searchSort, 
+                        limit: 20 
+                    });
+                    if (!isCancelled) setSearchResults(res?.data || res);
                 } catch (e) { 
                     console.error(e); 
                 } finally { 
@@ -179,23 +170,23 @@ const Explore = () => {
             clearTimeout(timer);
             isCancelled = true; 
         };
-    }, [searchQuery, setSearchParams, loadHashtagFeed]);
+    }, [searchQuery, setSearchParams, loadHashtagFeed, searchType, searchSort]);
 
-    
     const renderBody = () => {
-        
         if (!searchQuery && loadingInitial) {
             return <ExploreSkeleton />;
         }
 
-        
         if (!searchQuery.trim()) {
             return (
                 <div className="explore-scroll-area content-fade-in">
                     {trendsData.clans.length > 0 && (
-                        <section className="clans-section">
-                            <h3 className="explore-section-title">Топ сообществ</h3>
-                            <div className="clans-horizontal-scroll">
+                        <section className="explore-section">
+                            <h3 className="explore-section-title">
+                                <UsersGroupTwoRounded size={22} className="section-icon" />
+                                Топ сообществ
+                            </h3>
+                            <div className="clans-horizontal-scroll custom-scrollbar-hide">
                                 {trendsData.clans.map((clan, idx) => (
                                     <div key={idx} className={`clan-card ${idx < 3 ? 'top-tier' : ''}`}>
                                         <div className="clan-avatar-ring">
@@ -213,19 +204,20 @@ const Explore = () => {
                         </section>
                     )}
 
-                    <section className="trends-section">
-                        <h3 className="explore-section-title">Актуальные темы</h3>
+                    <section className="explore-section">
+                        <h3 className="explore-section-title">
+                            <Fire size={22} className="section-icon" />
+                            Актуальные темы
+                        </h3>
                         <div className="trends-list">
                             {trendsData.trending.map((tag, idx) => (
                                 <div key={tag.id || idx} className="trend-item" onClick={() => setSearchQuery('#' + tag.name)}>
+                                    <div className="trend-number">{idx + 1}</div>
                                     <div className="trend-info">
-                                        <div className="trend-category">
-                                            <span>Тренды: итд.app</span>
-                                            <span className="trend-dots">···</span>
-                                        </div>
                                         <span className="trend-name">#{tag.name}</span>
                                         <span className="trend-count">{tag.postsCount} постов</span>
                                     </div>
+                                    <div className="trend-arrow">›</div>
                                 </div>
                             ))}
                         </div>
@@ -234,8 +226,17 @@ const Explore = () => {
             );
         }
 
-        
         if (isHashtagFeedMode) {
+            if (!loading && hashtagPosts.length === 0) {
+                return (
+                    <div className="explore-empty-state content-fade-in">
+                        <div className="explore-empty-icon"><Hashtag size={48} /></div>
+                        <h3>Постов не найдено</h3>
+                        <p>По тегу <b>{searchQuery}</b> пока никто ничего не публиковал.</p>
+                    </div>
+                );
+            }
+
             return (
                 <Virtuoso
                     style={{ height: '100%' }}
@@ -243,7 +244,12 @@ const Explore = () => {
                     endReached={() => loadHashtagFeed(false)}
                     itemContent={(index, post) => <PostCard post={post} key={post.id} />}
                     components={{
-                        Header: () => loading ? <div className="p-16"><PostSkeleton /><PostSkeleton /></div> : null,
+                        Header: () => loading ? <div className="p-16"><PostSkeleton /><PostSkeleton /></div> : (
+                            <div className="hashtag-feed-header">
+                                <div className="hashtag-feed-icon"><Hashtag size={28} /></div>
+                                <h2>{searchQuery}</h2>
+                            </div>
+                        ),
                         Footer: () => (
                             <div style={{ paddingBottom: '140px', paddingTop: '20px' }}>
                                 {loadingMore && <PostSkeleton />}
@@ -255,15 +261,12 @@ const Explore = () => {
             );
         }
 
-        
         return (
             <div className="explore-scroll-area">
                 {loading ? (
-                    <div style={{padding: 16}}>
-                        <WidgetSkeleton /> 
-                    </div>
+                    <div style={{padding: 16}}><WidgetSkeleton /></div>
                 ) : (
-                    <GlobalResultsList results={searchResults} onTagClick={(t) => setSearchQuery('#' + t)} />
+                    <GlobalResultsList results={searchResults} onTagClick={(t) => setSearchQuery('#' + t)} searchType={searchType} />
                 )}
             </div>
         );
@@ -271,10 +274,10 @@ const Explore = () => {
 
     return (
         <div className="explore-page">
-            <div className="sticky-header">
+            <header className="explore-sticky-header">
                 <div className="explore-search-container">
                     <div className="search-input-wrapper">
-                        <div className="search-icon-left"><SearchIcon /></div>
+                        <div className="search-icon-left"><Magnifer size={18} /></div>
                         <input 
                             type="text" 
                             className="explore-input"
@@ -284,12 +287,46 @@ const Explore = () => {
                         />
                         {searchQuery && (
                             <button className="search-clear-btn" onClick={() => setSearchQuery('')}>
-                                <ClearIcon />
+                                <CloseCircle size={20} variant="Bold" />
                             </button>
                         )}
                     </div>
                 </div>
-            </div>
+
+                {searchQuery && !isHashtagFeedMode && (
+                    <div style={{ padding: '0 16px 12px 16px', display: 'flex', gap: '8px', flexWrap: 'wrap', alignItems: 'center' }}>
+                        <div style={{ display: 'flex', gap: '4px', background: 'var(--color-input-bg)', padding: '4px', borderRadius: '12px' }}>
+                            {['all', 'users', 'posts', 'hashtags'].map(t => (
+                                <button 
+                                    key={t} 
+                                    onClick={() => setSearchType(t)}
+                                    style={{
+                                        padding: '6px 12px', border: 'none', borderRadius: '8px', fontSize: '13px', fontWeight: '600', cursor: 'pointer',
+                                        background: searchType === t ? 'var(--color-card)' : 'transparent',
+                                        color: searchType === t ? 'var(--color-text)' : 'var(--color-text-secondary)',
+                                        boxShadow: searchType === t ? '0 2px 5px rgba(0,0,0,0.1)' : 'none',
+                                        transition: 'all 0.2s'
+                                    }}
+                                >
+                                    {t === 'all' ? 'Все' : t === 'users' ? 'Люди' : t === 'posts' ? 'Посты' : 'Теги'}
+                                </button>
+                            ))}
+                        </div>
+                        <select 
+                            value={searchSort} 
+                            onChange={(e) => setSearchSort(e.target.value)}
+                            style={{
+                                padding: '8px 12px', border: '1px solid var(--color-border)', borderRadius: '10px', fontSize: '13px', fontWeight: '600',
+                                background: 'var(--color-item-bg)', color: 'var(--color-text)', cursor: 'pointer', outline: 'none', marginLeft: 'auto'
+                            }}
+                        >
+                            <option value="relevance">По релевантности</option>
+                            <option value="new">Сначала новые</option>
+                            <option value="popular">Сначала популярные</option>
+                        </select>
+                    </div>
+                )}
+            </header>
 
             <div className="explore-content-container">
                 {renderBody()}
@@ -298,13 +335,28 @@ const Explore = () => {
     );
 };
 
-const GlobalResultsList = ({ results, onTagClick }) => {
+const GlobalResultsList = ({ results, onTagClick, searchType }) => {
     if (!results) return null;
     const users = results.users || [];
     const hashtags = results.hashtags || [];
+    const posts = results.posts || [];
 
-    if (users.length === 0 && hashtags.length === 0) {
-        return <div className="notif-empty-state">Ничего не найдено</div>;
+    if (users.length === 0 && hashtags.length === 0 && posts.length === 0) {
+        return (
+            <div className="explore-empty-state content-fade-in">
+                <div className="explore-empty-icon"><Ghost size={48} /></div>
+                <h3>Ничего не найдено</h3>
+                <p>Попробуйте изменить запрос.</p>
+            </div>
+        );
+    }
+
+    if (searchType === 'posts') {
+        return (
+            <div className="content-fade-in" style={{ paddingBottom: 140 }}>
+                {posts.map(post => <PostCard key={post.id} post={post} />)}
+            </div>
+        );
     }
 
     return (
@@ -315,7 +367,7 @@ const GlobalResultsList = ({ results, onTagClick }) => {
                     {users.map(u => (
                         <Link to={`/profile/${u.username}`} key={u.id} className="search-result-item">
                             <div className="avatar" style={{width: 44, height: 44, fontSize: 20}}>
-                                {u.avatar || "👤"}
+                                {u.avatar && u.avatar.length > 5 ? <img src={u.avatar} alt=""/> : (u.avatar || "👤")}
                             </div>
                             <div className="res-info">
                                 <span className="res-name">{u.displayName}</span>
@@ -325,17 +377,26 @@ const GlobalResultsList = ({ results, onTagClick }) => {
                     ))}
                 </div>
             )}
+            
             {hashtags.length > 0 && (
                 <div className="search-group">
                     <h4 className="search-group-header">Темы</h4>
                     {hashtags.map(t => (
                         <div key={t.id} className="search-result-item" onClick={() => onTagClick(t.name)}>
+                            <div className="hashtag-icon-box"><Hashtag size={20} /></div>
                             <div className="res-info">
                                 <span className="res-name">#{t.name}</span>
                                 <span className="res-sub">{t.postsCount} постов</span>
                             </div>
                         </div>
                     ))}
+                </div>
+            )}
+
+            {posts.length > 0 && searchType === 'all' && (
+                <div className="search-group">
+                    <h4 className="search-group-header">Посты</h4>
+                    {posts.map(post => <PostCard key={post.id} post={post} />)}
                 </div>
             )}
             <div style={{ height: '140px' }} />

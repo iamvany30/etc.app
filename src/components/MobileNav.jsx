@@ -1,18 +1,17 @@
-/* @source MobileNav.jsx */
+/* @source src/components/MobileNav.jsx */
 import React from 'react';
 import { NavLink } from 'react-router-dom';
 import { IconFeed, IconExplore, IconNotifications, IconProfile } from './icons/SidebarIcons';
-import { MusicIcon } from './icons/MusicIcon'; 
-import { useUser } from '../context/UserContext';
+
+import { useUserStore } from '../store/userStore';
 import '../styles/MobileNav.css';  
 
 const MobileNav = () => {
-    const { currentUser } = useUser();
+    const currentUser = useUserStore(state => state.currentUser);
     if (!currentUser) return null;
 
     const navItems = [
         { to: "/", label: "Лента", icon: <IconFeed /> },
-        { to: "/music", label: "Музыка", icon: <MusicIcon /> },
         { to: "/explore", label: "Обзор", icon: <IconExplore /> },
         { to: "/notifications", label: "События", icon: <IconNotifications /> },
         { to: `/profile/${currentUser.username}`, label: "Профиль", icon: <IconProfile /> }

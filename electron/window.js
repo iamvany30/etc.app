@@ -1,9 +1,7 @@
-
-
 const { BrowserWindow, shell, ipcMain, app } = require('electron');
 const path = require('path');
-const fs = require('fs'); 
 const { PATHS } = require('./config');
+const downloadManager = require('./downloadManager');
 
 let mainWindow = null;
 
@@ -19,75 +17,32 @@ function createMainWindow() {
         icon: PATHS.ICON,
         webPreferences: { 
             preload: PATHS.PRELOAD, 
-            contextIsolation: true, 
-            nodeIntegration: false 
+            nodeIntegration: false,
+            webviewTag: true
         }
     });
 
-    
-    
     mainWindow.webContents.on('context-menu', (event) => {
         event.preventDefault();
     });
     
-    
     mainWindow.webContents.session.on('will-download', (event, item, webContents) => {
-        const downloadsPath = app.getPath('downloads');
-        const saveDir = path.join(downloadsPath, 'etc.app');
-
-        if (!fs.existsSync(saveDir)) {
-            fs.mkdirSync(saveDir, { recursive: true });
-        }
-        
-        const fileName = item.getFilename();
-        const fullPath = path.join(saveDir, fileName);
-        const url = item.getURL();
-        const startTime = Date.now();
-
-        item.setSavePath(fullPath);
-
-        
-        webContents.send('download-progress', { 
-            url, 
-            fileName, 
-            path: fullPath, 
-            percent: 0, 
-            status: 'starting',
-            startTime
-        });
-
-        item.on('updated', (event, state) => {
-            if (state === 'progressing') {
-                const percent = item.getTotalBytes() > 0 
-                    ? (item.getReceivedBytes() / item.getTotalBytes()) * 100 
-                    : 0;
-                
-                webContents.send('download-progress', { 
-                    url, 
-                    fileName,
-                    path: fullPath,
-                    percent, 
-                    status: 'progressing',
-                    startTime
-                });
-            }
-        });
-
-        item.on('done', (event, state) => {
-            const status = state === 'completed' ? 'completed' : state === 'cancelled' ? 'cancelled' : 'failed';
-            webContents.send('download-progress', { 
-                url, 
-                fileName,
-                path: fullPath,
-                percent: 100, 
-                status,
-                startTime
-            });
-        });
+        downloadManager.handleWillDownload(event, item, webContents);
     });
 
     mainWindow.webContents.setWindowOpenHandler(({ url }) => {
-        if (url.startsWith('http')) shell.openExternal(url);
+        try {
+            const parsedUrl = new URL(url);
+            if (parsedUrl.hostname === 'xn--d1ah4a.com' || parsedUrl.hostname === 'итд.com') {
+                const navigateTo = parsedUrl.pathname + parsedUrl.search + parsedUrl.hash;
+                mainWindow.webContents.send('navigate-to', navigateTo);
+                return { action: 'deny' };
+            }
+        } catch (e) {}
+        
+        if (url.startsWith('http')) {
+            shell.openExternal(url);
+        }
         return { action: 'deny' };
     });
 
@@ -100,25 +55,24 @@ function createMainWindow() {
 
     mainWindow.webContents.on('before-input-event', (event, input) => {
         if (input.type === 'keyDown') {
-            const { key, control, shift, meta } = input;
+            const { key, control, shift, meta, alt } = input;
+            const isDevToolsKey = key === 'F12' || (key.toLowerCase() === 'i' && ((control && shift) || (meta && alt)));
             
-            
-            if (key === 'F12') {
-                mainWindow.webContents.toggleDevTools();
+            if (isDevToolsKey) {
                 event.preventDefault();
-            }
-            
-            if (key.toLowerCase() === 'i' && ((control && shift) || (meta && input.alt))) {
-                mainWindow.webContents.toggleDevTools();
-                event.preventDefault();
+                if (app.isPackaged) {
+                    if (mainWindow && !mainWindow.isDestroyed()) {
+                        mainWindow.webContents.send('show-devtools-warning');
+                    }
+                } else {
+                    mainWindow.webContents.toggleDevTools();
+                }
             }
         }
     });
 
     if (app.isPackaged) {
-        mainWindow.loadFile(PATHS.BUILD_INDEX, {
-            query: { v: app.getVersion() }
-        });
+        mainWindow.loadFile(PATHS.BUILD_INDEX, { query: { v: app.getVersion() } });
     } else {
         mainWindow.loadURL('http://localhost:3000');
         mainWindow.webContents.openDevTools(); 

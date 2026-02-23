@@ -1,47 +1,43 @@
+/* @source src/utils/bookmarkUtils.js */
+import { storage } from './storage';
+
 const STORAGE_KEY = 'itd_local_bookmarks_v1';
+
+
+let memoryCache = [];
+let isInitialized = false;
 
 export const bookmarkUtils = {
     
-    getAll: () => {
-        try {
-            const raw = localStorage.getItem(STORAGE_KEY);
-            return raw ? JSON.parse(raw) : [];
-        } catch (e) {
-            console.error("Ошибка чтения закладок", e);
-            return [];
-        }
+    init: async () => {
+        if (isInitialized) return;
+        const data = await storage.get(STORAGE_KEY);
+        if (data) memoryCache = data;
+        isInitialized = true;
+        window.dispatchEvent(new Event('bookmarks-updated')); 
     },
 
-    
+    getAll: () => memoryCache,
+
     isSaved: (postId) => {
-        const saved = bookmarkUtils.getAll();
-        return saved.some(p => p.id === postId);
+        return memoryCache.some(p => p.id === postId);
     },
 
-    
     toggle: (post) => {
-        const saved = bookmarkUtils.getAll();
-        const index = saved.findIndex(p => p.id === post.id);
+        const index = memoryCache.findIndex(p => p.id === post.id);
         let isSaved = false;
 
         if (index >= 0) {
-            
-            saved.splice(index, 1);
+            memoryCache.splice(index, 1);
             isSaved = false;
         } else {
-            
-            
-            saved.unshift(post);
+            memoryCache.unshift(post);
             isSaved = true;
         }
 
-        try {
-            localStorage.setItem(STORAGE_KEY, JSON.stringify(saved));
-            
-            window.dispatchEvent(new Event('bookmarks-updated'));
-        } catch (e) {
-            alert('Не удалось сохранить: возможно, закончилось место в хранилище.');
-        }
+        
+        storage.set(STORAGE_KEY, memoryCache).catch(e => console.error(e));
+        window.dispatchEvent(new Event('bookmarks-updated'));
 
         return isSaved;
     }

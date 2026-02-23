@@ -1,36 +1,115 @@
-/* @source BottomDock.css */
+/* @source src/styles/BottomDock.css */
 
 .bottom-dock-container {
     position: fixed;
     bottom: 20px;
     left: 50%;
     transform: translateX(-50%);
-    z-index: 100;
-    width: clamp(320px, 92%, 800px);
-    transition: bottom 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    z-index: 9500;
+    width: clamp(320px, calc(100% - 32px), 500px);
+    
+    
+    animation: dockPopUp 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) backwards;
+    will-change: transform;
+}
+
+@keyframes dockPopUp {
+    from { 
+        transform: translate(-50%, 150%) scale(0.9); 
+        opacity: 0; 
+    }
+    to { 
+        transform: translate(-50%, 0) scale(1); 
+        opacity: 1; 
+    }
 }
 
 .dock-glass-wrapper {
     background: rgba(var(--glass-bg-rgb), 0.75);
-    backdrop-filter: blur(30px) saturate(180%);
-    -webkit-backdrop-filter: blur(30px) saturate(180%);
+    backdrop-filter: blur(35px) saturate(200%);
+    -webkit-backdrop-filter: blur(35px) saturate(200%);
+    
     
     border: 1px solid rgba(255, 255, 255, 0.12);
-    border-radius: 28px;
-    box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5);
+    border-top: 1px solid rgba(255, 255, 255, 0.2);
+    
+    border-radius: 32px;
+    box-shadow: 
+        0 20px 50px rgba(0, 0, 0, 0.4),
+        inset 0 1px 0 rgba(255, 255, 255, 0.1);
+    
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    
+    
+    transition: all 0.4s cubic-bezier(0.25, 1, 0.5, 1);
+}
+
+/* =========================================
+   ДИНАМИЧЕСКИЕ СЕКЦИИ (Пружинная анимация высоты)
+   ========================================= */
+.dock-dynamic-section {
+    display: grid;
+    grid-template-rows: 0fr;
+    opacity: 0;
+    transition: 
+        grid-template-rows 0.45s cubic-bezier(0.34, 1.56, 0.64, 1), 
+        opacity 0.3s ease;
+    will-change: grid-template-rows, opacity;
+}
+
+.dock-dynamic-section.visible {
+    grid-template-rows: 1fr;
+    opacity: 1;
+}
+
+.dock-dynamic-content {
     overflow: hidden;
     display: flex;
     flex-direction: column;
 }
 
-
-.dock-player-section, .dock-upload-section {
+/* =========================================
+   СТИЛИ ВНУТРЕННИХ СЕКЦИЙ
+   ========================================= */
+.dock-player-section, 
+.dock-upload-section, 
+.dock-browser-section {
     border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+[data-bg='light'] .dock-player-section, 
+[data-bg='light'] .dock-upload-section, 
+[data-bg='light'] .dock-browser-section {
+    border-bottom-color: rgba(0, 0, 0, 0.05);
+}
+
+
+.dock-browser-section {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 10px 16px;
+    gap: 8px;
+    background: linear-gradient(135deg, rgba(var(--color-primary-rgb), 0.15), rgba(var(--color-primary-rgb), 0.05));
+    cursor: pointer;
+    transition: background 0.2s;
+}
+
+.dock-browser-section:hover {
+    background: linear-gradient(135deg, rgba(var(--color-primary-rgb), 0.25), rgba(var(--color-primary-rgb), 0.1));
+}
+
+.dock-browser-text {
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--color-primary);
 }
 
 
 .dock-upload-section {
-    padding: 8px 16px;
+    padding: 10px 16px;
     background: rgba(var(--color-primary-rgb), 0.05);
 }
 
@@ -72,6 +151,7 @@
     background: var(--color-primary);
     border-radius: 4px;
     animation: dock-progress-move 2s infinite linear;
+    box-shadow: 0 0 10px rgba(var(--color-primary-rgb), 0.5);
 }
 
 @keyframes dock-dot-pulse {
@@ -81,10 +161,61 @@
 }
 
 @keyframes dock-progress-move {
-    0% { transform: translateX(-100%); }
-    100% { transform: translateX(300%); }
+    0% { transform: translateX(-150%); }
+    100% { transform: translateX(350%); }
 }
 
+
+.dock-nav-section {
+    position: relative;
+    z-index: 2;
+}
+
+
+[data-perf='low'] .dock-glass-wrapper {
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+    background: rgba(var(--glass-bg-rgb), 0.98) !important;
+    transition: none !important;
+}
+
+
 @media (min-width: 1280px) {
-    .bottom-dock-container { display: none; }
+    .bottom-dock-container { 
+        display: none; 
+    }
+}
+
+/* =========================================
+   БЕСШОВНАЯ ИНТЕГРАЦИЯ ПЛЕЕРА В ДОК
+   ========================================= */
+
+
+.bottom-dock-container .gp-glass-card {
+    border-left: none !important;
+    border-right: none !important;
+    border-bottom: none !important;
+    box-shadow: none !important;
+    border-bottom-left-radius: 0 !important;
+    border-bottom-right-radius: 0 !important;
+    margin: 0 !important;
+}
+
+.bottom-dock-container .gp-glass-card:hover {
+    transform: none !important;
+    box-shadow: none !important;
+}
+
+
+.bottom-dock-container:not(.has-browser-mini) .gp-glass-card {
+    border-top-left-radius: 32px !important;
+    border-top-right-radius: 32px !important;
+    border-top: none !important;
+}
+
+
+.bottom-dock-container.has-browser-mini .gp-glass-card {
+    border-top-left-radius: 0 !important;
+    border-top-right-radius: 0 !important;
+    border-top: none !important;
 }

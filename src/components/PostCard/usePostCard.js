@@ -1,10 +1,12 @@
+/* @source src/components/PostCard/usePostCard.js */
 import { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useUser } from '../../context/UserContext';
-import { useModal } from '../../context/ModalContext';
-import { useIsland } from '../../context/IslandContext'; 
+import { useUserStore } from '../../store/userStore';
+import { useMusicStore } from '../../store/musicStore';
+import { useModalStore } from '../../store/modalStore';
+import { useIslandStore } from '../../store/islandStore';
 import { apiClient } from '../../api/client';
-import ExternalLinkModal, { isTrustedLink } from '../modals/ExternalLinkModal';
+import { handleGlobalLinkClick } from '../../utils/linkUtils';
 import { reconstructMarkdown } from '../../utils/markdownUtils';
 import { bookmarkUtils } from '../../utils/bookmarkUtils'; 
 
@@ -23,16 +25,19 @@ const findAudioAttachment = (attachments) => {
 };
 
 export const usePostCard = (post, initialShowComments, highlightCommentId) => {
-    const { currentUser } = useUser();
-    const { openModal } = useModal();
-    const { showIslandAlert } = useIsland(); 
     const navigate = useNavigate();
-    
-    
     const postRef = useRef(null);
     const textareaRef = useRef(null);
 
-    
+    const currentUser = useUserStore(state => state.currentUser);
+    const currentTrackId = useMusicStore(state => state.currentTrack?.id);
+    const isGlobalPlaying = useMusicStore(state => state.isPlaying);
+    const playTrack = useMusicStore(state => state.playTrack);
+    const togglePlay = useMusicStore(state => state.togglePlay);
+
+    const openModal = useModalStore(state => state.openModal);
+    const showIslandAlert = useIslandStore(state => state.showIslandAlert);
+
     const [localPost, setLocalPost] = useState(post);
     const [isDeleted, setIsDeleted] = useState(false);
     const [liked, setLiked] = useState(post.isLiked);
@@ -40,26 +45,27 @@ export const usePostCard = (post, initialShowComments, highlightCommentId) => {
     const [isReposted, setIsReposted] = useState(post.isReposted);
     const [repostsCount, setRepostsCount] = useState(post.repostsCount);
     const [wasViewed, setWasViewed] = useState(post.isViewed || false);
-    
-    
     const [isSaved, setIsSaved] = useState(() => bookmarkUtils.isSaved(post.id));
     
-    
     const [showComments, setShowComments] = useState(initialShowComments || !!highlightCommentId);
-    const [comments, setComments] = useState([]);
+    const [comments, setComments] = useState(post.comments || []);
     const [loadingComments, setLoadingComments] = useState(false);
-    const [commentsCount, setCommentsCount] = useState(post.commentsCount);
+    const [commentsCount, setCommentsCount] = useState(post.commentsCount || 0);
     const [commentsCursor, setCommentsCursor] = useState(null);
-    const [hasMoreComments, setHasMoreComments] = useState(false);
     const [replyTo, setReplyTo] = useState(null);
 
     
+    const hasFetchedComments = useRef(false);
+
+    const [hasMoreComments, setHasMoreComments] = useState(
+        (post.commentsCount || 0) > (post.comments?.length || 0)
+    );
+
     const [isEditing, setIsEditing] = useState(false);
     const [editContent, setEditContent] = useState("");
 
     const isOwner = currentUser?.id === post.author?.id || post.isOwner;
 
-    
     useEffect(() => {
         setLocalPost(post);
         setLiked(post.isLiked);
@@ -70,7 +76,6 @@ export const usePostCard = (post, initialShowComments, highlightCommentId) => {
         setIsSaved(bookmarkUtils.isSaved(post.id)); 
     }, [post]);
 
-    
     useEffect(() => {
         if (wasViewed || !postRef.current) return;
         const observer = new IntersectionObserver((entries) => {
@@ -84,16 +89,12 @@ export const usePostCard = (post, initialShowComments, highlightCommentId) => {
         return () => observer.disconnect();
     }, [localPost.id, wasViewed]);
 
-    
     useEffect(() => {
-        const handleBookmarkUpdate = () => {
-            setIsSaved(bookmarkUtils.isSaved(localPost.id));
-        };
+        const handleBookmarkUpdate = () => setIsSaved(bookmarkUtils.isSaved(localPost.id));
         window.addEventListener('bookmarks-updated', handleBookmarkUpdate);
         return () => window.removeEventListener('bookmarks-updated', handleBookmarkUpdate);
     }, [localPost.id]);
 
-    
     const handleLike = async (e) => {
         e.stopPropagation();
         const prevLiked = liked;
@@ -122,10 +123,7 @@ export const usePostCard = (post, initialShowComments, highlightCommentId) => {
         e.stopPropagation();
         const newState = bookmarkUtils.toggle(localPost);
         setIsSaved(newState);
-        
-        if (newState) {
-            showIslandAlert('success', 'Сохранено', '🔖');
-        }
+        if (newState) showIslandAlert('success', 'Сохранено', '🔖');
     };
 
     const handleEditStart = () => {
@@ -150,36 +148,55 @@ export const usePostCard = (post, initialShowComments, highlightCommentId) => {
     };
 
     const handleLinkClick = useCallback((e, url) => {
-        e.preventDefault();
-        e.stopPropagation();
-        if (isTrustedLink(url)) window.api.openExternalLink(url);
-        else openModal(<ExternalLinkModal url={url} />);
-    }, [openModal]);
+        handleGlobalLinkClick(e, url, navigate, openModal);
+    }, [navigate, openModal]);
 
     const loadComments = useCallback(async (isMore = false) => {
         if (loadingComments) return;
+        if (isMore && !hasMoreComments) return;
+        
         setLoadingComments(true);
         try {
             const cursor = isMore ? commentsCursor : null;
             const res = await window.api.call(`/posts/${localPost.id}/comments?limit=20${cursor ? `&cursor=${cursor}` : ''}`, 'GET');
-            const newComments = res?.data?.comments || res?.comments || [];
-            const pagination = res?.data?.pagination || res?.pagination;
+            
+            const dataObj = res?.data || res || {};
+            const newComments = dataObj.comments || dataObj.data || (Array.isArray(dataObj) ? dataObj : []);
+            const paginationObj = dataObj.pagination || dataObj;
+            
+            const nextCur = paginationObj.nextCursor || paginationObj.next_cursor || null;
+            
+            let hasMore = false;
+            if (typeof paginationObj.hasMore === 'boolean') hasMore = paginationObj.hasMore;
+            else if (typeof paginationObj.has_more === 'boolean') hasMore = paginationObj.has_more;
+            else if (nextCur) hasMore = true;
+            else if (newComments.length >= 20) hasMore = true;
+            else if (!isMore && commentsCount > newComments.length) hasMore = true;
 
-            setComments(prev => isMore ? [...prev, ...newComments] : newComments);
-            setCommentsCursor(pagination?.nextCursor || null);
-            setHasMoreComments(pagination?.hasMore || false);
+            setComments(prev => {
+                if (!isMore) return newComments;
+                const existingIds = new Set(prev.map(c => c.id));
+                const uniqueNew = newComments.filter(c => !existingIds.has(c.id));
+                return [...prev, ...uniqueNew];
+            });
+
+            setCommentsCursor(nextCur);
+            setHasMoreComments(hasMore);
         } catch (err) {
             console.error("Comments error:", err);
         } finally {
             setLoadingComments(false);
         }
-    }, [loadingComments, commentsCursor, localPost.id]);
-
-    useEffect(() => { 
-        if (showComments && comments.length === 0) loadComments(); 
-    }, [showComments, comments.length, loadComments]);
+    }, [loadingComments, commentsCursor, localPost.id, hasMoreComments, commentsCount]);
 
     
+    useEffect(() => { 
+        if (showComments && comments.length === 0 && !hasFetchedComments.current) {
+            hasFetchedComments.current = true; 
+            loadComments(); 
+        }
+    }, [showComments, comments.length, loadComments]);
+
     const musicData = useMemo(() => {
         if (!localPost.content?.includes('#nowkie_music_track')) return null;
         try {
@@ -201,39 +218,24 @@ export const usePostCard = (post, initialShowComments, highlightCommentId) => {
         return null;
     }, [localPost]);
 
-    return {
-        
-        currentUser,
-        localPost,
-        isDeleted, setIsDeleted,
-        wasViewed,
-        postRef,
-        isOwner,
-        musicData,
+    const isThisTrackPlaying = useMemo(() => {
+        return currentTrackId === localPost.id && isGlobalPlaying;
+    }, [currentTrackId, localPost.id, isGlobalPlaying]);
 
-        
+    return {
+        currentUser, localPost,
+        isDeleted, setIsDeleted, wasViewed, postRef, isOwner, musicData,
         liked, likesCount, handleLike,
         isReposted, repostsCount, handleRepost,
         isSaved, handleSave, 
-        
-        
-        isEditing, setIsEditing,
-        editContent, setEditContent,
-        textareaRef,
-        handleEditStart,
-        handleEditSave,
-
-        
+        isEditing, setIsEditing, editContent, setEditContent, textareaRef,
+        handleEditStart, handleEditSave,
         showComments, setShowComments,
         comments, setComments,
-        loadingComments,
-        commentsCount, setCommentsCount,
+        loadingComments, commentsCount, setCommentsCount,
         hasMoreComments, loadComments,
         replyTo, setReplyTo,
-
-        
-        handleLinkClick,
-        navigate,
-        openModal
+        handleLinkClick, navigate, openModal,
+        isThisTrackPlaying, playTrack, togglePlay
     };
 };

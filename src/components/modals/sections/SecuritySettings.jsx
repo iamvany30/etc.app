@@ -1,10 +1,13 @@
- 
 import React, { useState } from 'react';
 import { apiClient } from '../../../api/client';
+import { useModalStore } from '../../../store/modalStore';
+import DeleteAccountModal from '../DeleteAccountModal';
 
 const SecuritySettings = ({ setStatus }) => {
     const [passwords, setPasswords] = useState({ current: '', new: '', confirm: '' });
     const [loading, setLoading] = useState(false);
+    const [exporting, setExporting] = useState(false);
+    const openModal = useModalStore(s => s.openModal);
 
     const handleSave = async () => {
         if (passwords.new !== passwords.confirm) {
@@ -17,7 +20,7 @@ const SecuritySettings = ({ setStatus }) => {
         try {
             const res = await apiClient.changePassword(passwords.current, passwords.new);
             if (res && !res.error) {
-                setStatus({ type: 'success', msg: 'Пароль изменен' });
+                setStatus({ type: 'success', msg: 'Пароль успешно изменен' });
                 setPasswords({ current: '', new: '', confirm: '' });
             } else {
                 setStatus({ type: 'error', msg: 'Неверный текущий пароль' });
@@ -29,13 +32,55 @@ const SecuritySettings = ({ setStatus }) => {
         }
     };
 
+    const handleExport = async () => {
+        setExporting(true);
+        setStatus({ type: '', msg: 'Запрос данных...' });
+        try {
+            const res = await apiClient.exportData();
+            
+            if (res && !res.error) {
+                const fileUrl = res.url || res.data?.url || res.downloadUrl || res.data?.downloadUrl;
+                if (fileUrl) {
+                    if (window.api?.downloadFile) {
+                        window.api.downloadFile(fileUrl);
+                    } else {
+                        window.location.href = fileUrl;
+                    }
+                    setStatus({ type: 'success', msg: 'Загрузка архива начата' });
+                } else {
+                    const dataStr = JSON.stringify(res.data || res, null, 2);
+                    const blob = new Blob([dataStr], { type: "application/json" });
+                    const url = URL.createObjectURL(blob);
+                    
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = `itd_export_${Date.now()}.json`;
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
+                    URL.revokeObjectURL(url);
+                    
+                    setStatus({ type: 'success', msg: 'Данные успешно выгружены' });
+                }
+            } else {
+                setStatus({ type: 'error', msg: res.error?.message || 'Ошибка выгрузки' });
+            }
+        } catch (e) {
+            setStatus({ type: 'error', msg: 'Ошибка сети' });
+        } finally {
+            setExporting(false);
+        }
+    };
+
     return (
         <div className="settings-form">
+            <div className="settings-section-title">Изменение пароля</div>
             <div className="form-group">
                 <label className="form-label">Текущий пароль</label>
                 <input 
                     type="password" 
                     className="form-input" 
+                    placeholder="Введите текущий пароль"
                     value={passwords.current} 
                     onChange={e => setPasswords({...passwords, current: e.target.value})} 
                 />
@@ -45,6 +90,7 @@ const SecuritySettings = ({ setStatus }) => {
                 <input 
                     type="password" 
                     className="form-input" 
+                    placeholder="Не менее 8 символов"
                     value={passwords.new} 
                     onChange={e => setPasswords({...passwords, new: e.target.value})} 
                 />
@@ -54,13 +100,33 @@ const SecuritySettings = ({ setStatus }) => {
                 <input 
                     type="password" 
                     className="form-input" 
+                    placeholder="Повторите новый пароль"
                     value={passwords.confirm} 
                     onChange={e => setPasswords({...passwords, confirm: e.target.value})} 
                 />
             </div>
-            <button className="settings-save-btn" onClick={handleSave} disabled={loading}>
+            <button className="settings-save-btn" onClick={handleSave} disabled={loading || !passwords.new}>
                 {loading ? 'Обновление...' : 'Сменить пароль'}
             </button>
+
+            <div className="settings-section-title">Управление данными</div>
+            
+            <div className="settings-option" onClick={handleExport} style={{ pointerEvents: exporting ? 'none' : 'auto', opacity: exporting ? 0.6 : 1 }}>
+                <div className="settings-option-info">
+                    <span className="settings-option-name">Скачать архив данных</span>
+                    <span className="settings-option-desc">Экспорт ваших постов, комментариев и настроек</span>
+                </div>
+                <button className="settings-save-btn secondary" style={{ width: 'auto', margin: 0, padding: '8px 20px' }}>
+                    {exporting ? 'Сбор...' : 'Скачать'}
+                </button>
+            </div>
+
+            <div className="settings-option" onClick={() => openModal(<DeleteAccountModal />)}>
+                <div className="settings-option-info">
+                    <span className="settings-option-name" style={{ color: '#f4212e' }}>Удалить аккаунт</span>
+                    <span className="settings-option-desc">Полное и безвозвратное удаление всех ваших данных</span>
+                </div>
+            </div>
         </div>
     );
 };

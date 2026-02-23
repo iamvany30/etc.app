@@ -1,8 +1,8 @@
 import React from 'react';
-import { useModal } from '../../context/ModalContext';
+import { useModalStore } from '../../store/modalStore';
 
 const ConfirmDeleteModal = ({ onConfirm }) => {
-    const { closeModal } = useModal();
+    const closeModal = useModalStore(state => state.closeModal);
 
     const handleConfirm = () => {
         onConfirm();  

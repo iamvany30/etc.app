@@ -1,7 +1,12 @@
+/* @source src/core/FontLoader.js */
 export const FontLoader = {
     async init() {
-        const activeFontId = localStorage.getItem('itd_font_family') || 'system';
+        const activeFontId = localStorage.getItem('itd_font_family') || 'inter';
         const activeEmojiId = localStorage.getItem('itd_emoji_family') || 'system';
+
+        
+        document.documentElement.setAttribute('data-font', activeFontId);
+        document.documentElement.setAttribute('data-emoji', activeEmojiId);
 
         const styleId = 'dynamic-fonts-style';
         let styleTag = document.getElementById(styleId);
@@ -14,43 +19,25 @@ export const FontLoader = {
 
         try {
             let css = '';
-            
-            let textFamily = 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif';
-            let emojiFamily = '"Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", sans-serif';
-
             let localFiles = [];
-            if (window.api) {
-                localFiles = await window.api.invoke('fonts:get-local');
-            }
-
-            
-            if (activeFontId && activeFontId !== 'system') {
-                const textFile = localFiles.find(f => f.startsWith(activeFontId + '.'));
-                if (textFile) {
-                    const ext = textFile.split('.').pop();
-                    const format = ext === 'ttf' ? 'truetype' : ext === 'otf' ? 'opentype' : ext === 'woff2' ? 'woff2' : 'woff';
-                    
-                    css += `
-                        @font-face {
-                            font-family: 'DynamicTextFont';
-                            src: url('font://${textFile}') format('${format}');
-                            font-weight: 100 900;
-                            font-display: swap;
-                        }
-                    `;
-                    textFamily = `'DynamicTextFont', ${textFamily}`;
+            if (window.api && window.api.invoke) {
+                try {
+                    localFiles = await window.api.invoke('fonts:get-local');
+                } catch (e) {
+                    console.warn("[FontLoader] Failed to get local fonts", e);
                 }
             }
 
             
-            if (activeEmojiId && activeEmojiId !== 'system') {
+            let customEmojiFontString = '';
+            if (activeEmojiId !== 'system') {
                 const emojiFile = localFiles.find(f => f.startsWith(activeEmojiId + '.'));
                 if (emojiFile) {
                     const ext = emojiFile.split('.').pop();
                     const format = ext === 'ttf' ? 'truetype' : ext === 'otf' ? 'opentype' : ext === 'woff2' ? 'woff2' : 'woff';
                     
                     
-                    const emojiRange = 'U+00A9-00AE, U+200D, U+20E3, U+203C-3299, U+FE0F, U+1F000-1FBFF';
+                    const emojiRange = 'U+00A9-00AE, U+200D, U+20E3, U+203C-3299, U+FE0F, U+1F000-1FAFF';
                     
                     css += `
                         @font-face {
@@ -60,16 +47,57 @@ export const FontLoader = {
                             font-display: swap;
                         }
                     `;
-                    emojiFamily = `'DynamicEmojiFont', ${emojiFamily}`;
+                    
+                    customEmojiFontString = `'DynamicEmojiFont', `;
                 }
             }
 
-            styleTag.textContent = css;
+            
+            const standardFonts = {
+                'inter': `'LocalInter'`,
+                'manrope': `'LocalManrope'`,
+                'system': `-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial`,
+                'jetbrains': `'LocalJetBrains', monospace`
+            };
+
+            let textFontString = standardFonts['inter']; 
+
+            if (standardFonts[activeFontId]) {
+                textFontString = standardFonts[activeFontId];
+            } else {
+                const textFile = localFiles.find(f => f.startsWith(activeFontId + '.'));
+                if (textFile) {
+                    const ext = textFile.split('.').pop();
+                    const format = ext === 'ttf' ? 'truetype' : ext === 'otf' ? 'opentype' : ext === 'woff2' ? 'woff2' : 'woff';
+                    css += `
+                        @font-face {
+                            font-family: 'DynamicTextFont';
+                            src: url('font://${textFile}') format('${format}');
+                            font-weight: 100 900;
+                            font-display: block;
+                        }
+                    `;
+                    textFontString = `'DynamicTextFont'`;
+                } else {
+                    
+                    document.documentElement.setAttribute('data-font', 'inter');
+                }
+            }
 
             
-            document.documentElement.style.setProperty('--font-emoji', emojiFamily);
             
-            document.documentElement.style.setProperty('--font-main', `${textFamily}, ${emojiFamily}`);
+            const systemEmojiFallback = `"Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji", sans-serif`;
+            
+            
+            
+            const finalFontMain = `${customEmojiFontString}${textFontString}, ${systemEmojiFallback}`;
+            const finalFontEmoji = `${customEmojiFontString}${systemEmojiFallback}`;
+
+            
+            document.documentElement.style.setProperty('--font-main', finalFontMain);
+            document.documentElement.style.setProperty('--font-emoji', finalFontEmoji);
+
+            styleTag.textContent = css;
 
         } catch (e) {
             console.error("FontLoader failed:", e);

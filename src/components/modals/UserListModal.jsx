@@ -1,13 +1,13 @@
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { apiClient } from '../../api/client';
-import { useModal } from '../../context/ModalContext';
+import { useModalStore } from '../../store/modalStore';
 import '../../styles/UserListModal.css';
 
 const UserListModal = ({ username, type, title }) => {
     const [users, setUsers] = useState([]);
     const [loading, setLoading] = useState(true);
-    const { closeModal } = useModal();
+    const closeModal = useModalStore(state => state.closeModal);
 
     useEffect(() => {
         const fetchUsers = async () => {
@@ -38,7 +38,6 @@ const UserListModal = ({ username, type, title }) => {
                     <div className="loading-indicator">Загрузка...</div>
                 ) : users.length > 0 ? (
                     users.map(user => {
-                         
                         const isMutual = user.isFollowing && user.isFollowedBy;
                         const followsYou = user.isFollowedBy && !user.isFollowing;
 

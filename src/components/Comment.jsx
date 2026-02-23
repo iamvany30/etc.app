@@ -1,11 +1,10 @@
-/* @source src/components/Comment.jsx */
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
-import { Link } from 'react-router-dom';
-import { useModal } from '../context/ModalContext';
-import ExternalLinkModal, { isTrustedLink } from './modals/ExternalLinkModal';
+import { Link, useNavigate } from 'react-router-dom';
+import { useModalStore } from '../store/modalStore';
+import { handleGlobalLinkClick } from '../utils/linkUtils';
 import MediaGrid from './MediaGrid';
+import { ReplyIcon } from './icons/CustomIcons';
 import '../styles/Comment.css';
-
 
 const TimeAgo = ({ dateStr }) => {
     const [time, setTime] = useState('');
@@ -26,14 +25,13 @@ const TimeAgo = ({ dateStr }) => {
         return () => clearInterval(timer);
     }, [dateStr]);
 
-    return <span className="post-handle" style={{ marginLeft: 4 }}>· {time}</span>;
+    return <span className="post-time">{time}</span>;
 };
 
+const Comment = ({ comment, postId, onReply, highlightCommentId, isReply = false }) => {
+    const openModal = useModalStore(state => state.openModal);
+    const navigate = useNavigate();
 
-const Comment = ({ comment, postId, onReply, highlightCommentId }) => {
-    const { openModal } = useModal();
-
-    
     const shouldExpand = useMemo(() => {
         const checkContainsHighlight = (replies) => {
             if (!replies || !highlightCommentId) return false;
@@ -44,64 +42,14 @@ const Comment = ({ comment, postId, onReply, highlightCommentId }) => {
 
     const [showReplies, setShowReplies] = useState(shouldExpand);
 
-    
     useEffect(() => {
         if (shouldExpand) setShowReplies(true);
     }, [shouldExpand]);
 
-    
     const handleLinkClick = useCallback((e, url) => {
-        e.preventDefault();
-        e.stopPropagation();
+        handleGlobalLinkClick(e, url, navigate, openModal);
+    }, [navigate, openModal]);
 
-        try {
-            const urlObj = new URL(url);
-            const isInternalDomain = urlObj.hostname.endsWith('итд.com') || 
-                                     urlObj.hostname.endsWith('xn--d1ah4a.com') ||
-                                     urlObj.hostname === 'localhost';
-
-            if (isInternalDomain) {
-                const path = urlObj.pathname;
-
-                
-                const postMatch = path.match(/^\/@[^/]+\/post\/([^/]+)/);
-                if (postMatch) {
-                    window.location.hash = `#/post/${postMatch[1]}`;
-                    return;
-                }
-
-                
-                const staticPages = { 
-                    '/feed': '#/', 
-                    '/explore': '#/explore', 
-                    '/notifications': '#/notifications', 
-                    '/music': '#/music' 
-                };
-                if (staticPages[path]) {
-                    window.location.hash = staticPages[path];
-                    return;
-                }
-
-                
-                if (path.length > 1) {
-                    const username = path.startsWith('/@') ? path.substring(2) : path.substring(1);
-                    window.location.hash = `#/profile/${username}`;
-                    return;
-                }
-            }
-        } catch (err) {
-            console.error("Link parsing error", err);
-        }
-
-        
-        if (isTrustedLink(url)) {
-            window.api.openExternalLink(url);
-        } else {
-            openModal(<ExternalLinkModal url={url} />);
-        }
-    }, [openModal]);
-
-    
     const renderParsedText = useMemo(() => {
         const text = comment.content;
         if (!text) return null;
@@ -110,7 +58,7 @@ const Comment = ({ comment, postId, onReply, highlightCommentId }) => {
         const parts = text.split(regex).filter(Boolean);
 
         return parts.map((part, i) => {
-            if (/^https?:\/\//.test(part)) {
+            if (/^https?:\/\/[^\s]+/.test(part)) {
                 return <a key={i} href={part} onClick={(e) => handleLinkClick(e, part)} className="post-external-link">{part}</a>;
             }
             if (/^www\./.test(part)) {
@@ -134,15 +82,20 @@ const Comment = ({ comment, postId, onReply, highlightCommentId }) => {
 
     return (
         <div 
-            className={`comment-thread ${isHighlighted ? 'highlighted' : ''}`} 
+            className={`comment-thread ${isHighlighted ? 'highlighted' : ''} ${isReply ? 'is-reply' : ''}`} 
             id={`comment-${comment.id}`}
         >
             <div className="comment-item">
-                <Link to={`/profile/${comment.author.username}`} className="comment-avatar-link">
-                    <div className="avatar comment-avatar" style={{ backgroundColor: 'var(--color-item-bg)' }}>
-                        {comment.author.avatar || "👤"}
-                    </div>
-                </Link>
+                <div className="comment-avatar-col">
+                    <Link to={`/profile/${comment.author.username}`} className="comment-avatar-link">
+                        <div className="avatar comment-avatar">
+                            {comment.author.avatar || "👤"}
+                        </div>
+                    </Link>
+                    {(showReplies || (!showReplies && comment.repliesCount > 0)) && (
+                        <div className="comment-thread-line" />
+                    )}
+                </div>
                 
                 <div className="comment-content-wrapper">
                     <div className="comment-header">
@@ -150,6 +103,7 @@ const Comment = ({ comment, postId, onReply, highlightCommentId }) => {
                             {comment.author.displayName}
                         </Link>
                         <span className="post-handle">@{comment.author.username}</span>
+                        <span className="post-dot">·</span>
                         <TimeAgo dateStr={comment.createdAt} />
                         
                         {isMutual && <span className="mutual-badge-mini">взаимно</span>}
@@ -175,28 +129,32 @@ const Comment = ({ comment, postId, onReply, highlightCommentId }) => {
                             className="comment-reply-btn" 
                             onClick={() => onReply && onReply(comment)}
                         >
-                            Ответить
+                            <ReplyIcon />
+                            <span>Ответить</span>
                         </button>
                     </div>
                 </div>
             </div>
 
-            {}
             {comment.repliesCount > 0 && !showReplies && (
-                <button className="view-replies-btn" onClick={() => setShowReplies(true)}>
-                    ── Показать ответы ({comment.repliesCount})
-                </button>
+                <div className="comment-show-replies">
+                    <div className="comment-thread-line-stub" />
+                    <button className="view-replies-btn" onClick={() => setShowReplies(true)}>
+                        Показать ответы ({comment.repliesCount})
+                    </button>
+                </div>
             )}
 
-            {showReplies && (
+            {showReplies && comment.replies && comment.replies.length > 0 && (
                 <div className="replies-container">
-                    {(comment.replies || []).map(reply => (
+                    {comment.replies.map(reply => (
                         <Comment 
                             key={reply.id} 
                             comment={reply} 
                             postId={postId}
                             onReply={onReply}
-                            highlightCommentId={highlightCommentId}  
+                            highlightCommentId={highlightCommentId}
+                            isReply={true}
                         />
                     ))}
                 </div>

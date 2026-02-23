@@ -4,13 +4,14 @@ import { usersService } from './services/users';
 import { exploreService } from './services/explore';
 import { notificationsService } from './services/notifications';
 import { mediaService } from './services/media';
+import { reportsService } from './services/reports'; 
 
- 
 export const apiClient = {
     ...authService,
     ...postsService,
     ...usersService,
     ...exploreService,
     ...notificationsService,
-    ...mediaService
+    ...mediaService,
+    ...reportsService 
 };

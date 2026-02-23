@@ -1,13 +1,35 @@
-import { useEffect, useRef } from 'react';
-import { useUser } from '../context/UserContext';
+/* @source src/components/NotificationWatcher.jsx */
+import { useEffect } from 'react';
+import { useUserStore } from '../store/userStore';
+import { useIslandStore } from '../store/islandStore';
 import { apiClient } from '../api/client';
-
 
 const DEFAULT_ICON = '/logo192.png'; 
 
+const generateEmojiIcon = (emoji) => {
+    try {
+        const canvas = document.createElement('canvas');
+        canvas.width = 128;
+        canvas.height = 128;
+        const ctx = canvas.getContext('2d');
+        if (!ctx) return null;
+        ctx.fillStyle = '#161b22'; 
+        ctx.beginPath();
+        ctx.arc(64, 64, 64, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.font = '80px "Segoe UI Emoji", "Apple Color Emoji", sans-serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(emoji || '👤', 64, 72); 
+        return canvas.toDataURL('image/png');
+    } catch (e) {
+        return null;
+    }
+};
+
 const NotificationWatcher = () => {
-    const { currentUser } = useUser();
-    const lastNotificationIdRef = useRef(null);
+    const currentUser = useUserStore(state => state.currentUser);
+    const showIslandAlert = useIslandStore(state => state.showIslandAlert);
 
     useEffect(() => {
         if (!currentUser) return;
@@ -16,109 +38,87 @@ const NotificationWatcher = () => {
             Notification.requestPermission();
         }
 
-        const checkNotifications = async () => {
-            try {
-                
-                const res = await apiClient.getNotifications('all', 0, 5);
-                
-                const list = res?.notifications || res?.data?.notifications || [];
+        const removeListener = window.api.on('notification', (data) => {
+            console.log('[Watcher] Incoming:', data);
 
-                if (list.length === 0) return;
+            const notif = data.notification || data; 
+            if (!notif || !notif.id) return;
 
-                const latest = list[0];
+            showNativeNotification(notif);
 
-                
-                if (!lastNotificationIdRef.current) {
-                    lastNotificationIdRef.current = latest.id;
-                    return;
-                }
+            window.dispatchEvent(new CustomEvent('notification-count-update', { 
+                detail: { type: 'increment' } 
+            }));
 
-                
-                if (latest.id !== lastNotificationIdRef.current) {
-                    lastNotificationIdRef.current = latest.id;
-                    if (!latest.read) {
-                        showWindowsNotification(latest);
-                    }
-                }
-            } catch (error) {
-                console.error("Ошибка проверки уведомлений:", error);
+            const actor = notif.actor?.displayName || 'Пользователь';
+            let msg = 'Новое уведомление';
+            
+            switch (notif.type) {
+                case 'like': msg = `${actor} оценил(а) вашу запись`; break;
+                case 'comment': msg = `${actor} прокомментировал(а)`; break;
+                case 'reply': msg = `${actor} ответил(а) вам`; break;
+                case 'follow': msg = `${actor} подписался(ась)`; break;
+                case 'mention': msg = `${actor} упомянул(а) вас`; break;
             }
+            
+            const islandIcon = notif.actor?.avatar?.startsWith('http') ? '🔔' : (notif.actor?.avatar || '🔔');
+            showIslandAlert('success', msg, islandIcon);
+        });
+
+        apiClient.getNotificationsCount().then(res => {
+            if (res && res.count !== undefined) {
+                window.dispatchEvent(new CustomEvent('notification-count-update', { 
+                    detail: { type: 'set', value: res.count } 
+                }));
+            }
+        }).catch(() => {});
+
+        return () => {
+            if (removeListener) removeListener();
         };
-
-        checkNotifications();
-        const intervalId = setInterval(checkNotifications, 30000); 
-
-        return () => clearInterval(intervalId);
-    }, [currentUser]);
+    }, [currentUser, showIslandAlert]);
 
     return null;
 };
 
-function showWindowsNotification(notif) {
+function showNativeNotification(notif) {
     if (Notification.permission !== 'granted') return;
 
     const actorName = notif.actor?.displayName || 'Пользователь';
     let title = 'итд.app'; 
-    let body = 'Что-то произошло';
-
+    let body = notif.preview || 'Новое взаимодействие';
     
     switch (notif.type) {
-        case 'like':
-            title = 'Новый лайк';
-            body = `${actorName} оценил(а) вашу запись: "${notif.preview || 'Пост'}"`;
-            break;
-        case 'comment':
-            title = 'Новый комментарий';
-            body = `${actorName} прокомментировал(а): "${notif.preview || ''}"`;
-            break;
-        case 'reply':
-            title = 'Ответ на комментарий';
-            body = `${actorName} ответил(а) вам: "${notif.preview || ''}"`;
-            break;
-        case 'repost':
-            title = 'Репост';
-            body = `${actorName} поделился(ась) вашей записью`;
-            break;
-        case 'follow':
-            title = 'Новый подписчик';
-            body = `${actorName} теперь читает вас!`;
-            break;
-        case 'mention':
-            title = 'Упоминание';
-            body = `${actorName} упомянул(а) вас в записи`;
-            break;
-        case 'wall_post':
-            title = 'Запись на стене';
-            body = `${actorName} оставил(а) запись в вашем профиле`;
-            break;
-        default:
-            title = `Уведомление от ${actorName}`;
-            body = notif.preview || 'Новое взаимодействие';
+        case 'like': title = 'Новый лайк'; body = `${actorName} оценил(а) запись`; break;
+        case 'comment': title = 'Новый комментарий'; body = `${actorName}: ${notif.preview}`; break;
+        case 'follow': title = 'Новый подписчик'; body = `${actorName} теперь читает вас!`; break;
+        case 'mention': title = 'Вас упомянули'; body = `${actorName} упомянул(а) вас`; break;
     }
 
-    
     let iconUrl = DEFAULT_ICON;
-    if (notif.actor?.avatar && notif.actor.avatar.startsWith('http')) {
-        iconUrl = notif.actor.avatar;
+    const avatar = notif.actor?.avatar;
+
+    if (avatar) {
+        if (avatar.startsWith('http')) {
+            iconUrl = avatar;
+        } else {
+            const generated = generateEmojiIcon(avatar);
+            if (generated) iconUrl = generated;
+        }
     }
 
-    
-    const myNotification = new Notification(title, {
-        body: body,
-        icon: iconUrl,
+    const n = new Notification(title, { 
+        body, 
+        icon: iconUrl, 
         silent: false,
         tag: notif.id 
     });
 
-    myNotification.onclick = () => {
+    n.onclick = () => {
         if (window.api && window.api.window) {
-            
             window.api.window.maximize(); 
-            window.focus();
-            
-            
-            
         }
+        window.location.hash = '#/notifications';
     };
 }
 

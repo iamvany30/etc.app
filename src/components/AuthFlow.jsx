@@ -1,13 +1,15 @@
-
+/* @source src/components/AuthFlow.jsx */
 import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { useLocation } from 'react-router-dom'; 
-import { useUser } from '../context/UserContext';
+import { useUserStore } from '../store/userStore';
 import Login from '../pages/Login';
-import OfflinePage from '../pages/OfflinePage';
 import { FeedCache } from '../core/FeedCache'; 
 
 const AuthFlow = ({ children }) => {
-    const { setCurrentUser } = useUser();
+    
+    const setCurrentUser = useUserStore(state => state.setCurrentUser);
+    const refreshAccountsList = useUserStore(state => state.refreshAccountsList);
+    
     const [status, setStatus] = useState('pending'); 
     const location = useLocation(); 
     
@@ -23,8 +25,14 @@ const AuthFlow = ({ children }) => {
             
             if (verifiedUser && !verifiedUser.error) {
                 setCurrentUser(verifiedUser);
+                
+                
+                refreshAccountsList();
+                
                 setStatus('auth');
                 window.dispatchEvent(new CustomEvent('app-network-status', { detail: 'online' }));
+                
+                
                 setTimeout(() => FeedCache.preload(), 100); 
             } else {
                 setStatus('guest');
@@ -33,26 +41,35 @@ const AuthFlow = ({ children }) => {
             console.error('[AuthFlow] Error:', e);
             setStatus('guest'); 
         }
-    }, [setCurrentUser]);
+    }, [setCurrentUser, refreshAccountsList]);
 
     useEffect(() => {
         checkSession();
-    }, []); 
+    }, [checkSession]); 
 
-    if (status === 'pending') return <div style={{ height: '100vh', backgroundColor: '#101214' }} />;
+    
+    if (status === 'pending') {
+        return <div style={{ height: '100vh', backgroundColor: 'var(--color-background, #101214)' }} />;
+    }
     
     
     if (location.pathname.startsWith('/login')) {
         return children;
     }
 
+    
     if (status === 'guest') {
-        return <Login onLoginSuccess={() => {
-            hasChecked.current = false; 
-            checkSession();
-        }} />;
+        return (
+            <Login 
+                onLoginSuccess={() => {
+                    hasChecked.current = false; 
+                    checkSession();
+                }} 
+            />
+        );
     }
 
+    
     return children;
 };
 

@@ -1,8 +1,8 @@
 import React from 'react';
-import { useModal } from '../../context/ModalContext';
+import { useModalStore } from '../../store/modalStore';
 
 const LogoutConfirmModal = ({ onConfirm, onCancel }) => {
-    const { closeModal } = useModal();
+    const closeModal = useModalStore(state => state.closeModal);
 
     const handleLogout = () => {
         onConfirm();
@@ -46,7 +46,7 @@ const LogoutConfirmModal = ({ onConfirm, onCancel }) => {
                         backgroundColor: '#f4212e',
                         color: '#fff',
                         border: 'none',
-                        borderRadius: '99px',
+                        borderRadius: '999px',
                         fontWeight: '700',
                         fontSize: '15px',
                         cursor: 'pointer'
@@ -63,7 +63,7 @@ const LogoutConfirmModal = ({ onConfirm, onCancel }) => {
                         backgroundColor: 'transparent',
                         color: 'var(--color-text)', 
                         border: '1px solid var(--color-border)', 
-                        borderRadius: '99px',
+                        borderRadius: '999px',
                         fontWeight: '700',
                         fontSize: '15px',
                         cursor: 'pointer'

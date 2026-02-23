@@ -1,16 +1,16 @@
+/* @source src/components/MediaGrid.jsx */
 import React, { useState, useEffect, useRef } from 'react';
-import { useModal } from '../context/ModalContext';
+import { useModalStore } from '../store/modalStore';
 import ImageModal from './modals/ImageModal';
 import VoicePlayer from './VoicePlayer';
+import { MediaDownloadIcon, MediaErrorIcon } from './icons/CustomIcons';
 import '../styles/MediaGrid.css';
-
 
 const MediaItem = ({ media, isVid, onClick, onDownload }) => {
     const [isLoaded, setIsLoaded] = useState(false);
     const [hasError, setHasError] = useState(false);
     const mediaRef = useRef(null);
 
-    
     useEffect(() => {
         if (mediaRef.current) {
             if (isVid) {
@@ -30,17 +30,13 @@ const MediaItem = ({ media, isVid, onClick, onDownload }) => {
 
     return (
         <div className="media-item" onClick={onClick}>
-            {}
             {!isLoaded && !hasError && (
                 <div className="skeleton-base skeleton-media-placeholder" />
             )}
 
-            {}
             {hasError && (
                 <div className="media-error-placeholder">
-                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                        <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
-                    </svg>
+                    <MediaErrorIcon/>
                     <span>Ошибка загрузки</span>
                 </div>
             )}
@@ -49,7 +45,7 @@ const MediaItem = ({ media, isVid, onClick, onDownload }) => {
                 className="media-download-overlay-btn" 
                 onClick={(e) => onDownload(e, media)}
             >
-                <DownloadIcon />
+                <MediaDownloadIcon />
             </button>
 
             {isVid ? (
@@ -79,16 +75,8 @@ const MediaItem = ({ media, isVid, onClick, onDownload }) => {
 
 
 
-const DownloadIcon = () => (
-    <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
-        <polyline points="7 10 12 15 17 10"></polyline>
-        <line x1="12" y1="15" x2="12" y2="3"></line>
-    </svg>
-);
-
 const MediaGrid = ({ attachments }) => {
-    const { openModal } = useModal();
+    const openModal = useModalStore(state => state.openModal);
     if (!attachments || attachments.length === 0) return null;
 
     const visualMedia = attachments.filter(a => {

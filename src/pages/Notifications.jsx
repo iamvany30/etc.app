@@ -1,30 +1,41 @@
 /* @source src/pages/Notifications.jsx */
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { apiClient } from '../api/client';
 import { NotificationSkeleton } from '../components/Skeletons';
 import '../styles/Notifications.css';
 
-
 import {
-    IconLikeFilled,
-    IconCommentFilled,
-    IconRepostFilled,
-    IconUserFilled,
-    IconMentionFilled,
-    IconWallPost
-} from '../components/icons/NotificationIcons';
+    Heart,
+    ChatRoundDots,
+    Repeat,
+    UserPlus,
+    MentionCircle,
+    DocumentText,
+    Bell,
+    CheckRead
+} from "@solar-icons/react";
+
 
 const getNotificationTypeInfo = (type) => {
     switch (type) {
-        case 'like': return { icon: <IconLikeFilled />, badgeClass: 'badge-like', text: 'оценил(а) ваш пост' };
-        case 'comment': return { icon: <IconCommentFilled />, badgeClass: 'badge-comment', text: 'прокомментировал(а) ваш пост' };
-        case 'reply': return { icon: <IconCommentFilled />, badgeClass: 'badge-reply', text: 'ответил(а) на ваш комментарий' };
-        case 'repost': return { icon: <IconRepostFilled />, badgeClass: 'badge-repost', text: 'сделал(а) репост вашего поста' };
-        case 'follow': return { icon: <IconUserFilled />, badgeClass: 'badge-follow', text: 'подписался(ась) на вас' };
-        case 'mention': return { icon: <IconMentionFilled />, badgeClass: 'badge-mention', text: 'упомянул(а) вас' };
-        case 'wall_post': return { icon: <IconWallPost />, badgeClass: 'badge-wall', text: 'написал(а) на вашей стене' };
-        default: return { icon: <IconUserFilled />, badgeClass: 'badge-default', text: 'взаимодействовал(а) с вами' };
+        case 'like': 
+            return { icon: <Heart variant="Bold" size={14} />, badgeClass: 'badge-like', text: 'оценил(а) ваш пост' };
+        case 'comment': 
+            return { icon: <ChatRoundDots variant="Bold" size={14} />, badgeClass: 'badge-comment', text: 'прокомментировал(а)' };
+        case 'reply': 
+            return { icon: <ChatRoundDots variant="Bold" size={14} />, badgeClass: 'badge-reply', text: 'ответил(а) вам' };
+        case 'repost': 
+            return { icon: <Repeat variant="Bold" size={14} />, badgeClass: 'badge-repost', text: 'сделал(а) репост' };
+        case 'follow': 
+            return { icon: <UserPlus variant="Bold" size={14} />, badgeClass: 'badge-follow', text: 'подписался(ась) на вас' };
+        case 'mention': 
+        case 'mention_user':
+            return { icon: <MentionCircle variant="Bold" size={14} />, badgeClass: 'badge-mention', text: 'упомянул(а) вас' };
+        case 'wall_post': 
+            return { icon: <DocumentText variant="Bold" size={14} />, badgeClass: 'badge-wall', text: 'написал(а) на стене' };
+        default: 
+            return { icon: <Bell variant="Bold" size={14} />, badgeClass: 'badge-default', text: 'взаимодействовал(а)' };
     }
 };
 
@@ -49,54 +60,88 @@ const TimeAgo = ({ dateStr }) => {
 };
 
 const NotificationItem = React.memo(({ notif }) => {
+    const navigate = useNavigate();
     const { actor, type, preview, createdAt, read, targetId, context } = notif;
     const { icon, badgeClass, text } = getNotificationTypeInfo(type);
     const itemRef = useRef(null);
 
-    const getNotificationLink = () => {
-        if (type === 'follow' || type === 'mention_user') return `/profile/${actor.username}`;
-        if (targetId) {
-            if ((type === 'comment' || type === 'reply') && context?.commentId) {
-                return `/post/${targetId}#comment-${context.commentId}`;
-            }
-            return `/post/${targetId}`;
-        }
-        return `/profile/${actor.username}`;
-    };
-
-    
     useEffect(() => {
         if (read || !itemRef.current) return;
         const observer = new IntersectionObserver((entries) => {
             if (entries[0].isIntersecting) {
-                apiClient.markBatchRead([notif.id]).catch(() => {});
+                apiClient.markBatchRead([notif.id]).then(() => {
+                    window.dispatchEvent(new CustomEvent('notification-count-update', { 
+                        detail: { type: 'decrement' } 
+                    }));
+                }).catch(() => {});
                 observer.disconnect();
             }
-        }, { threshold: 0.1 });
+        }, { threshold: 0.5 });
         observer.observe(itemRef.current);
         return () => observer.disconnect();
     }, [notif.id, read]);
 
+    
+    const handleMainClick = (e) => {
+        if (type === 'follow') {
+            navigate(`/profile/${actor.username}`);
+            return;
+        }
+        
+        if (targetId) {
+            if ((type === 'comment' || type === 'reply') && context?.commentId) {
+                navigate(`/post/${targetId}#comment-${context.commentId}`);
+            } else {
+                navigate(`/post/${targetId}`);
+            }
+        } else {
+            navigate(`/profile/${actor.username}`);
+        }
+    };
+
+    const handleProfileClick = (e) => {
+        e.stopPropagation(); 
+        navigate(`/profile/${actor.username}`);
+    };
+
     return (
-        <Link to={getNotificationLink()} className={`notification-item ${!read ? 'unread' : ''}`} ref={itemRef}>
-            <div className="notif-avatar-container">
-                <div className="notif-avatar-wrap">
-                    <div className="avatar notif-avatar-img" style={{width: 48, height: 48, fontSize: 20}}>
-                        {actor.avatar && actor.avatar.length > 5 ? <img src={actor.avatar} alt="" /> : (actor.avatar || "👤")}
+        <div 
+            className={`notification-item ${!read ? 'unread' : ''}`} 
+            ref={itemRef}
+            onClick={handleMainClick}
+        >
+            <div className="notif-avatar-section">
+                <div className="notif-avatar-wrapper" onClick={handleProfileClick}>
+                    <div className="avatar notif-avatar">
+                        {actor.avatar && actor.avatar.length > 5 
+                            ? <img src={actor.avatar} alt={actor.username} /> 
+                            : (actor.avatar || "👤")}
                     </div>
-                    <div className={`notif-type-badge ${badgeClass}`}>{icon}</div>
+                    <div className={`notif-badge ${badgeClass}`}>
+                        {icon}
+                    </div>
                 </div>
             </div>
-            <div className="notif-body">
-                <div className="notif-header">
-                    <span className="notif-actor-name">{actor.displayName}</span>
+
+            <div className="notif-content">
+                <div className="notif-header-line">
+                    <span className="notif-actor-link" onClick={handleProfileClick}>
+                        {actor.displayName}
+                    </span>
                     <span className="notif-action-text">{text}</span>
                     <span className="notif-dot">·</span>
                     <TimeAgo dateStr={createdAt} />
                 </div>
-                {preview && <div className="notif-preview-text">{preview}</div>}
+                
+                {preview && (
+                    <div className="notif-preview-bubble">
+                        {preview}
+                    </div>
+                )}
             </div>
-        </Link>
+
+            {!read && <div className="notif-unread-dot" />}
+        </div>
     );
 });
 
@@ -109,6 +154,12 @@ const NotificationsPage = () => {
     const hasMoreRef = useRef(true);
     const isFetchingRef = useRef(false);
     const sentinelRef = useRef(null);
+
+    useEffect(() => {
+        window.dispatchEvent(new CustomEvent('notification-count-update', { 
+            detail: { type: 'reset' } 
+        }));
+    }, []);
 
     const loadNotifications = useCallback(async (isInitial = false) => {
         if (isFetchingRef.current || (!isInitial && !hasMoreRef.current)) return;
@@ -126,7 +177,6 @@ const NotificationsPage = () => {
             const typeParam = activeTab === 'mentions' ? 'mention' : 'all';
 
             const res = await apiClient.getNotifications(typeParam, currentOffset, 20);
-
             const list = res?.notifications || res?.data?.notifications || (Array.isArray(res) ? res : []);
 
             if (Array.isArray(list)) {
@@ -134,10 +184,6 @@ const NotificationsPage = () => {
                 hasMoreRef.current = list.length === 20;
             } else {
                 hasMoreRef.current = false;
-            }
-
-            if (isInitial && activeTab === 'all' && window.resetNotificationCount) {
-                window.resetNotificationCount();
             }
         } catch (error) {
             console.error("Failed to load notifications", error);
@@ -153,86 +199,77 @@ const NotificationsPage = () => {
         loadNotifications(true);
     }, [activeTab]);
 
-    
     useEffect(() => {
         if (loading) return;
-
         const observer = new IntersectionObserver((entries) => {
             if (entries[0].isIntersecting && !isFetchingRef.current && hasMoreRef.current) {
                 loadNotifications(false);
             }
         }, { rootMargin: '200px' });
-
         const currentSentinel = sentinelRef.current;
         if (currentSentinel) observer.observe(currentSentinel);
-
-        return () => {
-            if (currentSentinel) observer.unobserve(currentSentinel);
-        };
+        return () => { if (currentSentinel) observer.unobserve(currentSentinel); };
     }, [loadNotifications, loading]);
 
     const handleMarkAllRead = async () => {
         try {
             await apiClient.markAllRead();
             setNotifications(prev => prev.map(n => ({ ...n, read: true })));
-            if (window.resetNotificationCount) window.resetNotificationCount();
+            window.dispatchEvent(new CustomEvent('notification-count-update', { 
+                detail: { type: 'reset' } 
+            }));
         } catch (e) {}
     };
 
     return (
         <div className="notifications-page">
-            <div className="sticky-header">
-                <div className="notifications-top-bar">
-                    <h2 className="sticky-header-title">Уведомления</h2>
-                    <button className="mark-all-read-btn" onClick={handleMarkAllRead}>
-                        Прочитать все
+            <header className="notif-sticky-header">
+                <div className="notif-header-top">
+                    <h2 className="header-title">Уведомления</h2>
+                    <button className="mark-read-btn" onClick={handleMarkAllRead} title="Прочитать все">
+                        <CheckRead size={20} />
                     </button>
                 </div>
-                <div className="sticky-tabs">
-                    <button
-                        className={`sticky-tab-btn ${activeTab === 'all' ? 'active' : ''}`}
-                        onClick={() => setActiveTab('all')}
-                    >
-                        Все
-                    </button>
-                    <button
-                        className={`sticky-tab-btn ${activeTab === 'mentions' ? 'active' : ''}`}
-                        onClick={() => setActiveTab('mentions')}
-                    >
-                        Упоминания
-                    </button>
+                <div className="notif-tabs-wrapper">
+                    <div className="notif-tabs">
+                        <button
+                            className={`notif-tab ${activeTab === 'all' ? 'active' : ''}`}
+                            onClick={() => setActiveTab('all')}
+                        >
+                            Все
+                        </button>
+                        <button
+                            className={`notif-tab ${activeTab === 'mentions' ? 'active' : ''}`}
+                            onClick={() => setActiveTab('mentions')}
+                        >
+                            Упоминания
+                        </button>
+                    </div>
                 </div>
-            </div>
+            </header>
 
-            <div className="notifications-list-scroll">
-                {}
+            <div className="notifications-list-scroll content-fade-in">
                 {loading ? (
                     <div className="notifications-list">
-                        {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(i => (
-                            <NotificationSkeleton key={i} />
-                        ))}
+                        {[1, 2, 3, 4, 5, 6, 7].map(i => <NotificationSkeleton key={i} />)}
                     </div>
                 ) : notifications.length > 0 ? (
-                    
-                    <div className="notifications-list content-fade-in">
+                    <div className="notifications-list">
                         {notifications.map((notif) => (
                             <NotificationItem key={notif.id} notif={notif} />
                         ))}
-
                         <div ref={sentinelRef} style={{ height: '20px', width: '100%' }} />
-
                         {loadingMore && <div className="notif-more-loader"><NotificationSkeleton /></div>}
                     </div>
                 ) : (
-                    
-                    <div className="notif-empty-state content-fade-in">
-                        <div className="notif-empty-icon">🔔</div>
-                        <h3>Здесь пока ничего нет</h3>
-                        <p>События появятся, когда кто-то оценит ваши посты или подпишется.</p>
+                    <div className="notif-empty-state">
+                        <div className="notif-empty-icon">
+                            <Bell size={48} variant="Bold" />
+                        </div>
+                        <h3>Тишина и покой</h3>
+                        <p>Здесь появятся лайки, ответы и подписки, когда вы начнете активничать.</p>
                     </div>
                 )}
-                
-                {}
                 <div style={{ height: '140px' }} />
             </div>
         </div>

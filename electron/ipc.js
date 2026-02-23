@@ -1,13 +1,11 @@
 /* @source electron/ipc.js */
-const { ipcMain, shell, app, session, dialog } = require('electron');
+const { ipcMain, shell, app, session, dialog, BrowserWindow } = require('electron');
 const path = require('path');
 const fs = require('fs/promises');
 const ffmpeg = require('fluent-ffmpeg');
 const jsmediatags = require('jsmediatags');
 const crypto = require('crypto');
 const discord = require('./discord');
-
-
 const network = require('./network');
 const { switchUserSession } = require('./network');
 const store = require('./store');
@@ -17,14 +15,13 @@ const { getMainWindow } = require('./window');
 const themes = require('./themes');
 const { API_BASE, USER_AGENT, PATHS} = require('./config');
 const fonts = require('./fonts');
+const os = require('os');
+const downloadManager = require('./downloadManager');
+const streamManager = require('./stream'); 
 
+let appStateSnapshot = {};
+let isHandlersRegistered = false;
 
-/**
- * Расшифровывает данные, экспортированные из Cookie-Editor с паролем.
- * @param {string} encryptedBase64 - Строка Base64 из файла cookies.json.
- * @param {string} password - Пароль (ожидается "123").
- * @returns {string|null} Расшифрованная JSON-строка или null в случае ошибки.
- */
 function decryptCookieEditorData(encryptedBase64, password) {
     try {
         const rawData = Buffer.from(encryptedBase64, 'base64');
@@ -39,19 +36,15 @@ function decryptCookieEditorData(encryptedBase64, password) {
         decrypted += decipher.final('utf8');
         return decrypted;
     } catch (e) {
-        console.error("[Decrypt GCM] Ошибка:", e.message);
         return null;
     }
 }
-
-
 
 async function loginWithRefreshToken(refreshTokenStr) {
     if (!refreshTokenStr || refreshTokenStr.length < 10) {
         return { success: false, error: "Некорректный токен" };
     }
-
-    
+    await network.captureAndSaveCookies();
     const cookies = [{
         name: 'refresh_token',
         value: refreshTokenStr.trim(),
@@ -62,54 +55,32 @@ async function loginWithRefreshToken(refreshTokenStr) {
         sameSite: 'lax',
         expirationDate: (Date.now() / 1000) + 31536000 
     }];
-
-    
     const sessionData = { 
         cookies, 
         localStorage: {}, 
         userAgent: USER_AGENT, 
         url: `${API_BASE}/feed` 
     };
-
     return await finalizeLoginFlow(sessionData);
 }
 
-/**
- * Ключевая функция для завершения процесса входа.
- * Применяет сессию, получает профиль пользователя для его ID и сохраняет аккаунт.
- * @param {object} sessionData - Объект сессии { cookies, userAgent, ... }.
- * @returns {Promise<object>} Результат: { success: boolean, user?: object, error?: string }.
- */
 async function finalizeLoginFlow(sessionData) {
     try {
-        
         await network.applyCookiesToSession(sessionData.cookies);
-        
         if (sessionData.userAgent) {
             require('electron').session.defaultSession.setUserAgent(sessionData.userAgent);
         }
-
         await new Promise(r => setTimeout(r, 500));  
-        
-        
         const refreshRes = await network.rawFetch('/v1/auth/refresh', { method: 'POST' });
-        
         if (refreshRes.ok && refreshRes.data.accessToken) {
             network.setGlobalAccessToken(refreshRes.data.accessToken);
-            
             const profileRes = await network.apiCall('/profile');
-            
             if (profileRes?.user?.id) {
-                
-                
                 const freshCookies = await require('electron').session.defaultSession.cookies.get({ domain: 'xn--d1ah4a.com' });
-                
-                
                 store.addAccount(profileRes.user, {
                     ...sessionData,
                     cookies: freshCookies
                 });
-                
                 return { success: true, user: profileRes.user };
             }
         }
@@ -119,9 +90,6 @@ async function finalizeLoginFlow(sessionData) {
     }
 }
 
-/**
- * Обертка для работы с временными файлами для FFMPEG.
- */
 async function withTempFiles(inputData, extension, callback) {
     const tempDir = app.getPath('temp');
     const uniqueId = `itd-${Date.now()}`;
@@ -133,7 +101,6 @@ async function withTempFiles(inputData, extension, callback) {
         const outputData = await fs.readFile(resultPath);
         return { success: true, data: outputData };
     } catch (error) {
-        console.error(`[FFMPEG-ERROR] ${error.message}`);
         return { success: false, error: error.message };
     } finally {
         await fs.unlink(tempInputPath).catch(() => {});
@@ -143,71 +110,101 @@ async function withTempFiles(inputData, extension, callback) {
     }
 }
 
-
-
 function registerHandlers() {
-    
-    
-    ipcMain.handle('app:get-version', () => app.getVersion());
+    if (isHandlersRegistered) return;
 
-    
+    ipcMain.handle('downloads:control', (e, { id, action }) => {
+        if (action === 'resume') {
+            downloadManager.resumeDownload(id);
+        } else if (action === 'cancel') {
+            downloadManager.cancelDownload(id);
+        }
+    });
+
+    ipcMain.handle('app:get-stored-user', () => {
+        try {
+            const store = require('./store'); 
+            const acc = store.getActiveAccount();
+            if (!acc || !acc.user) return null;
+            return {
+                displayName: acc.user.displayName,
+                username: acc.user.username,
+                avatar: acc.user.avatar
+            };
+        } catch (e) {
+            return null;
+        }
+    });
+
+    ipcMain.handle('app:get-version', () => app.getVersion());
     
     ipcMain.handle('get-init-user', async () => {
         logDebug("[IPC] get-init-user: Проверка активной сессии...");
         const refreshResult = await network.refreshSession();
         
         if (!refreshResult.success) {
-            logDebug(`[IPC] Сессия невалидна: ${refreshResult.reason}`);
             if (refreshResult.reason === 'network_error') return { error: { code: 'NETWORK_ERROR' } };
             return null;
         }
 
-        logDebug("[IPC] Сессия активна, запрос профиля...");
         const res = await network.apiCall('/profile');
-        
         if (res?.user?.id) {
-            logDebug(`[IPC] Профиль получен: ${res.user.username}`);
-            
             store.addAccount(res.user, store.loadSessionData());
-            network.startStreamConnection();
+            
+            
+            const token = network.getGlobalAccessToken();
+            if (token) {
+                streamManager.init(token); 
+            }
+            
+
             return res.user;
         }
-        
         return null;
     });
     
     ipcMain.handle('auth:get-accounts', () => store.getAccountsList());
 
     ipcMain.handle('auth:switch-account', async (e, userId) => {
-        logDebug(`[IPC] Переключение на аккаунт ${userId}`);
         const targetAccount = store.getAccountById(userId);
-        if (!targetAccount) return { success: false, error: "Account not found" };
+        if (!targetAccount) return { success: false, error: "ACCOUNT_NOT_FOUND" };
+
+        streamManager.stop(); 
+
+        await network.captureAndSaveCookies();
         store.setActiveId(userId);
+        
         const sessionResult = await switchUserSession(targetAccount);
-        return { success: true, warning: sessionResult.warning };
+        if (!sessionResult.success) return { success: false, error: sessionResult.error }; 
+
+        
+        const token = network.getGlobalAccessToken();
+        if (token) streamManager.init(token);
+
+        return { success: true };
     });
 
     ipcMain.handle('auth:remove-account', async (e, userId) => {
         logDebug(`[IPC] Удаление аккаунта ${userId}`);
+        
         const currentActive = store.getActiveAccount();
         const removingCurrent = currentActive && currentActive.user.id === userId;
         
+        
         store.removeAccount(userId);
+        
         
         if (removingCurrent) {
             
-            const newActive = store.getActiveAccount();
-            const win = getMainWindow();
+            await require('electron').session.defaultSession.clearStorageData({ storages: ['cookies'] });
             
-            if (newActive) {
-                await switchUserSession(newActive);
-                if (win) win.reload();
-            } else {
-                
-                await require('electron').session.defaultSession.clearStorageData();
-                if (win) win.reload();
-            }
+            
+            network.setGlobalAccessToken(null);
+            
+            
+            streamManager.stop();
         }
+        
         return { success: true };
     });
 
@@ -226,9 +223,9 @@ function registerHandlers() {
 
     ipcMain.handle('auth:manual-import', async (event, jsonString) => {
         try {
+            await network.captureAndSaveCookies();
             let cookies;
             const importData = JSON.parse(jsonString);
-
             if (importData?.data && typeof importData.data === 'string') {
                 const decryptedStr = decryptCookieEditorData(importData.data, "123");
                 if (!decryptedStr) return { success: false, error: "Не удалось расшифровать. Убедитесь, что пароль '123'" };
@@ -238,17 +235,12 @@ function registerHandlers() {
             } else {
                 return { success: false, error: "Неизвестный формат JSON" };
             }
-
             if (!Array.isArray(cookies)) return { success: false, error: "Не получен массив куки" };
-            
             const sessionData = { cookies, localStorage: {}, userAgent: USER_AGENT, url: `${API_BASE}/feed` };
             const result = await finalizeLoginFlow(sessionData);
-
             if (result.success) {
                 const win = getMainWindow();
-                if (win) {
-                    win.reload();
-                }
+                if (win) win.reload();
             }
             return result;
         } catch (error) {
@@ -257,17 +249,36 @@ function registerHandlers() {
         }
     });
 
+    ipcMain.handle('api-call', (e, a) => {
+        if (a.endpoint === '/v1/auth/logout') {
+            streamManager.stop();
+        }
+        return network.apiCall(a.endpoint, a.method, a.body);
+    });
+    ipcMain.handle('presence:start', () => {
+        const token = network.getGlobalAccessToken();
+        if (token) streamManager.init(token);
+    });
 
-    
-    ipcMain.handle('api-call', (e, a) => network.apiCall(a.endpoint, a.method, a.body));
-    ipcMain.handle('presence:start', () => network.startStreamConnection());
-    ipcMain.handle('presence:stop', () => network.stopStreamConnection());
+    ipcMain.handle('presence:stop', () => {
+        streamManager.stop();
+    });
+
     ipcMain.handle('app:quick-check', () => network.quickInternetCheck());
     ipcMain.handle('app:check-api-status', () => network.checkApiStatus());
-
-    
     ipcMain.handle('open-external-link', (e, u) => shell.openExternal(u));
-    ipcMain.handle('download-file', (e, { url }) => getMainWindow()?.webContents.downloadURL(url));
+    
+    ipcMain.handle('download-file', (e, { url }) => {
+        getMainWindow()?.webContents.downloadURL(url);
+    });
+    
+    ipcMain.handle('fs:check-exists', (e, fullPath) => {
+        try {
+            return require('fs').existsSync(fullPath);
+        } catch (err) {
+            return false;
+        }
+    });
     
     ipcMain.handle('compress-audio', async (e, { data, name }) => {
         return await withTempFiles(data, path.extname(name) || '.tmp', (ip, op) => {
@@ -294,39 +305,68 @@ function registerHandlers() {
     });
 
     ipcMain.handle('upload-music-post', async (event, { uploadId, filePath, fileName, fileType }) => {
-        console.log(`[MUSIC-UPLOAD] Начало процесса для ID: ${uploadId}`);
-        const sendStatus = (status, error = null) => event.sender?.send('upload-progress', { id: uploadId, status, error });
+        const sendStatus = (status, error = null) => {
+            const win = getMainWindow();
+            if (win && !win.isDestroyed()) {
+                win.webContents.send('upload-progress', { id: uploadId, status, error });
+            }
+        };
+
         try {
             sendStatus('reading_tags');
-            const tags = await new Promise((res, rej) => jsmediatags.read(filePath, { onSuccess: res, onError: (err) => rej(new Error(err.info)) }));
-            const title = tags.tags.title || fileName.replace(/\.[^/.]+$/, "");
-            const artist = tags.tags.artist || 'Неизвестный исполнитель';
-            const album = tags.tags.album || 'Синглы';
-            const b64 = (str) => Buffer.from(str).toString('base64');
-            const postContent = `#nowkie_music_track [title:${b64(title)}] [artist:${b64(artist)}] [album:${b64(album)}]`;
+            let tags = { title: fileName.replace(/\.[^/.]+$/, ""), artist: 'Неизвестный исполнитель', album: 'Синглы', picture: null };
+            try {
+                const readResult = await new Promise((resolve, reject) => {
+                    new jsmediatags.Reader(filePath)
+                        .setTagsToRead(['title', 'artist', 'album', 'picture'])
+                        .read({
+                            onSuccess: (tag) => resolve(tag),
+                            onError: (error) => reject(error)
+                        });
+                });
+                if (readResult && readResult.tags) {
+                    if (readResult.tags.title) tags.title = readResult.tags.title;
+                    if (readResult.tags.artist) tags.artist = readResult.tags.artist;
+                    if (readResult.tags.album) tags.album = readResult.tags.album;
+                    if (readResult.tags.picture) tags.picture = readResult.tags.picture;
+                }
+            } catch (tagError) {}
+
+            const b64 = (str) => Buffer.from(str || "").toString('base64');
+            const postContent = `#nowkie_music_track [title:${b64(tags.title)}] [artist:${b64(tags.artist)}] [album:${b64(tags.album)}]`;
             
             sendStatus('uploading_audio');
-            const audioRes = await network.uploadFileInternal(await fs.readFile(filePath), fileName, fileType);
-            if (audioRes.error) throw new Error(audioRes.error.message);
-            
+            const fileBuffer = await fs.readFile(filePath);
+            const audioRes = await network.uploadFileInternal(fileBuffer, fileName, fileType || 'audio/mpeg');
+            if (audioRes.error) throw new Error(audioRes.error.message || 'Ошибка загрузки аудиофайла');
             const attachmentIds = [audioRes.data.id];
-            if (tags.tags.picture) {
+
+            if (tags.picture) {
                 try {
                     sendStatus('uploading_cover');
-                    const coverRes = await network.uploadFileInternal(Buffer.from(tags.tags.picture.data), 'cover.jpg', tags.tags.picture.format);
+                    let format = tags.picture.format || 'image/jpeg';
+                    const coverBuffer = Buffer.from(tags.picture.data);
+                    const coverRes = await network.uploadFileInternal(coverBuffer, 'cover.jpg', format);
                     if (!coverRes.error) attachmentIds.push(coverRes.data.id);
-                } catch (coverErr) { console.warn("Не удалось загрузить обложку:", coverErr.message); }
+                } catch (coverErr) {}
             }
             
             sendStatus('creating_post');
             const postRes = await network.apiCall('/posts', 'POST', { content: postContent, attachmentIds });
-            if (postRes.error) throw new Error(postRes.error.message);
-            
+            if (postRes.error) {
+                if (postRes.error.code === 'PHONE_VERIFICATION_REQUIRED' || postRes.error.message.includes('Phone verification')) {
+                    throw new Error('PHONE_VERIFICATION_REQUIRED');
+                }
+                throw new Error(postRes.error.message || 'Ошибка создания поста');
+            }
             sendStatus('complete');
             return { success: true };
         } catch (err) {
-            console.error(`[MUSIC-UPLOAD] ОШИБКА для ${uploadId}:`, err.message);
-            sendStatus('error', err.message);
+            if (err.message === 'PHONE_VERIFICATION_REQUIRED' || err.message.includes('Phone verification')) {
+                sendStatus('error', 'PHONE_VERIFICATION_REQUIRED');
+            } else {
+                sendStatus('error', err.message);
+            }
             return { success: false, error: err.message };
         }
     });
@@ -343,18 +383,14 @@ function registerHandlers() {
 
     ipcMain.handle('utils:fetch-base64', async (e, url) => {
         try {
-            
             const response = await fetch(url);
             if (!response.ok) throw new Error('Fetch failed');
-            
             const arrayBuffer = await response.arrayBuffer();
             const buffer = Buffer.from(arrayBuffer);
             const base64 = buffer.toString('base64');
             const mime = response.headers.get('content-type') || 'image/jpeg';
-            
             return `data:${mime};base64,${base64}`;
         } catch (err) {
-            console.error('[IPC] Fetch Base64 error:', err.message);
             return null;
         }
     });
@@ -369,60 +405,50 @@ function registerHandlers() {
         } catch (error) { return { success: false, error: error.message }; }
     });
 
-    
+    ipcMain.handle('debug:test-splash', () => {
+        const { createSplash } = require('./main');
+        createSplash(true);
+        return "Splash triggered in debug mode";
+    });
+
     ipcMain.handle('fonts:get-remote', () => fonts.fetchRemoteFonts());
     ipcMain.handle('fonts:get-local', () => fonts.getLocalFonts());
     ipcMain.handle('fonts:download', async (e, font) => {
         try {
             return await fonts.downloadFont(font);
         } catch (err) {
-            console.error("[IPC] fonts:download error:", err);
             return { success: false, error: err.message };
         }
     });
+
     ipcMain.handle('app:upload-wallpaper', async () => {
         try {
-            
             const result = await dialog.showOpenDialog(getMainWindow(), {
                 properties: ['openFile'],
                 filters: [
                     { name: 'Медиа', extensions: ['jpg', 'jpeg', 'png', 'webp', 'gif', 'mp4', 'webm'] }
                 ]
             });
-
             if (result.canceled || !result.filePaths[0]) {
                 return { success: false, reason: 'cancelled' };
             }
-
             const sourcePath = result.filePaths[0];
             const fileName = path.basename(sourcePath);
             const wallpapersDir = PATHS.WALLPAPERS;
-
-            
             if (!require('fs').existsSync(wallpapersDir)) {
                 await fs.mkdir(wallpapersDir, { recursive: true });
             }
-
-            
             const uniqueFileName = `${Date.now()}-${fileName}`;
             const destPath = path.join(wallpapersDir, uniqueFileName);
-
-            
             await fs.copyFile(sourcePath, destPath);
-
-            
             const fileUrl = require('url').pathToFileURL(destPath).href;
-
             return { success: true, url: fileUrl, type: fileName.endsWith('.mp4') || fileName.endsWith('.webm') ? 'video' : 'image' };
-
         } catch (error) {
-            console.error('[IPC] Wallpaper upload error:', error);
             return { success: false, error: error.message };
         }
     });
+
     ipcMain.handle('fonts:delete', (e, { id, format }) => fonts.deleteFont(id, format));
-    
-    
     ipcMain.handle('fonts:get-path', () => fonts.FONTS_DIR);
 
     ipcMain.handle('app:dump-logs-zip', async () => {
@@ -434,13 +460,10 @@ function registerHandlers() {
             const stagingName = `itd_logs_${Date.now()}`;
             const stagingPath = path.join(tempDir, stagingName);
             fsSync.mkdirSync(stagingPath);
-
             if (fsSync.existsSync(LOG_FILE_PATH)) fsSync.copyFileSync(LOG_FILE_PATH, path.join(stagingPath, 'electron_debug.log'));
             if (fsSync.existsSync(path.join(LOG_DIR_PATH, 'itd_auth_debug.log'))) fsSync.copyFileSync(path.join(LOG_DIR_PATH, 'itd_auth_debug.log'), path.join(stagingPath, 'python_auth.log'));
-            
             const zipDestPath = path.join(desktopPath, `itd_logs_${Date.now()}.zip`);
             const psCommand = `Compress-Archive -Path "${stagingPath}\\*" -DestinationPath "${zipDestPath}" -Force`;
-
             return new Promise((resolve) => {
                 const child = spawn('powershell.exe', ['-NoProfile', '-Command', psCommand]);
                 child.on('close', (code) => {
@@ -474,6 +497,71 @@ function registerHandlers() {
     ipcMain.handle('themes:download', (e, t) => themes.downloadTheme(t));
     ipcMain.handle('themes:delete', (e, f) => themes.deleteTheme(f));
     ipcMain.handle('themes:read-content', (e, f) => themes.readThemeContent(f));
+
+    ipcMain.handle('debug:open-dev-window', () => {
+        const win = new BrowserWindow({
+            width: 800,
+            height: 600,
+            backgroundColor: '#0d1117',
+            webPreferences: {
+                nodeIntegration: false,
+                contextIsolation: true,
+                preload: PATHS.PRELOAD
+            }
+        });
+        
+        const devUrl = app.isPackaged 
+            ? `file://${path.join(__dirname, '../build/index.html')}#dev`
+            : 'http://localhost:3000/#/dev';
+            
+        win.loadURL(devUrl);
+        win.setMenuBarVisibility(false);
+    });
+
+    ipcMain.handle('debug:get-system-info', () => {
+        return {
+            platform: process.platform,
+            arch: process.arch,
+            version: app.getVersion(),
+            chrome: process.versions.chrome,
+            electron: process.versions.electron,
+            node: process.version, 
+            cpus: os.cpus().length,
+            memory: Math.round(os.totalmem() / 1024 / 1024 / 1024) + 'GB',
+            uptime: Math.round(process.uptime()) + 's'
+        };
+    });
+
+    ipcMain.handle('debug:clear-electron-cache', async () => {
+        await session.defaultSession.clearStorageData();
+        await session.defaultSession.clearCache();
+        return true;
+    });
+
+    ipcMain.handle('debug:update-state-snapshot', (e, snapshot) => {
+        appStateSnapshot = snapshot;
+        return true;
+    });
+
+    ipcMain.handle('debug:get-state-snapshot', () => {
+        return appStateSnapshot;
+    });
+
+    ipcMain.handle('debug:reload-main', () => {
+        const win = getMainWindow();
+        if (win) win.reload();
+    });
+
+    ipcMain.handle('debug:toggle-devtools', () => {
+        const win = getMainWindow();
+        if (win) win.webContents.toggleDevTools();
+    });
+
+    ipcMain.handle('debug:open-userdata', () => {
+        shell.openPath(app.getPath('userData'));
+    });
+
+    isHandlersRegistered = true;
 }
 
 module.exports = { registerHandlers, finalizeLoginFlow };

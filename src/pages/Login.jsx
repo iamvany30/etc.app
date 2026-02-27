@@ -4,13 +4,15 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { useModalStore } from '../store/modalStore';
 import { useUserStore } from '../store/userStore';
 import LogDumpModal from '../components/modals/LogDumpModal';
+import ExtensionGuideModal from '../components/modals/ExtensionGuideModal';
 import { 
     Key, 
     AltArrowRight, 
     AltArrowLeft, 
     Copy, 
     DangerCircle, 
-    ServerSquare 
+    ServerSquare,
+    squaretransfervertical
 } from "@solar-icons/react";
 import '../styles/Auth.css';
 
@@ -39,10 +41,7 @@ const Login = () => {
             const response = await window.api.invoke('auth:token-login', cleanToken);
 
             if (response.success) {
-                
-                
                 window.location.hash = '/';
-                
                 setTimeout(() => {
                     window.location.reload();
                 }, 50);
@@ -56,21 +55,16 @@ const Login = () => {
         }
     };
 
-    
     useEffect(() => {
         if (urlToken && !autoLoginAttempted.current) {
             autoLoginAttempted.current = true;
             
-            
             const lastUsedToken = sessionStorage.getItem('itd_last_auto_token');
             if (lastUsedToken === urlToken) {
-                
-                
                 navigate('/');
                 return;
             }
 
-            
             sessionStorage.setItem('itd_last_auto_token', urlToken);
             executeLogin(urlToken);
         }
@@ -89,6 +83,11 @@ const Login = () => {
         } catch (e) {
             console.error("Paste failed", e);
         }
+    };
+
+    const handleExtensionLogin = () => {
+        
+        openModal(<ExtensionGuideModal />);
     };
 
     return (
@@ -166,6 +165,22 @@ const Login = () => {
                             </>
                         )}
                     </button>
+
+                    {!urlToken && (
+                        <>
+                            <div className="login-divider">
+                                <span>ИЛИ</span>
+                            </div>
+                            <button 
+                                type="button" 
+                                className="login-ext-btn" 
+                                onClick={handleExtensionLogin}
+                            >
+                                <squaretransfervertical size={20} />
+                                <span>Вход через расширение</span>
+                            </button>
+                        </>
+                    )}
                 </form>
 
                 <div className="login-footer fade-in-up" style={{ animationDelay: '300ms' }}>

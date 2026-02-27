@@ -10,7 +10,6 @@ import {
 } from "@solar-icons/react";
 import '../../styles/BannerEditorModal.css';
 
-
 const GRADIENT_PRESETS = [
     { name: 'Sunset', type: 'linear', angle: 45, stops: [{ color: '#FF512F', pos: 0 }, { color: '#DD2476', pos: 100 }] },
     { name: 'Ocean', type: 'linear', angle: 180, stops: [{ color: '#2193b0', pos: 0 }, { color: '#6dd5ed', pos: 100 }] },
@@ -22,7 +21,6 @@ const GRADIENT_PRESETS = [
 
 const BannerEditorModal = ({ onSaveSuccess }) => {
     const closeModal = useModalStore(state => state.closeModal);
-    
     
     const [mode, setMode] = useState('upload'); 
     const [imageSrc, setImageSrc] = useState(null);
@@ -42,18 +40,18 @@ const BannerEditorModal = ({ onSaveSuccess }) => {
         { id: 1, color: '#1d9bf0', pos: 0 },
         { id: 2, color: '#794bc4', pos: 100 }
     ]);
+    const [activeStopId, setActiveStopId] = useState(1); 
+    const trackRef = useRef(null); 
+    const draggingStopRef = useRef(null); 
 
     const containerRef = useRef(null);
     const imgRef = useRef(null);
     const fileInputRef = useRef(null);
     const gradientCanvasRef = useRef(null);
 
-    
     const CROP_ASPECT = 3.24; 
     const EXPORT_WIDTH = 1296;
     const EXPORT_HEIGHT = 400;
-
-    
 
     const handleFileSelect = (e) => {
         const file = e.target.files?.[0];
@@ -75,7 +73,6 @@ const BannerEditorModal = ({ onSaveSuccess }) => {
     };
 
     
-
     const getCropRect = () => {
         if (!containerRef.current) return { width: 0, height: 0, left: 0, top: 0 };
         const { clientWidth, clientHeight } = containerRef.current;
@@ -145,7 +142,6 @@ const BannerEditorModal = ({ onSaveSuccess }) => {
     };
 
     
-
     const updateGradientCanvas = useCallback(() => {
         const canvas = gradientCanvasRef.current;
         if (!canvas) return;
@@ -155,7 +151,6 @@ const BannerEditorModal = ({ onSaveSuccess }) => {
 
         let gradient;
         if (gradType === 'linear') {
-            
             const angleRad = (gradAngle - 90) * (Math.PI / 180);
             const x1 = w / 2 + Math.cos(angleRad) * w / 2;
             const y1 = h / 2 + Math.sin(angleRad) * h / 2;
@@ -166,10 +161,9 @@ const BannerEditorModal = ({ onSaveSuccess }) => {
             gradient = ctx.createRadialGradient(w / 2, h / 2, 0, w / 2, h / 2, w / 1.5);
         }
 
-        
         const sortedStops = [...gradStops].sort((a, b) => a.pos - b.pos);
         sortedStops.forEach(stop => {
-            gradient.addColorStop(stop.pos / 100, stop.color);
+            gradient.addColorStop(Math.min(Math.max(stop.pos / 100, 0), 1), stop.color);
         });
 
         ctx.fillStyle = gradient;
@@ -177,34 +171,80 @@ const BannerEditorModal = ({ onSaveSuccess }) => {
     }, [gradType, gradAngle, gradStops]);
 
     useEffect(() => {
-        if (mode === 'gradient') {
-            updateGradientCanvas();
-        }
+        if (mode === 'gradient') updateGradientCanvas();
     }, [mode, gradType, gradAngle, gradStops, updateGradientCanvas]);
 
-    const addStop = () => {
-        if (gradStops.length >= 5) return;
-        const newId = Math.max(...gradStops.map(s => s.id)) + 1;
-        setGradStops([...gradStops, { id: newId, color: '#ffffff', pos: 50 }]);
+    
+    useEffect(() => {
+        const handleWindowMouseMove = (e) => {
+            if (draggingStopRef.current !== null && trackRef.current) {
+                const rect = trackRef.current.getBoundingClientRect();
+                let newPos = ((e.clientX - rect.left) / rect.width) * 100;
+                newPos = Math.round(Math.min(Math.max(newPos, 0), 100));
+                
+                setGradStops(prev => prev.map(s => 
+                    s.id === draggingStopRef.current ? { ...s, pos: newPos } : s
+                ));
+            }
+        };
+
+        const handleWindowMouseUp = () => {
+            draggingStopRef.current = null;
+        };
+
+        if (mode === 'gradient') {
+            window.addEventListener('mousemove', handleWindowMouseMove);
+            window.addEventListener('mouseup', handleWindowMouseUp);
+        }
+
+        return () => {
+            window.removeEventListener('mousemove', handleWindowMouseMove);
+            window.removeEventListener('mouseup', handleWindowMouseUp);
+        };
+    }, [mode]);
+
+    const handleTrackClick = (e) => {
+        if (gradStops.length >= 8) return; 
+        if (e.target.classList.contains('grad-track-thumb')) return;
+
+        const rect = trackRef.current.getBoundingClientRect();
+        let newPos = ((e.clientX - rect.left) / rect.width) * 100;
+        newPos = Math.round(Math.min(Math.max(newPos, 0), 100));
+
+        
+        const activeColor = gradStops.find(s => s.id === activeStopId)?.color || '#ffffff';
+        const newId = Math.max(...gradStops.map(s => s.id), 0) + 1;
+
+        setGradStops(prev => [...prev, { id: newId, color: activeColor, pos: newPos }]);
+        setActiveStopId(newId);
     };
 
-    const removeStop = (id) => {
+    const handleThumbMouseDown = (e, id) => {
+        e.stopPropagation();
+        setActiveStopId(id);
+        draggingStopRef.current = id;
+    };
+
+    const removeActiveStop = () => {
         if (gradStops.length <= 2) return;
-        setGradStops(gradStops.filter(s => s.id !== id));
+        const newStops = gradStops.filter(s => s.id !== activeStopId);
+        setGradStops(newStops);
+        setActiveStopId(newStops[0].id);
     };
 
-    const updateStop = (id, field, value) => {
-        setGradStops(gradStops.map(s => s.id === id ? { ...s, [field]: value } : s));
+    const updateActiveStop = (field, value) => {
+        setGradStops(gradStops.map(s => s.id === activeStopId ? { ...s, [field]: value } : s));
     };
 
     const applyPreset = (preset) => {
         setGradType(preset.type);
         setGradAngle(preset.angle);
-        setGradStops(preset.stops.map((s, i) => ({ ...s, id: i })));
+        const newStops = preset.stops.map((s, i) => ({ ...s, id: i + 1 }));
+        setGradStops(newStops);
+        setActiveStopId(newStops[0].id);
     };
 
     
-
     const uploadBlob = async (blob, filename) => {
         const file = new File([blob], filename, { type: "image/jpeg" });
         try {
@@ -254,11 +294,14 @@ const BannerEditorModal = ({ onSaveSuccess }) => {
 
     const cropStyle = containerRef.current ? getCropRect() : { width: '80%', height: 100, left: '10%', top: 50 };
 
+    
+    const trackGradientString = `linear-gradient(to right, ${[...gradStops].sort((a,b)=>a.pos-b.pos).map(s => `${s.color} ${s.pos}%`).join(', ')})`;
+    const activeStop = gradStops.find(s => s.id === activeStopId) || gradStops[0];
+
     return (
         <div className="banner-modal-root">
             <div className="bm-content">
                 
-                {}
                 {mode === 'upload' && (
                     <div className="bm-upload-container">
                         <h2 className="bm-title">Обложка профиля</h2>
@@ -291,7 +334,6 @@ const BannerEditorModal = ({ onSaveSuccess }) => {
                     </div>
                 )}
 
-                {}
                 {mode === 'crop' && imageSrc && (
                     <div className="bm-crop-interface">
                         <h2 className="bm-title">Кадрирование</h2>
@@ -342,10 +384,9 @@ const BannerEditorModal = ({ onSaveSuccess }) => {
                     </div>
                 )}
 
-                {}
                 {mode === 'gradient' && (
                     <div className="bm-gradient-interface">
-                        <h2 className="bm-title">Создание градиента</h2>
+                        <h2 className="bm-title">Редактор градиента</h2>
                         
                         <div className="gradient-preview-container">
                             <canvas 
@@ -357,61 +398,84 @@ const BannerEditorModal = ({ onSaveSuccess }) => {
                         </div>
 
                         <div className="gradient-controls-scroll custom-scrollbar">
+                            
+                            
                             <div className="grad-section">
-                                <label>Тип</label>
-                                <div className="grad-type-toggle">
-                                    <button className={gradType === 'linear' ? 'active' : ''} onClick={() => setGradType('linear')}>Linear</button>
-                                    <button className={gradType === 'radial' ? 'active' : ''} onClick={() => setGradType('radial')}>Radial</button>
+                                <div className="grad-track-header">
+                                    <label>Цветовая шкала (клик для добавления)</label>
+                                    <span className="grad-stops-count">{gradStops.length}/8</span>
                                 </div>
-                            </div>
-
-                            {gradType === 'linear' && (
-                                <div className="grad-section">
-                                    <label>Угол: {gradAngle}°</label>
-                                    <input 
-                                        type="range" min="0" max="360" 
-                                        value={gradAngle} 
-                                        onChange={(e) => setGradAngle(parseInt(e.target.value))} 
-                                        className="grad-slider"
-                                    />
-                                </div>
-                            )}
-
-                            <div className="grad-section">
-                                <label>Цвета</label>
-                                <div className="grad-stops-list">
-                                    {gradStops.map((stop, index) => (
-                                        <div key={stop.id} className="grad-stop-row">
-                                            <input 
-                                                type="color" 
-                                                value={stop.color} 
-                                                onChange={(e) => updateStop(stop.id, 'color', e.target.value)}
-                                                className="grad-color-picker"
-                                            />
-                                            <input 
-                                                type="range" min="0" max="100" 
-                                                value={stop.pos} 
-                                                onChange={(e) => updateStop(stop.id, 'pos', parseInt(e.target.value))}
-                                                className="grad-pos-slider"
-                                            />
-                                            <span className="grad-pos-val">{stop.pos}%</span>
-                                            {gradStops.length > 2 && (
-                                                <button className="grad-remove-btn" onClick={() => removeStop(stop.id)}>
-                                                    <TrashBinMinimalistic size={18} />
-                                                </button>
-                                            )}
-                                        </div>
+                                <div className="grad-interactive-track" ref={trackRef} onMouseDown={handleTrackClick}>
+                                    <div className="grad-track-bg" style={{ background: trackGradientString }}></div>
+                                    {gradStops.map(stop => (
+                                        <div 
+                                            key={stop.id}
+                                            className={`grad-track-thumb ${activeStopId === stop.id ? 'active' : ''}`}
+                                            style={{ left: `${stop.pos}%`, backgroundColor: stop.color }}
+                                            onMouseDown={(e) => handleThumbMouseDown(e, stop.id)}
+                                        />
                                     ))}
-                                    {gradStops.length < 5 && (
-                                        <button className="grad-add-btn" onClick={addStop}>
-                                            <AddCircle size={18} /> Добавить цвет
-                                        </button>
-                                    )}
+                                </div>
+                            </div>
+
+                            
+                            <div className="grad-active-stop-editor">
+                                <div className="grad-color-input-wrap">
+                                    <input 
+                                        type="color" 
+                                        value={activeStop.color} 
+                                        onChange={(e) => updateActiveStop('color', e.target.value)}
+                                        className="grad-color-picker-pro"
+                                    />
+                                    <span className="grad-hex-label">{activeStop.color.toUpperCase()}</span>
+                                </div>
+                                
+                                <div className="grad-pos-input-wrap">
+                                    <input 
+                                        type="number" 
+                                        min="0" max="100" 
+                                        value={activeStop.pos}
+                                        onChange={(e) => updateActiveStop('pos', Number(e.target.value))}
+                                        className="grad-number-input"
+                                    />
+                                    <span>%</span>
+                                </div>
+
+                                <button 
+                                    className="grad-remove-btn-pro" 
+                                    onClick={removeActiveStop}
+                                    disabled={gradStops.length <= 2}
+                                    title="Удалить точку"
+                                >
+                                    <TrashBinMinimalistic size={20} />
+                                </button>
+                            </div>
+
+                            <div className="grad-section-row">
+                                <div className="grad-section half">
+                                    <label>Тип</label>
+                                    <div className="grad-type-toggle">
+                                        <button className={gradType === 'linear' ? 'active' : ''} onClick={() => setGradType('linear')}>Линейный</button>
+                                        <button className={gradType === 'radial' ? 'active' : ''} onClick={() => setGradType('radial')}>Радиальный</button>
+                                    </div>
+                                </div>
+
+                                <div className={`grad-section half ${gradType === 'radial' ? 'disabled' : ''}`}>
+                                    <label>Угол ({gradAngle}°)</label>
+                                    <div className="grad-angle-control">
+                                        <input 
+                                            type="range" min="0" max="360" 
+                                            value={gradAngle} 
+                                            onChange={(e) => setGradAngle(parseInt(e.target.value))} 
+                                            className="grad-slider"
+                                            disabled={gradType === 'radial'}
+                                        />
+                                    </div>
                                 </div>
                             </div>
 
                             <div className="grad-section">
-                                <label>Пресеты</label>
+                                <label>Готовые пресеты</label>
                                 <div className="grad-presets">
                                     {GRADIENT_PRESETS.map((p) => (
                                         <button 
@@ -441,7 +505,6 @@ const BannerEditorModal = ({ onSaveSuccess }) => {
                     </div>
                 )}
 
-                {}
                 {mode === 'draw' && (
                     <div className="bm-draw-interface">
                         <h2 className="bm-title">Создание обложки</h2>

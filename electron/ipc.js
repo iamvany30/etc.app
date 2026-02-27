@@ -174,6 +174,27 @@ Write-Output ([int]$result)
         }
     });
 
+    ipcMain.handle('app:download-ext', async () => {
+        try {
+            const fsSync = require('fs');
+            const sourceDev = path.join(__dirname, '../public/ext.crx');
+            const sourceProd = path.join(__dirname, '../build/ext.crx');
+            
+            let sourcePath = fsSync.existsSync(sourceProd) ? sourceProd : sourceDev;
+
+            if (!fsSync.existsSync(sourcePath)) {
+                return { success: false, error: 'Файл расширения не найден в сборке' };
+            }
+            const destPath = path.join(app.getPath('downloads'), 'ext.crx');
+            await fs.copyFile(sourcePath, destPath);
+            shell.showItemInFolder(destPath);
+
+            return { success: true };
+        } catch (error) {
+            return { success: false, error: error.message };
+        }
+    });
+
     ipcMain.handle('downloads:control', (e, { id, action }) => {
         if (action === 'resume') {
             downloadManager.resumeDownload(id);

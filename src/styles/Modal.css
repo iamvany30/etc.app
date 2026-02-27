@@ -10,7 +10,6 @@
 
 body.modal-open {
     overflow: hidden !important;
-    padding-right: 6px; 
 }
 
 
@@ -177,45 +176,25 @@ body.modal-open {
     box-shadow: 0 40px 80px rgba(0,0,0,0.5) !important;
 }
 
-/* ==========================================================================
-   ПОЛНОЭКРАННЫЙ РЕЖИМ (ФИКС ЧЕРНОГО ФОНА И ОТСТУПОВ)
-   ========================================================================== */
-
 .modal-content.fullscreen,
 .modal-content.fullscreen .modal-body-wrapper,
 .modal-content.fullscreen .modal-body {
-    
-    height: 100vh !important;
-    max-height: 100vh !important;
-    width: 100vw !important;
-    max-width: 100vw !important;
-    
+    height: 100% !important;
+    max-height: 100% !important;
+    width: 100% !important;
+    max-width: 100% !important;
     
     margin: 0 !important;
     padding: 0 !important;
     border-radius: 0 !important;
     border: none !important;
     box-shadow: none !important;
-    
-    /* 
-       ГЛАВНОЕ: Делаем контейнер полностью прозрачным!
-       Весь фон и размытие будет рисовать сам компонент ImageModal (в ImageModal.css),
-       а не эта оболочка.
-    */
     background: transparent !important; 
-    
     
     backdrop-filter: none !important;
     -webkit-backdrop-filter: none !important;
-    
-    /* 
-       КРИТИЧЕСКИ ВАЖНО: Отключаем transform и анимации у контейнера.
-       Это позволяет position: fixed внутри ImageModal работать относительно 
-       окна браузера (viewport), а не относительно этого div.
-    */
     transform: none !important; 
     animation: none !important;
-    
     overflow: visible !important;
 }
 

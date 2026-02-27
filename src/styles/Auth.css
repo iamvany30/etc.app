@@ -3,7 +3,6 @@
 /* =========================================
    СТРАНИЦА И ФОН
    ========================================= */
-
 .login-page {
     position: relative;
     width: 100vw;
@@ -15,13 +14,11 @@
     background-color: var(--color-background);
     overflow: hidden;
     
-    
     background-image: 
         linear-gradient(rgba(255, 255, 255, 0.03) 1px, transparent 1px),
         linear-gradient(90deg, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
     background-size: 40px 40px;
 
-    
     animation: pageFadeIn 1s ease-out forwards;
 }
 
@@ -29,7 +26,6 @@
     from { opacity: 0; }
     to { opacity: 1; }
 }
-
 
 .login-ambient-glow {
     position: absolute;
@@ -59,13 +55,11 @@
 /* =========================================
    КНОПКА "НАЗАД"
    ========================================= */
-
 .login-top-nav {
     position: absolute;
     top: 40px;
     left: 40px;
     z-index: 20;
-    
     opacity: 0;
     animation: simpleFadeIn 0.8s ease-out 0.5s forwards;
 }
@@ -77,19 +71,15 @@
     align-items: center;
     gap: 10px;
     padding: 12px 20px;
-    
     background: rgba(255, 255, 255, 0.03);
     backdrop-filter: blur(12px);
     -webkit-backdrop-filter: blur(12px);
-    
     border: 1px solid rgba(255, 255, 255, 0.08);
     color: var(--color-text);
     border-radius: 99px;
     cursor: pointer;
     font-size: 14px;
     font-weight: 700;
-    
-    
     transition: all 0.4s cubic-bezier(0.2, 0.8, 0.2, 1);
 }
 
@@ -103,7 +93,6 @@
 /* =========================================
    КОНТЕЙНЕР КОНТЕНТА И АНИМАЦИИ
    ========================================= */
-
 .login-content {
     position: relative;
     z-index: 2;
@@ -116,16 +105,10 @@
     text-align: center;
 }
 
-/* 
-   ГЛАВНАЯ АНИМАЦИЯ ПОЯВЛЕНИЯ
-   Добавлен блюр и scale для "кинематографичности"
-*/
 .fade-in-up {
     opacity: 0;
-    
     transform: translateY(30px) scale(0.95);
     filter: blur(10px);
-    
     animation: smoothEntrance 0.8s cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
     will-change: transform, opacity, filter;
 }
@@ -141,7 +124,6 @@
 /* =========================================
    HEADER
    ========================================= */
-
 .login-logo-wrapper {
     margin-bottom: 32px;
     filter: drop-shadow(0 0 30px var(--color-primary-alpha));
@@ -183,16 +165,14 @@
 }
 
 /* =========================================
-   ФОРМА
+   ФОРМА И ИНПУТ
    ========================================= */
-
 .login-form {
     width: 100%;
     display: flex;
     flex-direction: column;
     gap: 16px;
 }
-
 
 .login-input-group {
     position: relative;
@@ -203,8 +183,6 @@
     display: flex;
     align-items: center;
     padding: 6px;
-    
-    
     transition: 
         border-color 0.4s ease, 
         background-color 0.4s ease, 
@@ -228,7 +206,6 @@
 .login-input-group.has-error {
     border-color: #f4212e;
     box-shadow: 0 0 0 4px rgba(244, 33, 46, 0.15);
-    
     animation: softShake 0.5s cubic-bezier(0.36, 0.07, 0.19, 0.97) both;
 }
 
@@ -290,7 +267,6 @@
     transform: scale(1.02);
 }
 
-
 .login-error-msg {
     display: flex;
     align-items: center;
@@ -303,8 +279,6 @@
     padding: 12px;
     border-radius: 14px;
     border: 1px solid rgba(244, 33, 46, 0.15);
-    
-    
     opacity: 0;
     transform: translateY(-10px);
     animation: errorAppear 0.4s cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
@@ -321,7 +295,9 @@
     40%, 60% { transform: translate3d(3px, 0, 0); }
 }
 
-
+/* =========================================
+   КНОПКИ ДЕЙСТВИЙ (САБМИТ И РАСШИРЕНИЕ)
+   ========================================= */
 .login-submit-btn {
     width: 100%;
     height: 56px;
@@ -339,8 +315,6 @@
     margin-top: 8px;
     position: relative;
     overflow: hidden;
-    
-    
     transition: all 0.4s cubic-bezier(0.2, 0.8, 0.2, 1);
 }
 
@@ -363,7 +337,6 @@
     box-shadow: none;
 }
 
-
 .login-spinner {
     width: 22px;
     height: 22px;
@@ -376,20 +349,14 @@
 @keyframes spin { to { transform: rotate(360deg); } }
 
 /* =========================================
-   FOOTER
+   КНОПКА РАСШИРЕНИЯ (Новое)
    ========================================= */
-
-.login-footer {
-    width: 100%;
-    margin-top: 32px;
-}
-
 .login-divider {
     display: flex;
     align-items: center;
-    margin-bottom: 24px;
+    margin: 4px 0;
     color: var(--color-border);
-    opacity: 0.6;
+    opacity: 0.8;
 }
 
 .login-divider::before,
@@ -401,12 +368,53 @@
 }
 
 .login-divider span {
-    padding: 0 12px;
+    padding: 0 16px;
     font-size: 11px;
     font-weight: 800;
     letter-spacing: 1px;
     color: var(--color-text-secondary);
     text-transform: uppercase;
+}
+
+.login-ext-btn {
+    width: 100%;
+    height: 56px;
+    border-radius: 20px;
+    border: 1px dashed var(--color-border);
+    background: transparent;
+    color: var(--color-text);
+    font-size: 15px;
+    font-weight: 700;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    transition: all 0.3s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+.login-ext-btn:hover {
+    background: rgba(255, 255, 255, 0.05);
+    border-color: var(--color-primary);
+    color: var(--color-primary);
+    transform: translateY(-2px);
+    border-style: solid;
+}
+
+[data-bg='light'] .login-ext-btn:hover {
+    background: rgba(0, 0, 0, 0.03);
+}
+
+.login-ext-btn:active {
+    transform: scale(0.97);
+}
+
+/* =========================================
+   FOOTER
+   ========================================= */
+.login-footer {
+    width: 100%;
+    margin-top: 32px;
 }
 
 .login-secondary-actions {
@@ -455,7 +463,6 @@
 /* =========================================
    АДАПТИВ
    ========================================= */
-
 @media (max-width: 600px) {
     .login-top-nav {
         top: 20px;
@@ -474,7 +481,7 @@
     .login-title { font-size: 28px; }
     .login-subtitle { font-size: 14px; margin-bottom: 32px; }
     
-    .login-submit-btn {
+    .login-submit-btn, .login-ext-btn {
         height: 52px;
         font-size: 15px;
     }

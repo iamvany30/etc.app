@@ -316,18 +316,9 @@ const DrawingBoard = ({ onSave, aspectRatio = 3.24 }) => {
         const rect = canvasRef.current.getBoundingClientRect();
         const scaleX = canvasRef.current.width / rect.width;
         const scaleY = canvasRef.current.height / rect.height;
-        
-        let clientX = e.clientX;
-        let clientY = e.clientY;
-        
-        if (e.touches && e.touches.length > 0) {
-            clientX = e.touches[0].clientX;
-            clientY = e.touches[0].clientY;
-        }
-
         return {
-            x: (clientX - rect.left) * scaleX,
-            y: (clientY - rect.top) * scaleY
+            x: (e.clientX - rect.left) * scaleX,
+            y: (e.clientY - rect.top) * scaleY
         };
     };
 
@@ -346,19 +337,19 @@ const DrawingBoard = ({ onSave, aspectRatio = 3.24 }) => {
         }
     };
 
+    
     const handlePointerDown = (e) => {
-        if (e.cancelable) e.preventDefault();
         
-        let clientX = e.clientX;
-        let clientY = e.clientY;
-        if (e.touches && e.touches.length > 0) {
-            clientX = e.touches[0].clientX;
-            clientY = e.touches[0].clientY;
+        e.preventDefault(); 
+        
+        
+        if (e.pointerId) {
+            e.currentTarget.setPointerCapture(e.pointerId);
         }
 
         if (e.button === 1 || tool === TOOLS.PAN || isSpaceDown) {
             setIsPanning(true);
-            setPanStart({ x: clientX - pan.x, y: clientY - pan.y });
+            setPanStart({ x: e.clientX - pan.x, y: e.clientY - pan.y });
             return;
         }
 
@@ -393,17 +384,8 @@ const DrawingBoard = ({ onSave, aspectRatio = 3.24 }) => {
     };
 
     const handlePointerMove = (e) => {
-        if (e.cancelable) e.preventDefault();
-        
-        let clientX = e.clientX;
-        let clientY = e.clientY;
-        if (e.touches && e.touches.length > 0) {
-            clientX = e.touches[0].clientX;
-            clientY = e.touches[0].clientY;
-        }
-
         if (isPanning) {
-            setPan({ x: clientX - panStart.x, y: clientY - panStart.y });
+            setPan({ x: e.clientX - panStart.x, y: e.clientY - panStart.y });
             return;
         }
         
@@ -450,7 +432,12 @@ const DrawingBoard = ({ onSave, aspectRatio = 3.24 }) => {
         }
     };
 
-    const handlePointerUp = () => {
+    const handlePointerUp = (e) => {
+        
+        if (e && e.pointerId) {
+            e.currentTarget.releasePointerCapture(e.pointerId);
+        }
+        
         if (isPanning) {
             setIsPanning(false);
             return;
@@ -544,14 +531,12 @@ const DrawingBoard = ({ onSave, aspectRatio = 3.24 }) => {
                 <div 
                     className="canvas-container" 
                     ref={containerRef}
-                    onMouseDown={handlePointerDown}
-                    onMouseMove={handlePointerMove}
-                    onMouseUp={handlePointerUp}
-                    onMouseLeave={handlePointerUp}
-                    onTouchStart={handlePointerDown}
-                    onTouchMove={handlePointerMove}
-                    onTouchEnd={handlePointerUp}
-                    onTouchCancel={handlePointerUp}
+                    onPointerDown={handlePointerDown}
+                    onPointerMove={handlePointerMove}
+                    onPointerUp={handlePointerUp}
+                    onPointerCancel={handlePointerUp}
+                    onPointerLeave={handlePointerUp}
+                    style={{ touchAction: 'none' }}
                 >
                     <canvas
                         ref={canvasRef}

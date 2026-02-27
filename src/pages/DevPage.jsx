@@ -5,9 +5,8 @@ import {
     CodeSquare, Settings, TrashBinMinimalistic, 
     Restart, Bug, Bolt, Folder, Archive,
     CheckCircle, DangerCircle, Stop, Pallete,
-    Bell, Layers
+    Bell, Layers, HomeWiFi, Download, Upload, MusicNote
 } from "@solar-icons/react";
-
 
 import { useModalStore } from '../store/modalStore';
 import { useIslandStore } from '../store/islandStore';
@@ -28,9 +27,9 @@ import ImageModal from '../components/modals/ImageModal';
 
 import '../styles/DevPage.css';
 
-
 const JsonViewer = ({ data }) => {
-    if (!data) return <div className="dev-placeholder">Ожидание данных...</div>;
+    if (!data) return <div className="dev-placeholder">Нет данных для отображения...</div>;
+    
     
     const highlight = (json) => {
         if (typeof json !== 'string') json = JSON.stringify(json, (k, v) => typeof v === 'function' ? '[Function]' : v, 2);
@@ -46,11 +45,11 @@ const JsonViewer = ({ data }) => {
         });
     };
 
-    return <pre className="json-view" dangerouslySetInnerHTML={{ __html: highlight(data) }} />;
+    return <pre className="json-view custom-scrollbar" dangerouslySetInnerHTML={{ __html: highlight(data) }} />;
 };
 
 const DevPage = () => {
-    const [activeTab, setActiveTab] = useState('system');
+    const [activeTab, setActiveTab] = useState('ui');
     const [sysInfo, setSysInfo] = useState(null);
     const [remoteState, setRemoteState] = useState(null);
     const [logs, setLogs] = useState([]);
@@ -63,19 +62,18 @@ const DevPage = () => {
     const closeModal = useModalStore(state => state.closeModal);
     const showIslandAlert = useIslandStore(state => state.showIslandAlert);
     const setSiteActivity = useIslandStore(state => state.setSiteActivity);
+    const setIslandTheme = useIslandStore(state => state.setIslandTheme);
 
     
     useEffect(() => {
         if (window.api) {
             window.api.invoke('debug:get-system-info').then(setSysInfo);
-            
             const timer = setInterval(async () => {
                 try {
                     const state = await window.api.invoke('debug:get-state-snapshot');
                     setRemoteState(state);
                 } catch(e) {}
             }, 1000);
-
             return () => clearInterval(timer);
         }
     }, []);
@@ -84,12 +82,11 @@ const DevPage = () => {
     useEffect(() => {
         const methods = ['log', 'warn', 'error', 'info'];
         const originals = {};
-
         methods.forEach(method => {
             originals[method] = console[method];
             console[method] = (...args) => {
                 const msg = args.map(a => typeof a === 'object' ? JSON.stringify(a) : String(a)).join(' ');
-                setLogs(prev => [...prev.slice(-299), { 
+                setLogs(prev => [...prev.slice(-499), { 
                     type: method, 
                     msg, 
                     time: new Date().toLocaleTimeString([], { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' }) 
@@ -97,12 +94,8 @@ const DevPage = () => {
                 originals[method].apply(console, args);
             };
         });
-
-        console.info('=== итд.app Debug OS Инициализирована ===');
-
-        return () => {
-            methods.forEach(method => { console[method] = originals[method]; });
-        };
+        console.info('=== DEV MODE INITIALIZED ===');
+        return () => { methods.forEach(method => { console[method] = originals[method]; }); };
     }, []);
 
     
@@ -140,20 +133,48 @@ const DevPage = () => {
         window.api.invoke(action);
     };
 
-    
+    const toggleOfflineMode = () => {
+        const event = new CustomEvent('app-network-status', { detail: 'offline' });
+        window.dispatchEvent(event);
+        setTimeout(() => {
+            window.dispatchEvent(new CustomEvent('app-network-status', { detail: 'online' }));
+        }, 3000);
+    };
+
+    const simulateProgress = (title, subtitle, icon) => {
+        let p = 0;
+        setSiteActivity({ title, subtitle, icon, progress: 0 });
+        const int = setInterval(() => {
+            p += Math.floor(Math.random() * 8) + 2;
+            if (p > 100) p = 100;
+            setSiteActivity({ title, subtitle, icon, progress: p });
+            if (p >= 100) {
+                clearInterval(int);
+                setTimeout(() => {
+                    setSiteActivity(null);
+                    showIslandAlert('success', 'Завершено', icon);
+                }, 800);
+            }
+        }, 200);
+    };
+
     const triggerIsland = (type) => {
         switch (type) {
-            case 'success': showIslandAlert('success', 'Операция выполнена', '✅'); break;
-            case 'error': showIslandAlert('error', 'Произошла ошибка', '❌'); break;
-            case 'clipboard': showIslandAlert('clipboard', 'Скопировано в буфер', '📋'); break;
-            case 'discord': showIslandAlert('discord', 'Discord подключен', '🎮'); break;
-            case 'long': showIslandAlert('success', 'Очень длинное сообщение для проверки адаптивности ширины острова', '📏'); break;
-            case 'activity_start': 
-                setSiteActivity({ title: 'Загрузка файла', subtitle: 'image_2024.png', progress: 45, icon: '📥' }); 
+            case 'success': showIslandAlert('success', 'Операция выполнена успешно', '✅'); break;
+            case 'error': showIslandAlert('error', 'Критическая ошибка соединения', '❌'); break;
+            case 'clipboard': showIslandAlert('clipboard', 'Скопировано в буфер обмена', '📋'); break;
+            case 'discord': showIslandAlert('discord', 'Подключен аккаунт: User#1234', '🎮'); break;
+            case 'long_text': showIslandAlert('success', 'Это очень длинное уведомление, которое должно корректно обрезаться троеточием в конце строки', '📏'); break;
+            case 'short_text': showIslandAlert('success', 'ОК', '👌'); break;
+            case 'activity_dl': simulateProgress('Загрузка обновления', 'v1.2.0-beta', '⬇️'); break;
+            case 'activity_ul': simulateProgress('Отправка файлов', 'archive.zip', '⬆️'); break;
+            case 'activity_music': 
+                setSiteActivity({ title: 'Сейчас играет', subtitle: 'Rick Astley - Never Gonna Give You Up', icon: '🎵' });
+                setTimeout(() => setSiteActivity(null), 4000);
                 break;
-            case 'activity_stop': 
-                setSiteActivity(null); 
-                break;
+            case 'theme_ocean': setIslandTheme({ color1: 'rgb(29, 155, 240)', color2: 'rgb(33, 147, 176)' }); break;
+            case 'theme_sunset': setIslandTheme({ color1: 'rgb(255, 81, 47)', color2: 'rgb(221, 36, 118)' }); break;
+            case 'theme_reset': setIslandTheme(null); break;
             default: break;
         }
     };
@@ -163,48 +184,36 @@ const DevPage = () => {
             case 'settings': openModal(<SettingsModal />); break;
             case 'edit_profile': openModal(<EditProfileModal />); break;
             case 'logout': openModal(<LogoutConfirmModal onConfirm={() => alert('Logout confirmed')} />); break;
-            case 'confirm_action': 
-                openModal(<ConfirmActionModal title="Тестовое действие" message="Вы уверены, что хотите нажать эту кнопку?" onConfirm={() => closeModal()} />); 
-                break;
+            case 'confirm_action': openModal(<ConfirmActionModal title="Подтверждение" message="Вы уверены, что хотите выполнить это действие?" onConfirm={() => closeModal()} />); break;
             case 'delete': openModal(<ConfirmDeleteModal onConfirm={() => alert('Deleted')} />); break;
             case 'banner': openModal(<BannerEditorModal onSaveSuccess={(url) => alert(url)} />); break;
             case 'logs': openModal(<LogDumpModal />); break;
-            case 'phone': openModal(<PhoneVerificationModal user={{id: 'test', username: 'test'}} />); break;
+            case 'phone': openModal(<PhoneVerificationModal user={{id: 'test', username: 'tester'}} />); break;
             case 'devtools': openModal(<DevToolsWarningModal />); break;
-            case 'external': openModal(<ExternalLinkModal url="https://google.com" />); break;
-            case 'userlist': openModal(<UserListModal username="iamvany" type="followers" title="Тестовый список" />); break;
-            case 'image': 
-                openModal(
-                    <ImageModal 
-                        images={[{ url: 'https://picsum.photos/1200/800', type: 'image/jpeg' }, { url: 'https://picsum.photos/800/1200', type: 'image/jpeg' }]} 
-                        initialIndex={0} 
-                    />, 
-                    { variant: 'fullscreen' }
-                ); 
-                break;
+            case 'external': openModal(<ExternalLinkModal url="https://github.com" />); break;
+            case 'userlist': openModal(<UserListModal username="admin" type="followers" title="Подписчики" />); break;
+            case 'image': openModal(<ImageModal images={[{ url: 'https://picsum.photos/1200/800', type: 'image/jpeg' }]} initialIndex={0} />, { variant: 'fullscreen' }); break;
             default: break;
         }
     };
 
     const filteredLogs = logs.filter(l => logFilter === 'all' || l.type === logFilter);
 
-    
     const TABS = [
-        { id: 'system', icon: <MonitorSmartphone size={20}/>, label: 'Система' },
+        { id: 'system', icon: <MonitorSmartphone size={20}/>, label: 'System' },
         { id: 'ui', icon: <Pallete size={20}/>, label: 'UI Kit' }, 
-        { id: 'stores', icon: <Database size={20}/>, label: 'Инспектор' },
-        { id: 'logs', icon: <CodeSquare size={20}/>, label: 'Консоль' },
-        { id: 'network', icon: <ServerSquare size={20}/>, label: 'Сеть' },
-        { id: 'actions', icon: <Settings size={20}/>, label: 'Действия' },
+        { id: 'stores', icon: <Database size={20}/>, label: 'State' },
+        { id: 'logs', icon: <CodeSquare size={20}/>, label: 'Console' },
+        { id: 'network', icon: <ServerSquare size={20}/>, label: 'Network' },
+        { id: 'actions', icon: <Settings size={20}/>, label: 'Actions' },
     ];
 
     return (
         <div className="dev-page">
-            {}
             <aside className="dev-sidebar">
                 <div className="dev-logo">
-                    <Bug size={24} color="#58a6ff" />
-                    <span>ETC_DEBUG_OS</span>
+                    <Bug size={24} color="#2AABEE" variant="Bold" />
+                    <span>DEBUG_OS</span>
                 </div>
                 
                 <nav className="dev-nav">
@@ -227,54 +236,52 @@ const DevPage = () => {
                 </div>
             </aside>
 
-            {}
             <main className="dev-main">
                 <header className="dev-header">
                     <h1>{TABS.find(t => t.id === activeTab)?.label}</h1>
                     {sysInfo && <div className="dev-badge">v{sysInfo.version}</div>}
                 </header>
 
-                <div className="dev-scroll-area">
+                <div className="dev-scroll-area custom-scrollbar">
+                    
                     {}
                     {activeTab === 'ui' && (
                         <div className="dev-grid">
-                            <div className="dev-card">
-                                <h3><Bell size={16}/> Dynamic Island</h3>
+                            <div className="dev-card" style={{gridColumn: 'span 2'}}>
+                                <h3><Bell size={18} variant="Bold"/> Dynamic Island</h3>
                                 <div className="dev-action-list">
-                                    <div style={{display:'flex', gap: 8, flexWrap:'wrap'}}>
+                                    <div style={{display:'flex', gap: 10, flexWrap:'wrap'}}>
                                         <button className="dev-btn small" onClick={() => triggerIsland('success')}>Success</button>
                                         <button className="dev-btn small danger" onClick={() => triggerIsland('error')}>Error</button>
                                         <button className="dev-btn small" onClick={() => triggerIsland('clipboard')}>Clipboard</button>
                                         <button className="dev-btn small primary" onClick={() => triggerIsland('discord')}>Discord</button>
-                                        <button className="dev-btn small" onClick={() => triggerIsland('long')}>Long Text</button>
+                                        <button className="dev-btn small" onClick={() => triggerIsland('theme_ocean')}>Theme Ocean</button>
+                                        <button className="dev-btn small" onClick={() => triggerIsland('theme_reset')}>Theme Reset</button>
                                     </div>
-                                    <div style={{marginTop: 10, paddingTop: 10, borderTop: '1px solid #30363d'}}>
-                                        <p style={{fontSize: 12, color: '#8b949e', marginBottom: 8}}>Live Activity</p>
-                                        <div style={{display:'flex', gap: 8}}>
-                                            <button className="dev-btn small primary" onClick={() => triggerIsland('activity_start')}>Start Activity</button>
-                                            <button className="dev-btn small" onClick={() => triggerIsland('activity_stop')}>Stop Activity</button>
+                                    <div style={{borderTop:'1px solid var(--dev-border)', paddingTop: 16, marginTop: 4}}>
+                                        <p style={{fontSize:12, fontWeight:700, color:'var(--dev-text-muted)', marginBottom:10}}>LIVE ACTIVITIES & STRESS TEST</p>
+                                        <div style={{display:'flex', gap: 10, flexWrap:'wrap'}}>
+                                            <button className="dev-btn small primary" onClick={() => triggerIsland('activity_dl')}><Download size={14}/> Download</button>
+                                            <button className="dev-btn small primary" onClick={() => triggerIsland('activity_ul')}><Upload size={14}/> Upload</button>
+                                            <button className="dev-btn small" onClick={() => triggerIsland('activity_music')}><MusicNote size={14}/> Player</button>
+                                            <button className="dev-btn small danger" onClick={toggleOfflineMode}><HomeWiFi size={14}/> Offline Sim</button>
+                                            <button className="dev-btn small" onClick={() => triggerIsland('long_text')}>Long Text</button>
                                         </div>
                                     </div>
                                 </div>
                             </div>
 
                             <div className="dev-card">
-                                <h3><Layers size={16}/> Modals & Dialogs</h3>
-                                <div className="dev-action-list">
-                                    <div style={{display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8}}>
-                                        <button className="dev-btn small" onClick={() => triggerModal('settings')}>Settings</button>
-                                        <button className="dev-btn small" onClick={() => triggerModal('edit_profile')}>Edit Profile</button>
-                                        <button className="dev-btn small" onClick={() => triggerModal('confirm_action')}>Action Confirm</button>
-                                        <button className="dev-btn small danger" onClick={() => triggerModal('delete')}>Delete Confirm</button>
-                                        <button className="dev-btn small danger" onClick={() => triggerModal('logout')}>Logout Confirm</button>
-                                        <button className="dev-btn small" onClick={() => triggerModal('banner')}>Banner Editor</button>
-                                        <button className="dev-btn small" onClick={() => triggerModal('logs')}>Log Dump</button>
-                                        <button className="dev-btn small primary" onClick={() => triggerModal('phone')}>Phone Verify</button>
-                                        <button className="dev-btn small danger" onClick={() => triggerModal('devtools')}>DevTools Warn</button>
-                                        <button className="dev-btn small" onClick={() => triggerModal('external')}>External Link</button>
-                                        <button className="dev-btn small" onClick={() => triggerModal('userlist')}>User List</button>
-                                        <button className="dev-btn small" onClick={() => triggerModal('image')}>Image Viewer</button>
-                                    </div>
+                                <h3><Layers size={18} variant="Bold"/> Modals</h3>
+                                <div className="dev-action-list" style={{display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10}}>
+                                    <button className="dev-btn small" onClick={() => triggerModal('settings')}>Settings</button>
+                                    <button className="dev-btn small" onClick={() => triggerModal('edit_profile')}>Edit Profile</button>
+                                    <button className="dev-btn small" onClick={() => triggerModal('confirm_action')}>Confirm</button>
+                                    <button className="dev-btn small danger" onClick={() => triggerModal('delete')}>Delete</button>
+                                    <button className="dev-btn small danger" onClick={() => triggerModal('logout')}>Logout</button>
+                                    <button className="dev-btn small" onClick={() => triggerModal('banner')}>Banner</button>
+                                    <button className="dev-btn small primary" onClick={() => triggerModal('phone')}>Verify</button>
+                                    <button className="dev-btn small" onClick={() => triggerModal('image')}>Gallery</button>
                                 </div>
                             </div>
                         </div>
@@ -284,19 +291,18 @@ const DevPage = () => {
                     {activeTab === 'system' && (
                         <div className="dev-grid">
                             <div className="dev-card">
-                                <h3>Среда выполнения</h3>
-                                <div className="dev-stat-row"><span>ОС (Платформа)</span><strong>{sysInfo?.platform} ({sysInfo?.arch})</strong></div>
-                                <div className="dev-stat-row"><span>Приложение</span><strong>v{sysInfo?.version}</strong></div>
+                                <h3>Environment</h3>
+                                <div className="dev-stat-row"><span>Platform</span><strong>{sysInfo?.platform} ({sysInfo?.arch})</strong></div>
+                                <div className="dev-stat-row"><span>Version</span><strong>v{sysInfo?.version}</strong></div>
                                 <div className="dev-stat-row"><span>Electron</span><strong>{sysInfo?.electron}</strong></div>
-                                <div className="dev-stat-row"><span>Node.js</span><strong>{sysInfo?.node}</strong></div>
                                 <div className="dev-stat-row"><span>Chromium</span><strong>{sysInfo?.chrome}</strong></div>
                             </div>
                             
                             <div className="dev-card">
-                                <h3>Аппаратные ресурсы</h3>
-                                <div className="dev-stat-row"><span>Процессор (Ядра)</span><strong>{sysInfo?.cpus} шт.</strong></div>
-                                <div className="dev-stat-row"><span>ОЗУ (Всего)</span><strong>{sysInfo?.memory}</strong></div>
-                                <div className="dev-stat-row"><span>Аптайм процесса</span><strong>{sysInfo?.uptime}</strong></div>
+                                <h3>Hardware</h3>
+                                <div className="dev-stat-row"><span>CPU Cores</span><strong>{sysInfo?.cpus}</strong></div>
+                                <div className="dev-stat-row"><span>Memory</span><strong>{sysInfo?.memory}</strong></div>
+                                <div className="dev-stat-row"><span>Uptime</span><strong>{sysInfo?.uptime}</strong></div>
                             </div>
                         </div>
                     )}
@@ -304,21 +310,21 @@ const DevPage = () => {
                     {}
                     {activeTab === 'stores' && (
                         <div className="dev-stores-layout">
-                            <div className="dev-card expandable">
+                            <div className="dev-card">
                                 <details open>
-                                    <summary><Database size={16}/> USER_STORE (Сессия)</summary>
+                                    <summary><Database size={16}/> USER_STORE</summary>
                                     <JsonViewer data={remoteState?.user} />
                                 </details>
                             </div>
-                            <div className="dev-card expandable">
+                            <div className="dev-card">
                                 <details>
-                                    <summary><Database size={16}/> MUSIC_STORE (Плеер)</summary>
+                                    <summary><Database size={16}/> MUSIC_STORE</summary>
                                     <JsonViewer data={remoteState?.music} />
                                 </details>
                             </div>
-                            <div className="dev-card expandable">
+                            <div className="dev-card">
                                 <details>
-                                    <summary><Database size={16}/> DOWNLOAD_STORE (Файлы)</summary>
+                                    <summary><Database size={16}/> DOWNLOAD_STORE</summary>
                                     <JsonViewer data={remoteState?.download} />
                                 </details>
                             </div>
@@ -330,33 +336,30 @@ const DevPage = () => {
                         <div className="dev-card network-card">
                             <div className="network-header">
                                 <div>
-                                    <h3>Статус Соединения</h3>
-                                    <p>Проверка доступности интернета и серверов итд.app</p>
+                                    <h3>Network Status</h3>
+                                    <p>Connection and API health check</p>
                                 </div>
                                 <button className="dev-btn primary" onClick={testNetwork}>
-                                    <Bolt size={18} /> Тест связи
+                                    <Bolt size={18} /> Run Diagnostics
                                 </button>
                             </div>
-                            
                             <div className="network-status-grid">
                                 <div className={`net-box ${networkStatus.net}`}>
                                     <div className="net-icon">
-                                        {networkStatus.net === 'ok' ? <CheckCircle size={32}/> : 
-                                         networkStatus.net === 'error' ? <DangerCircle size={32}/> : <Stop size={32}/>}
+                                        {networkStatus.net === 'ok' ? <CheckCircle size={32} variant="Bold"/> : networkStatus.net === 'error' ? <DangerCircle size={32} variant="Bold"/> : <Stop size={32} variant="Bold"/>}
                                     </div>
                                     <div className="net-info">
-                                        <h4>Интернет</h4>
-                                        <span>{networkStatus.net === 'testing' ? 'Проверка...' : networkStatus.net.toUpperCase()}</span>
+                                        <h4>Internet</h4>
+                                        <span>{networkStatus.net === 'testing' ? 'Checking...' : networkStatus.net.toUpperCase()}</span>
                                     </div>
                                 </div>
                                 <div className={`net-box ${networkStatus.api}`}>
                                     <div className="net-icon">
-                                        {networkStatus.api === 'ok' ? <CheckCircle size={32}/> : 
-                                         networkStatus.api === 'error' ? <DangerCircle size={32}/> : <Stop size={32}/>}
+                                        {networkStatus.api === 'ok' ? <CheckCircle size={32} variant="Bold"/> : networkStatus.api === 'error' ? <DangerCircle size={32} variant="Bold"/> : <Stop size={32} variant="Bold"/>}
                                     </div>
                                     <div className="net-info">
-                                        <h4>API Сервер</h4>
-                                        <span>{networkStatus.api === 'testing' ? 'Проверка...' : networkStatus.api.toUpperCase()}</span>
+                                        <h4>API Server</h4>
+                                        <span>{networkStatus.api === 'testing' ? 'Checking...' : networkStatus.api.toUpperCase()}</span>
                                     </div>
                                 </div>
                             </div>
@@ -367,24 +370,24 @@ const DevPage = () => {
                     {activeTab === 'actions' && (
                         <div className="dev-grid">
                             <div className="dev-card">
-                                <h3>Управление Окном</h3>
+                                <h3>Window Control</h3>
                                 <div className="dev-action-list">
                                     <button className="dev-btn" onClick={() => runAction('debug:reload-main')}>
-                                        <Restart size={18} /> Перезагрузить Main
+                                        <Restart size={18} /> Reload Main Window
                                     </button>
                                     <button className="dev-btn" onClick={() => runAction('debug:toggle-devtools')}>
-                                        <CodeSquare size={18} /> Toggle DevTools (Main)
+                                        <CodeSquare size={18} /> Toggle DevTools
                                     </button>
                                 </div>
                             </div>
                             <div className="dev-card">
-                                <h3>Файловая система</h3>
+                                <h3>File System</h3>
                                 <div className="dev-action-list">
                                     <button className="dev-btn" onClick={() => runAction('debug:open-userdata')}>
-                                        <Folder size={18} /> Открыть AppData
+                                        <Folder size={18} /> Open AppData
                                     </button>
                                     <button className="dev-btn primary" onClick={() => runAction('app:dump-logs-zip')}>
-                                        <Archive size={18} /> Сохранить Logs.zip
+                                        <Archive size={18} /> Save Logs Archive
                                     </button>
                                 </div>
                             </div>
@@ -406,10 +409,10 @@ const DevPage = () => {
                                         </button>
                                     ))}
                                 </div>
-                                <button className="dev-btn small" onClick={() => setLogs([])}>Очистить</button>
+                                <button className="dev-btn small" onClick={() => setLogs([])}>Clear</button>
                             </div>
                             <div className="console-output custom-scrollbar">
-                                {filteredLogs.length === 0 && <div className="dev-placeholder">Нет логов...</div>}
+                                {filteredLogs.length === 0 && <div className="dev-placeholder" style={{padding:20}}>Нет логов...</div>}
                                 {filteredLogs.map((log, i) => (
                                     <div key={i} className={`log-row ${log.type}`}>
                                         <span className="log-time">[{log.time}]</span>

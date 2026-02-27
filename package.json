@@ -1,6 +1,6 @@
 {
   "name": "etc.app",
-  "version": "0.9.0",
+  "version": "0.9.2",
   "description": "Социальная сеть нового поколения. Делитесь моментами, музыкой и мыслями.",
   "author": {
     "name": "iamvany",
@@ -22,6 +22,7 @@
     "@testing-library/jest-dom": "^6.9.1",
     "@testing-library/react": "^16.3.2",
     "@testing-library/user-event": "^13.5.0",
+    "better-sqlite3": "^12.6.2",
     "discord-rpc": "^4.0.1",
     "electron-updater": "^6.7.3",
     "extract-zip": "^2.0.1",
@@ -125,6 +126,7 @@
     "concurrently": "^9.1.2",
     "electron": "^34.0.0",
     "electron-builder": "^24.13.3",
+    "electron-rebuild": "^3.2.9",
     "wait-on": "^8.0.2"
   }
 }

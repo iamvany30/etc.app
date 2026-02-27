@@ -4,33 +4,25 @@ import { useMusicStore } from '../store/musicStore';
 import { PlayIcon, PauseIcon, PrevIcon, NextIcon } from './icons/MediaIcons';
 import '../styles/GlobalPlayer.css';
 
-const GlobalPlayer = () => {
-    
-    const currentTrack = useMusicStore(state => state.currentTrack);
-    const isPlaying = useMusicStore(state => state.isPlaying);
+const formatTime = (t) => {
+    if (!t && t !== 0) return "0:00";
+    const m = Math.floor(t / 60);
+    const s = Math.floor(t % 60);
+    return `${m}:${s.toString().padStart(2, '0')}`;
+};
+
+
+const GlobalProgressBar = () => {
     const progress = useMusicStore(state => state.progress);
     const duration = useMusicStore(state => state.duration);
-    
-    
-    const togglePlay = useMusicStore(state => state.togglePlay);
-    const nextTrack = useMusicStore(state => state.nextTrack);
-    const prevTrack = useMusicStore(state => state.prevTrack);
     const seek = useMusicStore(state => state.seek);
 
     const [isDragging, setIsDragging] = useState(false);
     const [localProgress, setLocalProgress] = useState(0);
 
-    
     useEffect(() => {
         if (!isDragging) setLocalProgress(progress);
     }, [progress, isDragging]);
-
-    const formatTime = (t) => {
-        if (!t) return "0:00";
-        const m = Math.floor(t / 60);
-        const s = Math.floor(t % 60);
-        return `${m}:${s.toString().padStart(2, '0')}`;
-    };
 
     const handleSeekStart = () => setIsDragging(true);
     
@@ -47,6 +39,40 @@ const GlobalPlayer = () => {
         setIsDragging(false);
     };
 
+    return (
+        <div className="gp-progress-container">
+            <span className="gp-time-text">{formatTime(localProgress)}</span>
+            <div 
+                className="gp-slider-track" 
+                onMouseDown={handleSeekStart}
+                onClick={handleSeekEnd}
+                onMouseMove={isDragging ? handleSeekMove : undefined}
+                onMouseUp={isDragging ? handleSeekEnd : undefined}
+                onMouseLeave={() => isDragging && setIsDragging(false)}
+            >
+                <div 
+                    className="gp-slider-fill" 
+                    style={{ width: `${duration ? (localProgress / duration) * 100 : 0}%` }} 
+                />
+                <div 
+                    className="gp-slider-thumb"
+                    style={{ left: `${duration ? (localProgress / duration) * 100 : 0}%` }} 
+                />
+            </div>
+            <span className="gp-time-text">{formatTime(duration)}</span>
+        </div>
+    );
+};
+
+const GlobalPlayer = () => {
+    
+    const currentTrack = useMusicStore(state => state.currentTrack);
+    const isPlaying = useMusicStore(state => state.isPlaying);
+    
+    const togglePlay = useMusicStore(state => state.togglePlay);
+    const nextTrack = useMusicStore(state => state.nextTrack);
+    const prevTrack = useMusicStore(state => state.prevTrack);
+
     if (!currentTrack) return null;
 
     const coverUrl = currentTrack.cover || ''; 
@@ -59,20 +85,23 @@ const GlobalPlayer = () => {
                 '--fallback-gradient': 'linear-gradient(135deg, #1d9bf0, #794bc4)'
             }}
         >
-            {}
             <div className="gp-glass-bg" />
             
             <div className="gp-glass-content">
-                {}
                 <div className="gp-main-row">
                     <div className="gp-track-info">
                         <div className="gp-cover-wrap">
                             {currentTrack.cover ? (
-                                <img src={currentTrack.cover} alt="" className="gp-cover-img" />
+                                <img 
+                                    src={currentTrack.cover} 
+                                    alt="" 
+                                    className="gp-cover-img" 
+                                    loading="lazy" 
+                                    decoding="async" 
+                                />
                             ) : (
                                 <div className="gp-cover-placeholder">♪</div>
                             )}
-                            {}
                             {isPlaying && (
                                 <div className="gp-mini-visualizer">
                                     <div className="bar"></div>
@@ -100,28 +129,7 @@ const GlobalPlayer = () => {
                     </div>
                 </div>
 
-                {}
-                <div className="gp-progress-container">
-                    <span className="gp-time-text">{formatTime(localProgress)}</span>
-                    <div 
-                        className="gp-slider-track" 
-                        onMouseDown={handleSeekStart}
-                        onClick={handleSeekEnd}
-                        onMouseMove={isDragging ? handleSeekMove : undefined}
-                        onMouseUp={isDragging ? handleSeekEnd : undefined}
-                        onMouseLeave={() => isDragging && setIsDragging(false)}
-                    >
-                        <div 
-                            className="gp-slider-fill" 
-                            style={{ width: `${duration ? (localProgress / duration) * 100 : 0}%` }} 
-                        />
-                        <div 
-                            className="gp-slider-thumb"
-                            style={{ left: `${duration ? (localProgress / duration) * 100 : 0}%` }} 
-                        />
-                    </div>
-                    <span className="gp-time-text">{formatTime(duration)}</span>
-                </div>
+                <GlobalProgressBar />
             </div>
         </div>
     );

@@ -25,6 +25,8 @@ const MobileNav = () => {
                         {item.icon}
                         <span className="nav-item-label">{item.label}</span>
                     </div>
+                    {}
+                    <div className="nav-active-dot" />
                 </NavLink>
             ))}
         </nav>

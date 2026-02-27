@@ -1,6 +1,8 @@
+/* @source src/components/modals/UserListModal.jsx */
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { apiClient } from '../../api/client';
+import { UnifiedCache } from '../../core/UnifiedCache'; 
 import { useModalStore } from '../../store/modalStore';
 import '../../styles/UserListModal.css';
 
@@ -11,16 +13,35 @@ const UserListModal = ({ username, type, title }) => {
 
     useEffect(() => {
         const fetchUsers = async () => {
-            setLoading(true);
+            
+            const endpoint = type === 'followers' 
+                ? `/users/${username}/followers` 
+                : `/users/${username}/following`;
+            
+            const cachedData = await UnifiedCache.getFallback(endpoint);
+            if (cachedData) {
+                const cachedUsers = cachedData.users || cachedData.data?.users || [];
+                if (cachedUsers.length > 0) {
+                    setUsers(cachedUsers);
+                    setLoading(false); 
+                }
+            }
+
+            
             try {
                 const res = type === 'followers' 
                     ? await apiClient.getFollowers(username)
                     : await apiClient.getFollowing(username);
                 
                 const data = res?.users || res?.data?.users || [];
+                
+                
+                
                 setUsers(data);
             } catch (e) {
                 console.error("Ошибка загрузки списка пользователей:", e);
+                
+                if (users.length === 0) setLoading(false); 
             } finally {
                 setLoading(false);
             }
@@ -34,7 +55,7 @@ const UserListModal = ({ username, type, title }) => {
                 <h3>{title}</h3>
             </div>
             <div className="user-list-content">
-                {loading ? (
+                {loading && users.length === 0 ? ( 
                     <div className="loading-indicator">Загрузка...</div>
                 ) : users.length > 0 ? (
                     users.map(user => {

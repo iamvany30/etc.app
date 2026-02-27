@@ -57,5 +57,10 @@ contextBridge.exposeInMainWorld('api', {
         minimize: () => ipcRenderer.send('window-minimize'),
         maximize: () => ipcRenderer.send('window-maximize'),
         close: () => ipcRenderer.send('window-close')
-    }
+    },
+    cache: {
+        getStats: () => ipcRenderer.invoke('cache:get-stats'),
+        clear: (categories) => ipcRenderer.invoke('cache:clear', categories),
+        updateLimits: (limits) => ipcRenderer.invoke('cache:update-limits', limits)
+    },
 });

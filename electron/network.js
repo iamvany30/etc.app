@@ -8,7 +8,6 @@ let GLOBAL_USER_AGENT = USER_AGENT;
 let GLOBAL_ACCESS_TOKEN = null; 
 let isSessionRestored = false;
 
-
 let isRefreshing = false;
 let refreshPromise = null;
 
@@ -36,14 +35,10 @@ async function applyCookiesToSession(cookies) {
     if (!cookies || !Array.isArray(cookies)) return;
 
     let restoredCount = 0;
-    const cookieNames = cookies.map(c => c.name).join(', ');
-    logDebug(`[Network] Применяем куки: ${cookieNames}`);
-
     for (const cookie of cookies) {
         if (!cookie || typeof cookie.name !== 'string' || typeof cookie.domain !== 'string') continue;
         try {
             if (cookie.name === 'refresh_token') cookie.path = '/';
-            
             let cookieDomain = cookie.domain;
             let urlDomain = cookieDomain.startsWith('.') ? cookieDomain.substring(1) : cookieDomain;
             const schema = cookie.secure ? 'https://' : 'http://';
@@ -57,10 +52,7 @@ async function applyCookiesToSession(cookies) {
                 else if (ssLower.includes('none')) sameSite = 'no_restriction';
             }
 
-            if (sameSite === 'no_restriction' && !cookie.secure) {
-                logDebug(`[Network] Пропуск небезопасной куки ${cookie.name} с SameSite=None`);
-                continue;
-            }
+            if (sameSite === 'no_restriction' && !cookie.secure) continue;
 
             await session.defaultSession.cookies.set({
                 url: url,
@@ -78,93 +70,55 @@ async function applyCookiesToSession(cookies) {
             console.warn(`[Network] Ошибка установки куки ${cookie.name}:`, e.message);
         }
     }
-    
     await session.defaultSession.cookies.flushStore();
-    logDebug(`[Network] Успешно применено кук: ${restoredCount}`);
 }
 
 async function restoreSession() {
     const data = store.loadSessionData();
-    if (!data) {
-        logDebug("[Network] Нет данных сессии для активного аккаунта.");
-        return { success: false, reason: 'no_data' };
-    }
-
-    logDebug("[Network] Начало восстановления сессии активного аккаунта...");
+    if (!data) return { success: false, reason: 'no_data' };
 
     try {
-        if (data.userAgent) {
-            GLOBAL_USER_AGENT = data.userAgent;
-            session.defaultSession.setUserAgent(GLOBAL_USER_AGENT);
-        } else {
-            GLOBAL_USER_AGENT = USER_AGENT;
-            session.defaultSession.setUserAgent(GLOBAL_USER_AGENT);
-        }
-
-        
+        GLOBAL_USER_AGENT = data.userAgent || USER_AGENT;
+        session.defaultSession.setUserAgent(GLOBAL_USER_AGENT);
         await session.defaultSession.clearStorageData({ storages: ['cookies'] });
 
         if (data.cookies && Array.isArray(data.cookies)) {
             await applyCookiesToSession(data.cookies);
         }
-        
         isSessionRestored = true;
         return { success: true };
     } catch (e) {
-        logDebug(`[Network] Ошибка восстановления сессии: ${e.message}`);
         return { success: false, reason: 'restore_error' };
     }
 }
 
 async function switchUserSession(targetAccount) {
-    logDebug(`[Network] Переключение сессии на: ${targetAccount?.user?.username}`);
-    
-    if (!targetAccount || !targetAccount.session) {
-        return { success: false, error: "INVALID_ACCOUNT_DATA" };
-    }
+    if (!targetAccount || !targetAccount.session) return { success: false, error: "INVALID_ACCOUNT_DATA" };
 
     try {
         GLOBAL_ACCESS_TOKEN = null;
         isSessionRestored = false;
-        
-        
         await session.defaultSession.clearStorageData({ storages: ['cookies'] });
-        logDebug("[Network] Хранилище сессии (cookies) очищено.");
 
-        
         const sessionData = targetAccount.session;
-        if (sessionData.userAgent) {
-            GLOBAL_USER_AGENT = sessionData.userAgent;
-            session.defaultSession.setUserAgent(GLOBAL_USER_AGENT);
-        } else {
-            GLOBAL_USER_AGENT = USER_AGENT;
-            session.defaultSession.setUserAgent(GLOBAL_USER_AGENT);
-        }
+        GLOBAL_USER_AGENT = sessionData.userAgent || USER_AGENT;
+        session.defaultSession.setUserAgent(GLOBAL_USER_AGENT);
 
         if (sessionData.cookies && Array.isArray(sessionData.cookies)) {
             await applyCookiesToSession(sessionData.cookies);
         }
 
-        logDebug("[Network] Проверка сессии после переключения (Token Check)...");
-        
-        
         const refreshRes = await rawFetch('/v1/auth/refresh', { method: 'POST' });
         
         if (refreshRes.ok && refreshRes.data.accessToken) {
             GLOBAL_ACCESS_TOKEN = refreshRes.data.accessToken;
             isSessionRestored = true;
-            logDebug("[Network] Сессия успешно переключена и обновлена.");
-            
-            
             await captureAndSaveCookies();
-            
             return { success: true };
         } else {
-            logDebug(`[Network] Сессия мертва (Status: ${refreshRes.status}).`);
             return { success: false, error: "TOKEN_DEAD", status: refreshRes.status };
         }
     } catch (e) {
-        logDebug(`[Network] Ошибка при переключении сессии: ${e.message}`);
         return { success: false, error: e.message };
     }
 }
@@ -172,30 +126,16 @@ async function switchUserSession(targetAccount) {
 function rawFetch(endpoint, options = {}) {
     return new Promise((resolve) => {
         const url = endpoint.startsWith('http') ? endpoint : `${API_BASE}${endpoint}`;
-        
-        const request = net.request({ 
-            method: options.method || 'GET', 
-            url: url, 
-            useSessionCookies: true 
-        });
+        const request = net.request({ method: options.method || 'GET', url: url, useSessionCookies: true });
 
         const timeoutId = setTimeout(() => {
             request.abort();
-            logDebug(`[Network] ТАЙМАУТ (${url}) - запрос прерван.`);
             resolve({ ok: false, status: 408, error: 'Request Timeout' });
         }, 15000);
 
         request.setHeader('User-Agent', GLOBAL_USER_AGENT);
         request.setHeader('Origin', SITE_DOMAIN);
         request.setHeader('Referer', SITE_DOMAIN + '/');
-        request.setHeader('Accept', 'application/json, text/plain, */*');
-        request.setHeader('Authority', 'xn--d1ah4a.com');
-        request.setHeader('sec-ch-ua', '"Chromium";v="124", "Google Chrome";v="124", "Not-A.Brand";v="99"');
-        request.setHeader('sec-ch-ua-mobile', '?0');
-        request.setHeader('sec-ch-ua-platform', '"Windows"');
-        request.setHeader('sec-fetch-dest', 'empty');
-        request.setHeader('sec-fetch-mode', 'cors');
-        request.setHeader('sec-fetch-site', 'same-origin');
         
         if (GLOBAL_ACCESS_TOKEN) {
             request.setHeader('Authorization', `Bearer ${GLOBAL_ACCESS_TOKEN}`);
@@ -207,44 +147,22 @@ function rawFetch(endpoint, options = {}) {
 
         request.on('response', (response) => {
             clearTimeout(timeoutId);
-
             const chunks = [];
             response.on('data', (chunk) => chunks.push(chunk));
-
             response.on('end', () => {
                 const text = Buffer.concat(chunks).toString('utf8');
-
-                if (response.statusCode === 403 && text.includes('challenge')) {
-                    logDebug("[Network] Ошибка: Cloudflare требует ручную проверку (403).");
-                    resolve({ ok: false, status: 403, error: 'Cloudflare Block' });
-                    return;
-                }
-
                 let data = null;
-                try {
-                    data = text ? JSON.parse(text) : {};
-                } catch (e) {
-                    data = { error: 'Parse Error', raw: text };
-                }
-
-                resolve({ 
-                    ok: response.statusCode >= 200 && response.statusCode < 300, 
-                    status: response.statusCode, 
-                    data 
-                });
+                try { data = text ? JSON.parse(text) : {}; } catch (e) { data = { error: 'Parse Error', raw: text }; }
+                resolve({ ok: response.statusCode >= 200 && response.statusCode < 300, status: response.statusCode, data });
             });
         });
 
         request.on('error', (err) => {
             clearTimeout(timeoutId);
-            logDebug(`[Network] Сетевая ошибка (${url}): ${err.message}`);
             resolve({ ok: false, status: 0, error: err.message });
         });
 
-        if (options.body) {
-            request.write(options.body);
-        }
-
+        if (options.body) request.write(options.body);
         request.end();
     });
 }
@@ -260,7 +178,6 @@ async function refreshSession() {
                 if (!restoreResult.success) return { success: false, reason: restoreResult.reason };
             }
 
-            logDebug("[Network] Получение токена доступа (AccessToken)...");
             const refreshRes = await rawFetch('/v1/auth/refresh', { method: 'POST' });
 
             if (refreshRes.ok && refreshRes.data.accessToken) {
@@ -268,12 +185,15 @@ async function refreshSession() {
                 await captureAndSaveCookies();
                 return { success: true };
             } else {
-                logDebug(`[Network] Ошибка обновления токена (Code: ${refreshRes.status}).`);
-                if (refreshRes.status !== 429) {  
+                
+                
+                if (refreshRes.status === 401 || refreshRes.status === 400 || refreshRes.status === 403) {  
                     store.clearRefreshToken();
                     isSessionRestored = false;
+                    GLOBAL_ACCESS_TOKEN = null;
+                    return { success: false, reason: 'unauthorized' };
                 }
-                return { success: false, reason: 'token_refresh_failed' };
+                return { success: false, reason: 'network_error' };
             }
         } finally {
             isRefreshing = false;
@@ -286,13 +206,9 @@ async function refreshSession() {
 
 async function apiCall(endpoint, method = 'GET', body = null) {
     if (endpoint === '/v1/auth/logout') {
-        if (store.getActiveAccount()) {
-            store.removeAccount(store.getActiveAccount().user.id);
-        }
-        store.clearRefreshToken();
+        if (store.getActiveAccount()) store.removeAccount(store.getActiveAccount().user.id);
         isSessionRestored = false;
         GLOBAL_ACCESS_TOKEN = null;
-        
         await session.defaultSession.clearStorageData({ storages: ['cookies'] });
         return { success: true };
     }
@@ -306,16 +222,13 @@ async function apiCall(endpoint, method = 'GET', body = null) {
     let res = await rawFetch(endpoint, options);
     
     if (res.status === 401) {
-        logDebug(`[Network] 401 Unauthorized на ${endpoint}. Пробуем обновить токен...`);
         const refreshRes = await refreshSession();
-        
         if (refreshRes.success) {
             res = await rawFetch(endpoint, options);
-        } else {
-            logDebug(`[Network] Рефреш не удался. Сброс сессии.`);
-            isSessionRestored = false;
-            GLOBAL_ACCESS_TOKEN = null;
+        } else if (refreshRes.reason === 'unauthorized') {
             return { error: { code: "SESSION_EXPIRED", message: "Сессия истекла" } };
+        } else {
+            return { error: { code: "NETWORK_ERROR", message: "Ошибка сети" } };
         }
     }
 
@@ -330,44 +243,21 @@ async function uploadFileInternal(fileBuffer, fileName, fileType) {
         
         const response = await fetch(`${API_BASE}/files/upload`, {
             method: 'POST',
-            headers: { 
-                'User-Agent': GLOBAL_USER_AGENT, 
-                'Authorization': `Bearer ${GLOBAL_ACCESS_TOKEN}` 
-            },
+            headers: { 'User-Agent': GLOBAL_USER_AGENT, 'Authorization': `Bearer ${GLOBAL_ACCESS_TOKEN}` },
             body: formData,
         });
-        
         if (!response.ok) throw new Error(`Upload failed: ${response.status}`);
         return { data: await response.json() };
-    } catch (error) {
-        return { error: { message: error.message } };
-    }
+    } catch (error) { return { error: { message: error.message } }; }
 }
 
 async function checkApiStatus() {
     const res = await rawFetch('/hashtags/trending?limit=1');
     return res.status < 500 && res.status !== 0;
 }
-
 async function quickInternetCheck() {
-    try { 
-        await fetch('https://8.8.8.8', { method: 'HEAD', mode: 'no-cors' }); 
-        return true; 
-    } catch { 
-        return false; 
-    }
+    try { await fetch('https://8.8.8.8', { method: 'HEAD', mode: 'no-cors' }); return true; } 
+    catch { return false; }
 }
 
-module.exports = { 
-    rawFetch, 
-    refreshSession, 
-    apiCall, 
-    quickInternetCheck, 
-    checkApiStatus, 
-    uploadFileInternal,
-    setGlobalAccessToken,
-    getGlobalAccessToken, 
-    applyCookiesToSession,
-    switchUserSession,
-    captureAndSaveCookies 
-};
+module.exports = { rawFetch, refreshSession, apiCall, quickInternetCheck, checkApiStatus, uploadFileInternal, setGlobalAccessToken, getGlobalAccessToken, applyCookiesToSession, switchUserSession, captureAndSaveCookies };

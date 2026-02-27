@@ -1,5 +1,5 @@
 /* @source src/components/MusicPlayer.jsx */
-import React, { useMemo } from 'react';
+import React, { useCallback } from 'react';
 import { useMusicStore } from '../store/musicStore';       
 import { useDownloadStore } from '../store/downloadStore'; 
 import { PlayIcon, PauseIcon } from './icons/MediaIcons';
@@ -22,26 +22,21 @@ const Visualizer = () => (
     <div className="music-visualizer"><div className="bar"></div><div className="bar"></div><div className="bar"></div><div className="bar"></div></div>
 );
 
-const MusicPlayer = ({ id, src, artist, title, cover }) => {
-    
-    const currentTrack = useMusicStore(state => state.currentTrack);
-    const isPlaying = useMusicStore(state => state.isPlaying);
+
+const TrackProgressBar = ({ isCurrent }) => {
     const progress = useMusicStore(state => state.progress);
     const duration = useMusicStore(state => state.duration);
-    const playTrack = useMusicStore(state => state.playTrack);
-    const togglePlay = useMusicStore(state => state.togglePlay);
     const seek = useMusicStore(state => state.seek);
 
-    
-    const downloads = useDownloadStore(state => state.downloads);
-    const startDownload = useDownloadStore(state => state.startDownload);
+    if (!isCurrent) return null;
 
-    const isCurrent = currentTrack?.id === id;
-    const isActive = isCurrent && isPlaying;
-
-    const downloadState = downloads[src];
-    const isDownloading = downloadState && downloadState.status !== 'completed' && downloadState.status !== 'failed';
-    const isCompleted = downloadState && downloadState.status === 'completed';
+    const handleSeek = (e) => {
+        e.stopPropagation();
+        if (!duration) return;
+        const rect = e.currentTarget.getBoundingClientRect();
+        const percent = (e.clientX - rect.left) / rect.width;
+        seek(percent * duration);
+    };
 
     const formatTime = (t) => {
         if (!t && t !== 0) return '0:00';
@@ -49,6 +44,55 @@ const MusicPlayer = ({ id, src, artist, title, cover }) => {
         const s = Math.floor(t % 60);
         return `${m}:${s.toString().padStart(2, '0')}`;
     };
+
+    return (
+        <div className="music-mini-progress">
+            <span className="time-curr">{formatTime(progress)}</span>
+            <div className="progress-track" onClick={handleSeek}>
+                <div className="progress-fill" style={{ width: `${duration ? (progress / duration) * 100 : 0}%` }} />
+            </div>
+            <span className="time-dur">{formatTime(duration || 0)}</span>
+        </div>
+    );
+};
+
+
+const TrackDownloadButton = ({ src }) => {
+    
+    const downloadState = useDownloadStore(useCallback(state => state.downloads[src], [src]));
+    const startDownload = useDownloadStore(state => state.startDownload);
+
+    const isDownloading = downloadState && downloadState.status !== 'completed' && downloadState.status !== 'failed';
+    const isCompleted = downloadState && downloadState.status === 'completed';
+
+    const handleDownload = (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        if (isDownloading || isCompleted) return;
+        startDownload(src);
+    };
+
+    return (
+        <button 
+            className={`music-action-btn download ${isCompleted ? 'completed' : ''}`}
+            onClick={handleDownload} 
+            title={isCompleted ? "Загружено" : "Скачать"} 
+            disabled={isDownloading || isCompleted}
+        >
+            {isDownloading ? <CircularProgress progress={downloadState.percent} /> : isCompleted ? <MusicCheckIcon /> : <MusicDownloadIcon />}
+        </button>
+    );
+};
+
+const MusicPlayer = ({ id, src, artist, title, cover }) => {
+    
+    const currentTrackId = useMusicStore(state => state.currentTrack?.id);
+    const isPlaying = useMusicStore(state => state.isPlaying);
+    const playTrack = useMusicStore(state => state.playTrack);
+    const togglePlay = useMusicStore(state => state.togglePlay);
+
+    const isCurrent = currentTrackId === id;
+    const isActive = isCurrent && isPlaying;
 
     const handlePlay = (e) => {
         e.stopPropagation();
@@ -59,21 +103,6 @@ const MusicPlayer = ({ id, src, artist, title, cover }) => {
         }
     };
 
-    const handleSeek = (e) => {
-        e.stopPropagation();
-        if (!isCurrent || !duration) return;
-        const rect = e.currentTarget.getBoundingClientRect();
-        const percent = (e.clientX - rect.left) / rect.width;
-        seek(percent * duration);
-    };
-
-    const handleDownload = (e) => {
-        e.preventDefault();
-        e.stopPropagation();
-        if (isDownloading || isCompleted) return;
-        startDownload(src);
-    };
-
     return (
         <div className={`music-card-premium ${isActive ? 'playing' : ''}`}>
             <div className="music-card-bg" style={{ backgroundImage: `url(${cover || ''})` }} />
@@ -81,7 +110,13 @@ const MusicPlayer = ({ id, src, artist, title, cover }) => {
             <div className="music-card-content" onClick={(e) => e.stopPropagation()}>
                 <div className="music-cover-wrapper" onClick={handlePlay}>
                     {cover ? (
-                        <img src={cover} alt={title} className="music-cover-img" />
+                        <img 
+                            src={cover} 
+                            alt={title} 
+                            className="music-cover-img" 
+                            loading="lazy" 
+                            decoding="async"
+                        />
                     ) : (
                         <div className="music-cover-placeholder"><span>♪</span></div>
                     )}
@@ -97,25 +132,10 @@ const MusicPlayer = ({ id, src, artist, title, cover }) => {
                     </div>
                     <span className="music-artist" title={artist}>{artist || 'Неизвестный'}</span>
                     
-                    {isCurrent && (
-                        <div className="music-mini-progress">
-                            <span className="time-curr">{formatTime(progress)}</span>
-                            <div className="progress-track" onClick={handleSeek}>
-                                <div className="progress-fill" style={{ width: `${(progress / duration) * 100}%` }} />
-                            </div>
-                            <span className="time-dur">{formatTime(duration || 0)}</span>
-                        </div>
-                    )}
+                    <TrackProgressBar isCurrent={isCurrent} />
                 </div>
 
-                <button 
-                    className={`music-action-btn download ${isCompleted ? 'completed' : ''}`}
-                    onClick={handleDownload} 
-                    title={isCompleted ? "Загружено" : "Скачать"} 
-                    disabled={isDownloading || isCompleted}
-                >
-                    {isDownloading ? <CircularProgress progress={downloadState.percent} /> : isCompleted ? <MusicCheckIcon /> : <MusicDownloadIcon />}
-                </button>
+                <TrackDownloadButton src={src} />
             </div>
         </div>
     );

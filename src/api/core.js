@@ -1,7 +1,42 @@
+/* @source src/api/core.js */
+import { UnifiedCache } from '../core/UnifiedCache';
+import { getCachedUrl } from '../utils/assetHelper';
+
+const MEDIA_KEYS = new Set(['url', 'avatar', 'cover', 'banner', 'image', 'src']);
+
+
+const mapMediaUrls = (obj) => {
+    if (!obj || typeof obj !== 'object') return;
+    
+    if (Array.isArray(obj)) {
+        for (let i = 0; i < obj.length; i++) {
+            if (typeof obj[i] === 'string' && obj[i].startsWith('asset://') && !obj[i].includes('?url=')) {
+                obj[i] = null; 
+            } else {
+                mapMediaUrls(obj[i]);
+            }
+        }
+    } else {
+        for (const key of Object.keys(obj)) {
+            if (typeof obj[key] === 'string') {
+                
+                if (obj[key].startsWith('http') && MEDIA_KEYS.has(key)) {
+                    obj[key] = getCachedUrl(obj[key]);
+                } 
+                
+                else if (obj[key].startsWith('asset://') && !obj[key].includes('?url=')) {
+                    obj[key] = null; 
+                }
+            } else if (typeof obj[key] === 'object') {
+                mapMediaUrls(obj[key]);
+            }
+        }
+    }
+};
+
 export const request = async (endpoint, method = 'GET', body = null) => {
     try {
         if (!window.api || typeof window.api.call !== 'function') {
-            console.error("API bridge is not available (window.api missing).");
             throw new Error("INTERNAL_BRIDGE_ERROR");
         }
         
@@ -15,10 +50,22 @@ export const request = async (endpoint, method = 'GET', body = null) => {
                 }
             };
         }
+
+        if (!result?.error && method === 'GET') {
+            mapMediaUrls(result);
+            UnifiedCache.analyzeAndCache(endpoint, result);
+        }
         
         return result;
     } catch (e) {
-        console.error(`API Error [${method} ${endpoint}]:`, e);
+        if (method === 'GET') {
+            const cachedData = await UnifiedCache.getFallback(endpoint);
+            if (cachedData) {
+                mapMediaUrls(cachedData); 
+                return cachedData;
+            }
+        }
+
         return { error: { message: e.message, code: "CLIENT_TRANSPORT_ERROR" } };
     }
 };

@@ -3,6 +3,7 @@ const DB_NAME = 'itd_app_database';
 const STORE_NAME = 'keyval_store';
 const DB_VERSION = 1;
 
+let dbInstance = null;
 let dbPromise = null;
 
 const openDB = () => {
@@ -18,55 +19,137 @@ const openDB = () => {
             }
         };
 
-        request.onsuccess = (event) => resolve(event.target.result);
-        request.onerror = (event) => reject(event.target.error);
+        request.onsuccess = (event) => {
+            dbInstance = event.target.result;
+            dbInstance.onclose = () => { dbPromise = null; dbInstance = null; };
+            dbInstance.onversionchange = () => { 
+                dbInstance.close(); 
+                dbPromise = null; 
+                dbInstance = null; 
+            };
+            resolve(dbInstance);
+        };
+
+        request.onerror = (event) => {
+            dbPromise = null;
+            reject(event.target.error);
+        };
     });
 
     return dbPromise;
 };
 
+const withDB = async (operation) => {
+    try {
+        const db = await openDB();
+        return await operation(db);
+    } catch (e) {
+        if (e.name === 'InvalidStateError' || (e.message && e.message.includes('closing'))) {
+            dbPromise = null; 
+            const db = await openDB(); 
+            return await operation(db);
+        }
+        throw e;
+    }
+};
+
 export const storage = {
     async get(key) {
         try {
-            const db = await openDB();
-            return new Promise((resolve, reject) => {
+            return await withDB(db => new Promise((resolve, reject) => {
                 const tx = db.transaction(STORE_NAME, 'readonly');
-                const store = tx.objectStore(STORE_NAME);
-                const request = store.get(key);
+                const request = tx.objectStore(STORE_NAME).get(key);
                 request.onsuccess = () => resolve(request.result);
                 request.onerror = () => reject(request.error);
-            });
-        } catch (e) {
-            console.error('[Storage] Get Error:', e);
-            return null;
-        }
+            }));
+        } catch (e) { return null; }
     },
 
     async set(key, value) {
         try {
-            const db = await openDB();
-            return new Promise((resolve, reject) => {
+            await withDB(db => new Promise((resolve, reject) => {
                 const tx = db.transaction(STORE_NAME, 'readwrite');
-                const store = tx.objectStore(STORE_NAME);
-                const request = store.put(value, key);
-                request.onsuccess = () => resolve();
-                request.onerror = () => reject(request.error);
-            });
-        } catch (e) {
-            console.error('[Storage] Set Error:', e);
-        }
+                const request = tx.objectStore(STORE_NAME).put(value, key);
+                tx.oncomplete = () => resolve();
+                tx.onerror = () => reject(request.error);
+            }));
+        } catch (e) {}
     },
 
     async remove(key) {
         try {
-            const db = await openDB();
-            return new Promise((resolve, reject) => {
+            await withDB(db => new Promise((resolve, reject) => {
+                const tx = db.transaction(STORE_NAME, 'readwrite');
+                const request = tx.objectStore(STORE_NAME).delete(key);
+                tx.oncomplete = () => resolve();
+                tx.onerror = () => reject(request.error);
+            }));
+        } catch (e) {}
+    },
+
+    async clearPrefix(prefix) {
+        try {
+            await withDB(db => new Promise((resolve, reject) => {
                 const tx = db.transaction(STORE_NAME, 'readwrite');
                 const store = tx.objectStore(STORE_NAME);
-                const request = store.delete(key);
-                request.onsuccess = () => resolve();
-                request.onerror = () => reject(request.error);
-            });
+                const request = store.openCursor();
+                
+                request.onsuccess = (e) => {
+                    const cursor = e.target.result;
+                    if (cursor) {
+                        if (typeof cursor.key === 'string' && cursor.key.startsWith(prefix)) {
+                            cursor.delete();
+                        }
+                        cursor.continue();
+                    }
+                };
+                tx.oncomplete = () => resolve();
+                tx.onerror = () => reject(tx.error);
+            }));
+        } catch (e) {
+            console.error('[Storage] clearPrefix error:', e);
+        }
+    },
+
+    
+    async estimateSizes(prefixesObj) {
+        const results = {};
+        for (const key in prefixesObj) results[key] = 0;
+        results['other'] = 0;
+
+        try {
+            await withDB(db => new Promise((resolve, reject) => {
+                const tx = db.transaction(STORE_NAME, 'readonly');
+                const store = tx.objectStore(STORE_NAME);
+                const request = store.openCursor();
+
+                request.onsuccess = (e) => {
+                    const cursor = e.target.result;
+                    if (cursor) {
+                        const key = cursor.key;
+                        const val = cursor.value;
+                        
+                        let size = 0;
+                        if (typeof val === 'string') size = val.length * 2;
+                        else size = JSON.stringify(val).length * 2;
+
+                        let matched = false;
+                        for (const [id, prefix] of Object.entries(prefixesObj)) {
+                            if (key.startsWith(prefix)) {
+                                results[id] += size;
+                                matched = true;
+                                break;
+                            }
+                        }
+                        if (!matched) results['other'] += size;
+                        cursor.continue();
+                    }
+                };
+                tx.oncomplete = () => resolve();
+                tx.onerror = () => reject();
+            }));
         } catch (e) {}
+        
+        return results;
     }
 };

@@ -7,8 +7,8 @@ import { useModalStore } from '../../store/modalStore';
 import { useIslandStore } from '../../store/islandStore';
 import { apiClient } from '../../api/client';
 import { handleGlobalLinkClick } from '../../utils/linkUtils';
-import { reconstructMarkdown } from '../../utils/markdownUtils';
 import { bookmarkUtils } from '../../utils/bookmarkUtils'; 
+import { historyUtils } from '../../utils/historyUtils';
 
 const safeDecode = (str) => {
     try { return decodeURIComponent(escape(window.atob(str))); } 
@@ -24,10 +24,10 @@ const findAudioAttachment = (attachments) => {
     });
 };
 
-export const usePostCard = (post, initialShowComments, highlightCommentId) => {
+
+export const usePostCard = (post, initialShowComments, highlightCommentId, disableHistory = false) => {
     const navigate = useNavigate();
     const postRef = useRef(null);
-    const textareaRef = useRef(null);
 
     const currentUser = useUserStore(state => state.currentUser);
     const currentTrackId = useMusicStore(state => state.currentTrack?.id);
@@ -54,15 +54,11 @@ export const usePostCard = (post, initialShowComments, highlightCommentId) => {
     const [commentsCursor, setCommentsCursor] = useState(null);
     const [replyTo, setReplyTo] = useState(null);
 
-    
     const hasFetchedComments = useRef(false);
 
     const [hasMoreComments, setHasMoreComments] = useState(
         (post.commentsCount || 0) > (post.comments?.length || 0)
     );
-
-    const [isEditing, setIsEditing] = useState(false);
-    const [editContent, setEditContent] = useState("");
 
     const isOwner = currentUser?.id === post.author?.id || post.isOwner;
 
@@ -81,13 +77,19 @@ export const usePostCard = (post, initialShowComments, highlightCommentId) => {
         const observer = new IntersectionObserver((entries) => {
             if (entries[0].isIntersecting) {
                 apiClient.viewPost(localPost.id).catch(() => {});
+                
+                
+                if (!disableHistory) {
+                    historyUtils.add(localPost);
+                }
+
                 setWasViewed(true);
                 observer.disconnect();
             }
         }, { threshold: 0.6 });
         observer.observe(postRef.current);
         return () => observer.disconnect();
-    }, [localPost.id, wasViewed]);
+    }, [localPost, wasViewed, disableHistory]);
 
     useEffect(() => {
         const handleBookmarkUpdate = () => setIsSaved(bookmarkUtils.isSaved(localPost.id));
@@ -126,26 +128,9 @@ export const usePostCard = (post, initialShowComments, highlightCommentId) => {
         if (newState) showIslandAlert('success', 'Сохранено', '🔖');
     };
 
-    const handleEditStart = () => {
-        const rawMarkdown = reconstructMarkdown(localPost.content, localPost.spans || []);
-        setEditContent(rawMarkdown);
-        setIsEditing(true);
-    };
-
-    const handleEditSave = async () => {
-        if (!editContent.trim()) return;
-        try {
-            const res = await apiClient.editPost(localPost.id, editContent);
-            if (res && !res.error) { 
-                setLocalPost(prev => ({ 
-                    ...prev, 
-                    content: res.data?.content || editContent,
-                    spans: res.data?.spans || []
-                })); 
-                setIsEditing(false); 
-            }
-        } catch (e) { console.error(e); }
-    };
+    const updatePostData = useCallback((newData) => {
+        setLocalPost(prev => ({ ...prev, ...newData }));
+    }, []);
 
     const handleLinkClick = useCallback((e, url) => {
         handleGlobalLinkClick(e, url, navigate, openModal);
@@ -189,7 +174,6 @@ export const usePostCard = (post, initialShowComments, highlightCommentId) => {
         }
     }, [loadingComments, commentsCursor, localPost.id, hasMoreComments, commentsCount]);
 
-    
     useEffect(() => { 
         if (showComments && comments.length === 0 && !hasFetchedComments.current) {
             hasFetchedComments.current = true; 
@@ -228,8 +212,7 @@ export const usePostCard = (post, initialShowComments, highlightCommentId) => {
         liked, likesCount, handleLike,
         isReposted, repostsCount, handleRepost,
         isSaved, handleSave, 
-        isEditing, setIsEditing, editContent, setEditContent, textareaRef,
-        handleEditStart, handleEditSave,
+        updatePostData, 
         showComments, setShowComments,
         comments, setComments,
         loadingComments, commentsCount, setCommentsCount,

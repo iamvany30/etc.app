@@ -2,48 +2,51 @@
 
 .bottom-dock-container {
     position: fixed;
-    bottom: 20px;
+    bottom: 24px;
     left: 50%;
     transform: translateX(-50%);
     z-index: 9500;
     width: clamp(320px, calc(100% - 32px), 500px);
     
     
-    animation: dockPopUp 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) backwards;
-    will-change: transform;
+    transition: transform 0.45s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.3s ease;
+    will-change: transform, opacity;
 }
 
-@keyframes dockPopUp {
-    from { 
-        transform: translate(-50%, 150%) scale(0.9); 
-        opacity: 0; 
-    }
-    to { 
-        transform: translate(-50%, 0) scale(1); 
-        opacity: 1; 
-    }
+
+.bottom-dock-container.hidden {
+    transform: translate(-50%, calc(100% + 40px)) scale(0.95);
+    opacity: 0;
+    pointer-events: none;
 }
 
 .dock-glass-wrapper {
-    background: rgba(var(--glass-bg-rgb), 0.75);
-    backdrop-filter: blur(35px) saturate(200%);
-    -webkit-backdrop-filter: blur(35px) saturate(200%);
+    background: rgba(var(--glass-bg-rgb), 0.65);
+    backdrop-filter: blur(40px) saturate(250%);
+    -webkit-backdrop-filter: blur(40px) saturate(250%);
     
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-top: 1px solid rgba(255, 255, 255, 0.25); 
     
-    border: 1px solid rgba(255, 255, 255, 0.12);
-    border-top: 1px solid rgba(255, 255, 255, 0.2);
-    
-    border-radius: 32px;
+    border-radius: 36px;
     box-shadow: 
-        0 20px 50px rgba(0, 0, 0, 0.4),
+        0 25px 50px rgba(0, 0, 0, 0.5),
+        0 4px 15px rgba(0, 0, 0, 0.2),
         inset 0 1px 0 rgba(255, 255, 255, 0.1);
     
     overflow: hidden;
     display: flex;
     flex-direction: column;
-    
-    
-    transition: all 0.4s cubic-bezier(0.25, 1, 0.5, 1);
+}
+
+
+[data-bg='light'] .dock-glass-wrapper {
+    background: rgba(255, 255, 255, 0.85);
+    border: 1px solid rgba(0, 0, 0, 0.05);
+    border-top: 1px solid rgba(255, 255, 255, 0.9);
+    box-shadow: 
+        0 25px 50px rgba(0, 0, 0, 0.12),
+        0 4px 15px rgba(0, 0, 0, 0.05);
 }
 
 /* =========================================
@@ -68,6 +71,7 @@
     overflow: hidden;
     display: flex;
     flex-direction: column;
+    min-height: 0; 
 }
 
 /* =========================================
@@ -84,7 +88,6 @@
 [data-bg='light'] .dock-browser-section {
     border-bottom-color: rgba(0, 0, 0, 0.05);
 }
-
 
 .dock-browser-section {
     display: flex;
@@ -106,7 +109,6 @@
     font-weight: 700;
     color: var(--color-primary);
 }
-
 
 .dock-upload-section {
     padding: 10px 16px;
@@ -165,7 +167,6 @@
     100% { transform: translateX(350%); }
 }
 
-
 .dock-nav-section {
     position: relative;
     z-index: 2;
@@ -179,43 +180,22 @@
     transition: none !important;
 }
 
-
 @media (min-width: 1280px) {
-    .bottom-dock-container { 
-        display: none; 
-    }
+    .bottom-dock-container { display: none; }
 }
 
 /* =========================================
    БЕСШОВНАЯ ИНТЕГРАЦИЯ ПЛЕЕРА В ДОК
    ========================================= */
-
-
 .bottom-dock-container .gp-glass-card {
-    border-left: none !important;
-    border-right: none !important;
-    border-bottom: none !important;
+    border: none !important;
     box-shadow: none !important;
-    border-bottom-left-radius: 0 !important;
-    border-bottom-right-radius: 0 !important;
+    border-radius: 0 !important;
     margin: 0 !important;
+    background-color: transparent !important;
 }
 
 .bottom-dock-container .gp-glass-card:hover {
     transform: none !important;
     box-shadow: none !important;
-}
-
-
-.bottom-dock-container:not(.has-browser-mini) .gp-glass-card {
-    border-top-left-radius: 32px !important;
-    border-top-right-radius: 32px !important;
-    border-top: none !important;
-}
-
-
-.bottom-dock-container.has-browser-mini .gp-glass-card {
-    border-top-left-radius: 0 !important;
-    border-top-right-radius: 0 !important;
-    border-top: none !important;
 }

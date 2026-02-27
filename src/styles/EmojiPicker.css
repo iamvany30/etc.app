@@ -1,151 +1,321 @@
-.emoji-picker-container {
-    position: absolute;
-    width: 320px;
-    max-width: calc(100vw - 32px); 
-    background-color: rgba(var(--glass-bg-rgb, 255, 255, 255), 0.95);
-    backdrop-filter: blur(25px) saturate(180%);
-    -webkit-backdrop-filter: blur(25px) saturate(180%);
-    border: 1px solid var(--color-border, #e0e0e0);
-    border-radius: 16px;
-    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.15);
-    z-index: 1000;
-    display: flex;
-    flex-direction: column;
-    overflow: hidden;
-    will-change: transform, opacity;
+
+:root {
+    --ep-bg: rgba(255, 255, 255, 0.95); 
+    --ep-bg-blur: 12px;
+    --ep-border: 1px solid rgba(0, 0, 0, 0.08);
+    --ep-shadow: 0 12px 32px rgba(0, 0, 0, 0.12), 0 2px 6px rgba(0, 0, 0, 0.04);
+    --ep-radius: 16px;
+    
+    --ep-accent: #3b82f6; 
+    --ep-accent-bg: #eff6ff;
+    
+    --ep-text-primary: #1e293b;
+    --ep-text-secondary: #64748b;
+    --ep-hover-bg: #f1f5f9;
+    
+    --ep-header-height: 52px;
+    --ep-footer-height: 44px;
+    --ep-preview-height: 50px;
+    
+    --ep-font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
 }
 
 
-.emoji-picker-container.pos-top {
-    bottom: calc(100% + 10px);
-    left: 0;
-    transform-origin: bottom left;
-    animation: emojiPickerInTop 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
-}
-
-
-.emoji-picker-container.pos-bottom {
-    top: calc(100% + 10px);
-    left: 0;
-    transform-origin: top left;
-    animation: emojiPickerInBottom 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
-}
-
-@keyframes emojiPickerInTop {
-    from { opacity: 0; transform: translateY(10px) scale(0.95); }
-    to { opacity: 1; transform: translateY(0) scale(1); }
-}
-
-@keyframes emojiPickerInBottom {
-    from { opacity: 0; transform: translateY(-10px) scale(0.95); }
-    to { opacity: 1; transform: translateY(0) scale(1); }
-}
-
-
-.create-comment-container .emoji-picker-container.pos-top {
-    left: auto;
-    right: 0;
-    transform-origin: bottom right;
-}
-
-.create-comment-container .emoji-picker-container.pos-bottom {
-    left: auto;
-    right: 0;
-    transform-origin: top right;
-}
-
-.emoji-picker-tabs {
-    display: flex;
-    padding: 8px 12px;
-    background-color: var(--color-item-bg, transparent);
-    border-bottom: 1px solid var(--color-border, #e0e0e0);
-    gap: 4px;
-}
-
-.emoji-tab-btn {
-    flex: 1;
-    background: transparent;
-    border: none;
-    font-size: 18px;
-    font-family: var(--font-emoji, "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji");
-    padding: 6px 0;
-    border-radius: 8px;
-    cursor: pointer;
-    transition: all 0.2s ease;
-    opacity: 0.4;
-    filter: grayscale(1);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-}
-
-.emoji-tab-btn:hover {
-    background-color: rgba(128, 128, 128, 0.1);
-    opacity: 0.8;
-}
-
-.emoji-tab-btn.active {
-    opacity: 1;
-    filter: grayscale(0);
-    background-color: var(--color-primary-alpha, rgba(0, 122, 255, 0.1));
-}
-
-.emoji-picker-content {
-    height: 220px;
-    padding: 12px;
-    overflow-y: auto;
-    -webkit-overflow-scrolling: touch; 
-}
-
-.emoji-grid {
-    display: grid;
-    grid-template-columns: repeat(8, 1fr);
-    gap: 4px;
-}
-
-.emoji-item-btn {
-    background: transparent;
-    border: none;
-    font-size: 24px;
-    font-family: var(--font-emoji, "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji");
-    width: 34px;
-    height: 34px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    border-radius: 8px;
-    cursor: pointer;
-    transition: transform 0.1s cubic-bezier(0.2, 0.8, 0.2, 1), background-color 0.2s;
-    padding: 0;
-    user-select: none;
-}
-
-
-@media (hover: hover) {
-    .emoji-item-btn:hover {
-        background-color: var(--color-border, rgba(0, 0, 0, 0.05));
-        transform: scale(1.15);
+@media (prefers-color-scheme: dark) {
+    :root {
+        --ep-bg: rgba(30, 41, 59, 0.95);
+        --ep-border: 1px solid rgba(255, 255, 255, 0.1);
+        --ep-shadow: 0 12px 32px rgba(0, 0, 0, 0.4);
+        --ep-accent: #60a5fa;
+        --ep-accent-bg: rgba(59, 130, 246, 0.2);
+        --ep-text-primary: #f8fafc;
+        --ep-text-secondary: #94a3b8;
+        --ep-hover-bg: rgba(255, 255, 255, 0.08);
     }
 }
 
-.emoji-item-btn:active {
-    transform: scale(0.85);
+
+.emoji-picker-root {
+    position: absolute;
+    width: 340px;
+    height: 450px;
+    background: var(--ep-bg);
+    backdrop-filter: blur(var(--ep-bg-blur));
+    -webkit-backdrop-filter: blur(var(--ep-bg-blur));
+    border: var(--ep-border);
+    border-radius: var(--ep-radius);
+    box-shadow: var(--ep-shadow);
+    display: flex;
+    flex-direction: column;
+    z-index: 9999;
+    font-family: var(--ep-font-family);
+    overflow: hidden;
+    animation: ep-fade-in 0.2s ease-out;
+}
+
+
+.pos-top { bottom: 100%; left: 0; margin-bottom: 8px; }
+.pos-bottom-start { top: 100%; left: 0; margin-top: 8px; }
+.pos-bottom-end { top: 100%; right: 0; margin-top: 8px; }
+
+@keyframes ep-fade-in {
+    from { opacity: 0; transform: translateY(4px) scale(0.98); }
+    to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+
+.emoji-header {
+    height: var(--ep-header-height);
+    padding: 0 12px;
+    display: flex;
+    align-items: center;
+    border-bottom: 1px solid rgba(0,0,0,0.04);
+    flex-shrink: 0;
+}
+
+.emoji-search-wrapper {
+    position: relative;
+    width: 100%;
+    display: flex;
+    align-items: center;
+    background: var(--ep-hover-bg);
+    border-radius: 8px;
+    padding: 0 8px;
+    transition: box-shadow 0.2s;
+}
+
+.emoji-search-wrapper:focus-within {
+    box-shadow: 0 0 0 2px var(--ep-accent-bg);
+    background: transparent;
+    border: 1px solid var(--ep-accent);
+}
+
+.emoji-search-icon {
+    color: var(--ep-text-secondary);
+    min-width: 16px;
+}
+
+.emoji-search-input {
+    width: 100%;
+    border: none;
+    background: transparent;
+    padding: 8px 8px;
+    font-size: 14px;
+    color: var(--ep-text-primary);
+    outline: none;
+}
+
+.emoji-search-clear {
+    background: none;
+    border: none;
+    cursor: pointer;
+    color: var(--ep-text-secondary);
+    display: flex;
+    padding: 2px;
+    border-radius: 50%;
+}
+.emoji-search-clear:hover { color: var(--ep-text-primary); }
+
+
+.emoji-scroll-content {
+    flex: 1;
+    overflow-y: auto;
+    padding: 0 8px;
+    scroll-behavior: smooth;
+    position: relative;
+}
+
+.emoji-section {
+    padding-bottom: 8px;
+}
+
+.emoji-category-title {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--ep-text-secondary);
+    padding: 8px 4px;
+    background: var(--ep-bg); 
+    z-index: 2;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.emoji-category-title.sticky {
+    position: sticky;
+    top: 0;
+    box-shadow: 0 1px 0 rgba(0,0,0,0.02);
+}
+
+.emoji-clear-recent {
+    background: none;
+    border: none;
+    cursor: pointer;
+    color: var(--ep-text-secondary);
+    opacity: 0.6;
+    transition: 0.2s;
+}
+.emoji-clear-recent:hover { opacity: 1; color: #ef4444; }
+
+.emoji-grid {
+    display: grid;
+    grid-template-columns: repeat(8, 1fr); 
+    gap: 2px;
+}
+
+.emoji-btn {
+    width: 36px;
+    height: 36px;
+    border: none;
+    background: transparent;
+    font-size: 24px;
+    cursor: pointer;
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: transform 0.1s, background-color 0.1s;
+    user-select: none;
+}
+
+.emoji-btn:hover {
+    background-color: var(--ep-hover-bg);
+    transform: scale(1.15);
+    z-index: 1;
+}
+
+.emoji-btn:active {
+    transform: scale(0.95);
+}
+
+.emoji-no-results {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 40px 0;
+    color: var(--ep-text-secondary);
+    font-size: 14px;
+}
+
+
+.emoji-preview-bar {
+    height: var(--ep-preview-height);
+    border-top: 1px solid rgba(0,0,0,0.04);
+    background: rgba(255,255,255,0.02);
+    display: flex;
+    align-items: center;
+    padding: 0 16px;
+    flex-shrink: 0;
+}
+
+.emoji-preview-content {
+    display: flex;
+    align-items: center;
+    width: 100%;
+    overflow: hidden;
+}
+
+.ep-preview-icon {
+    font-size: 32px;
+    margin-right: 12px;
+    min-width: 32px;
+}
+
+.ep-preview-info {
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+.ep-preview-name {
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--ep-text-primary);
+    white-space: nowrap;
+    text-overflow: ellipsis;
+    overflow: hidden;
+}
+
+.ep-preview-keywords {
+    font-size: 12px;
+    color: var(--ep-text-secondary);
+    white-space: nowrap;
+    text-overflow: ellipsis;
+    overflow: hidden;
+    opacity: 0.8;
+}
+
+.ep-preview-placeholder {
+    color: var(--ep-text-secondary);
+    font-size: 13px;
+    font-style: italic;
+    opacity: 0.6;
+}
+
+
+.emoji-tabs-footer {
+    height: var(--ep-footer-height);
+    display: flex;
+    align-items: center;
+    justify-content: space-around;
+    border-top: 1px solid rgba(0,0,0,0.04);
+    background: var(--ep-bg);
+    flex-shrink: 0;
+    padding: 0 4px;
+}
+
+.emoji-tab {
+    flex: 1;
+    height: 100%;
+    border: none;
+    background: transparent;
+    cursor: pointer;
+    color: var(--ep-text-secondary);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    transition: color 0.2s;
+}
+
+.emoji-tab:hover {
+    color: var(--ep-text-primary);
+    background: var(--ep-hover-bg);
+}
+
+.emoji-tab.active {
+    color: var(--ep-accent);
+}
+
+.emoji-tab-indicator {
+    position: absolute;
+    bottom: 0;
+    left: 20%;
+    right: 20%;
+    height: 3px;
+    background: var(--ep-accent);
+    border-top-left-radius: 3px;
+    border-top-right-radius: 3px;
+    animation: ep-tab-slide 0.2s ease;
+}
+
+@keyframes ep-tab-slide {
+    from { transform: scaleX(0); }
+    to { transform: scaleX(1); }
 }
 
 
 .custom-scrollbar::-webkit-scrollbar {
     width: 6px;
 }
-
 .custom-scrollbar::-webkit-scrollbar-track {
     background: transparent;
 }
-
 .custom-scrollbar::-webkit-scrollbar-thumb {
-    background-color: rgba(128, 128, 128, 0.3);
+    background: rgba(0,0,0,0.1);
     border-radius: 10px;
 }
-
 .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-    background-color: rgba(128, 128, 128, 0.5);
+    background: rgba(0,0,0,0.2);
 }

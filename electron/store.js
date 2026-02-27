@@ -1,142 +1,182 @@
+/* @source electron/store.js */
 const fs = require('fs');
-const path = require('path');
-const { safeStorage, app } = require('electron');
+const { safeStorage } = require('electron');
+const Database = require('better-sqlite3');
 const { PATHS } = require('./config');
 
-let storeData = null;
+
+const db = new Database(PATHS.STORE_DB);
 
 
+db.pragma('journal_mode = WAL');
 
 
-const useEncryption = false; 
+db.exec(`
+  CREATE TABLE IF NOT EXISTS accounts (
+    id TEXT PRIMARY KEY,
+    user_data TEXT NOT NULL,
+    session_data BLOB NOT NULL, -- Используем BLOB для зашифрованных данных
+    last_updated INTEGER NOT NULL
+  );
+  CREATE TABLE IF NOT EXISTS app_state (
+    key TEXT PRIMARY KEY,
+    value TEXT
+  );
+`);
 
-function loadFromDisk() {
-    if (!fs.existsSync(PATHS.STORE)) {
-        return { activeId: null, accounts: {} };
+
+const queries = {
+  getAccount: db.prepare('SELECT * FROM accounts WHERE id = ?'),
+  getAccounts: db.prepare('SELECT id, user_data FROM accounts'),
+  insertAccount: db.prepare('INSERT OR REPLACE INTO accounts (id, user_data, session_data, last_updated) VALUES (@id, @user_data, @session_data, @last_updated)'),
+  deleteAccount: db.prepare('DELETE FROM accounts WHERE id = ?'),
+  updateSession: db.prepare('UPDATE accounts SET session_data = ?, last_updated = ? WHERE id = ?'),
+  getActiveId: db.prepare("SELECT value FROM app_state WHERE key = 'activeAccountId'"),
+  setActiveId: db.prepare("INSERT OR REPLACE INTO app_state (key, value) VALUES ('activeAccountId', ?)"),
+};
+
+
+const runMigration = () => {
+    if (!fs.existsSync(PATHS.STORE_LEGACY_JSON)) {
+        return; 
     }
+    
+    console.log('[Store] Обнаружен старый файл session.secure. Запуск миграции в SQLite...');
 
     try {
-        const fileBuffer = fs.readFileSync(PATHS.STORE);
-        if (fileBuffer.length === 0) {
-            return { activeId: null, accounts: {} };
-        }
-        
-        let decryptedStr;
+        const fileBuffer = fs.readFileSync(PATHS.STORE_LEGACY_JSON);
+        if (fileBuffer.length === 0) throw new Error("Legacy file is empty");
 
-        
-        
-        const isLikelyEncrypted = fileBuffer.slice(0, 3).toString() === 'v10';
-        
-        if (isLikelyEncrypted && safeStorage.isEncryptionAvailable()) {
-            try {
-                decryptedStr = safeStorage.decryptString(fileBuffer);
-            } catch (e) {
-                console.error("[Store] Decryption failed:", e.message);
-                throw new Error("Decryption failed"); 
-            }
-        } else {
-            
+        let decryptedStr;
+        try {
+            decryptedStr = safeStorage.decryptString(fileBuffer);
+        } catch (e) {
             decryptedStr = fileBuffer.toString('utf8');
         }
         
-        const parsed = JSON.parse(decryptedStr);
-        return parsed.accounts ? parsed : { activeId: null, accounts: {} };
+        const data = JSON.parse(decryptedStr);
+        if (!data || !data.accounts) throw new Error("Invalid legacy data structure");
+
+        
+        const migrateTransaction = db.transaction(() => {
+            for (const accountId in data.accounts) {
+                const account = data.accounts[accountId];
+                if (!account.user || !account.session) continue;
+                
+                queries.insertAccount.run({
+                    id: account.user.id,
+                    user_data: JSON.stringify(account.user),
+                    session_data: safeStorage.encryptString(JSON.stringify(account.session)),
+                    last_updated: account.lastUpdated || Date.now()
+                });
+            }
+            if (data.activeId) {
+                queries.setActiveId.run(data.activeId);
+            }
+        });
+
+        migrateTransaction();
+        
+        
+        fs.renameSync(PATHS.STORE_LEGACY_JSON, PATHS.STORE_LEGACY_JSON + '.migrated');
+        console.log('[Store] Миграция успешно завершена. Старый файл переименован.');
 
     } catch (error) {
-        console.error(`[Store] Load error: ${error.message}. Resetting store.`);
-        
-        
+        console.error(`[Store] Ошибка миграции: ${error.message}. Старый файл будет сохранен как .bak`);
         try {
-            if (fs.existsSync(PATHS.STORE)) {
-                fs.unlinkSync(PATHS.STORE);
-            }
-        } catch (unlinkErr) {
-            console.error("[Store] Failed to unlink:", unlinkErr);
+            fs.renameSync(PATHS.STORE_LEGACY_JSON, PATHS.STORE_LEGACY_JSON + '.bak');
+        } catch (renameErr) {
+            console.error("[Store] Не удалось переименовать поврежденный файл:", renameErr);
         }
-        
-        return { activeId: null, accounts: {} };
     }
+};
+
+runMigration();
+
+
+function getActiveId() {
+    return queries.getActiveId.get()?.value || null;
 }
 
-function saveToDisk() {
-    if (!storeData) return;
-
+function getAccountById(id) {
+    if (!id) return null;
+    const row = queries.getAccount.get(id);
+    if (!row) return null;
+    
     try {
-        const strData = JSON.stringify(storeData);
-        let bufferToWrite;
-
-        
-        
-        if (useEncryption && safeStorage.isEncryptionAvailable()) {
-            bufferToWrite = safeStorage.encryptString(strData);
-        } else {
-            bufferToWrite = Buffer.from(strData, 'utf8');
-        }
-        
-        fs.writeFileSync(PATHS.STORE, bufferToWrite);
-        
-    } catch (e) { 
-        console.error("[Store] Save error:", e); 
+        return {
+            user: JSON.parse(row.user_data),
+            session: JSON.parse(safeStorage.decryptString(row.session_data)),
+            lastUpdated: row.last_updated
+        };
+    } catch (e) {
+        console.error(`[Store] Не удалось расшифровать данные для аккаунта ${id}:`, e);
+        return null;
     }
 }
-
-
-storeData = loadFromDisk();
 
 function getActiveAccount() {
-    if (!storeData.activeId || !storeData.accounts[storeData.activeId]) return null;
-    return storeData.accounts[storeData.activeId];
+    const activeId = getActiveId();
+    return getAccountById(activeId);
 }
 
 function getAccountsList() {
-    if (!storeData || !storeData.accounts) return [];
-    return Object.values(storeData.accounts).map(acc => ({
-        id: acc.user.id,
-        username: acc.user.username,
-        displayName: acc.user.displayName,
-        avatar: acc.user.avatar,
-        isActive: acc.user.id === storeData.activeId
-    }));
+    const activeId = getActiveId();
+    const rows = queries.getAccounts.all();
+    return rows.map(row => {
+        const user = JSON.parse(row.user_data);
+        return {
+            id: user.id,
+            username: user.username,
+            displayName: user.displayName,
+            avatar: user.avatar,
+            isActive: user.id === activeId
+        };
+    });
 }
 
 function addAccount(userProfile, sessionData) {
     if (!userProfile?.id) return;
     
-    if (!storeData.accounts) storeData.accounts = {};
-
-    storeData.accounts[userProfile.id] = { 
-        user: userProfile, 
-        session: sessionData,
-        lastUpdated: Date.now()
-    };
-    storeData.activeId = userProfile.id;
-    saveToDisk();
+    queries.insertAccount.run({
+        id: userProfile.id,
+        user_data: JSON.stringify(userProfile),
+        session_data: safeStorage.encryptString(JSON.stringify(sessionData)),
+        last_updated: Date.now()
+    });
+    
+    queries.setActiveId.run(userProfile.id);
 }
 
 function setActiveId(userId) {
-    if (storeData.accounts[userId]) {
-        storeData.activeId = userId;
-        saveToDisk();
-    }
+    queries.setActiveId.run(userId);
 }
 
 function removeAccount(userId) {
-    if (storeData.accounts[userId]) {
-        delete storeData.accounts[userId];
-        if (storeData.activeId === userId) {
-            const ids = Object.keys(storeData.accounts);
-            storeData.activeId = ids.length > 0 ? ids[0] : null;
+    const currentActiveId = getActiveId();
+    queries.deleteAccount.run(userId);
+
+    if (currentActiveId === userId) {
+        const remainingAccounts = queries.getAccounts.all();
+        const newActiveId = remainingAccounts.length > 0 ? remainingAccounts[0].id : null;
+        if (newActiveId) {
+            queries.setActiveId.run(newActiveId);
+        } else {
+             
+            db.prepare("DELETE FROM app_state WHERE key = 'activeAccountId'").run();
         }
-        saveToDisk();
     }
 }
 
 function updateActiveSessionCookies(cookies) {
-    const acc = getActiveAccount();
-    if (acc) {
-        acc.session.cookies = cookies;
-        acc.lastUpdated = Date.now();
-        saveToDisk();
+    const activeId = getActiveId();
+    if (!activeId) return;
+
+    const account = getAccountById(activeId);
+    if (account) {
+        account.session.cookies = cookies;
+        const newSessionData = safeStorage.encryptString(JSON.stringify(account.session));
+        queries.updateSession.run(newSessionData, Date.now(), activeId);
     }
 }
 
@@ -148,6 +188,6 @@ module.exports = {
     addAccount,
     setActiveId,
     removeAccount,
-    getAccountById: (id) => storeData.accounts[id],
+    getAccountById,
     updateActiveSessionCookies
 };

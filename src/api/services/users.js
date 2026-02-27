@@ -33,7 +33,8 @@ export const usersService = {
     getFollowers: (username) => request(`/users/${username}/followers`, 'GET'),
     getFollowing: (username) => request(`/users/${username}/following`, 'GET'),
     sendLastSeen: () => request('/users/me/offline', 'POST', { timestamp: new Date().toISOString() }).catch(() => {}),
-    
+    getVerificationStatus: () => request('/verification/status', 'GET'),
+    submitVerification: (data) => request('/verification/submit', 'POST', data),
     deleteAccount: (password) => request('/users/me', 'DELETE', { password }),
     exportData: () => request('/users/me/export', 'GET'),
 

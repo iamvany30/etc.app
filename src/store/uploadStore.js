@@ -1,5 +1,6 @@
 /* @source src/store/uploadStore.js */
 import { create } from 'zustand';
+import { useIslandStore } from './islandStore'; 
 
 export const useUploadStore = create((set, get) => ({
     uploads: {},
@@ -7,7 +8,8 @@ export const useUploadStore = create((set, get) => ({
     startMusicUpload: async (file) => {
         const filePath = window.api.getPathForFile(file);
         if (!filePath) {
-            alert("Ошибка: не удалось прочитать путь к файлу.");
+            
+            useIslandStore.getState().showIslandAlert('error', 'Ошибка: не удалось прочитать путь к файлу', '❌');
             return;
         }
         
@@ -34,7 +36,6 @@ export const useUploadStore = create((set, get) => ({
             return { uploads: { ...state.uploads, [id]: updatedUpload } };
         });
 
-        
         if (status === 'complete' || status === 'error') {
             setTimeout(() => {
                 set((state) => {

@@ -238,12 +238,6 @@ const NotificationsPage = () => {
                         >
                             Все
                         </button>
-                        <button
-                            className={`notif-tab ${activeTab === 'mentions' ? 'active' : ''}`}
-                            onClick={() => setActiveTab('mentions')}
-                        >
-                            Упоминания
-                        </button>
                     </div>
                 </div>
             </header>

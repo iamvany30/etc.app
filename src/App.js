@@ -1,5 +1,5 @@
 /* @source src/App.js */
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, Suspense, lazy } from 'react';
 import { Routes, Route, Navigate, Outlet, useNavigate, useLocation } from 'react-router-dom';
 
 
@@ -32,21 +32,40 @@ import InternalBrowser from './components/InternalBrowser';
 import ModalManager from './components/ModalManager';
 import AccountSwitchOverlay from './components/AccountSwitchOverlay';
 import AnnouncementWatcher from './components/AnnouncementWatcher';
+import ServerStatusWatcher from './components/ServerStatusWatcher'; 
+import LockScreen from './components/LockScreen';
 
-
-import Feed from './pages/Feed';
-import Explore from './pages/Explore';
-import Profile from './pages/Profile';
-import Notifications from './pages/Notifications';
-import PostDetails from './pages/PostDetails';
-import Music from './pages/Music';
-import Login from './pages/Login';
-import Downloads from './pages/Downloads';
-import Bookmarks from './pages/Bookmarks';
-import DevPage from './pages/DevPage';
 
 import './App.css';
 import './styles/Layout.css';
+
+
+const Feed = lazy(() => import('./pages/Feed'));
+const Explore = lazy(() => import('./pages/Explore'));
+const Profile = lazy(() => import('./pages/Profile'));
+const Notifications = lazy(() => import('./pages/Notifications'));
+const PostDetails = lazy(() => import('./pages/PostDetails'));
+const Music = lazy(() => import('./pages/Music'));
+const Login = lazy(() => import('./pages/Login'));
+const Downloads = lazy(() => import('./pages/Downloads'));
+const Bookmarks = lazy(() => import('./pages/Bookmarks'));
+const RecentPosts = lazy(() => import('./pages/RecentPosts'));
+const DevPage = lazy(() => import('./pages/DevPage'));
+
+
+
+const PageLoader = () => (
+    <div style={{ 
+        display: 'flex', 
+        alignItems: 'center', 
+        justifyContent: 'center', 
+        height: '100%', 
+        width: '100%',
+        color: 'var(--color-text-secondary)'
+    }}>
+        <div className="spinner-mini" style={{ width: 24, height: 24, borderWidth: 3 }} />
+    </div>
+);
 
 const DefaultLayout = () => {
     const [contentKey, setContentKey] = useState(0);
@@ -61,20 +80,26 @@ const DefaultLayout = () => {
         <div className="layout">
             <DynamicComponent name="Layout.Sidebar" fallback={Sidebar} />
             <main className="content hide-scrollbar" key={contentKey}>
-                <Outlet />
+                <Suspense fallback={<PageLoader />}>
+                    <Outlet />
+                </Suspense>
             </main>
             <DynamicComponent name="Layout.RightSidebar" fallback={RightSidebar} />
         </div>
     );
 };
 
+
 const RouteEl = ({ name, fallback: Fallback }) => (
     <div className="page-container">
-        <DynamicComponent name={name} fallback={Fallback} />
+        <Suspense fallback={<PageLoader />}>
+            <DynamicComponent name={name} fallback={Fallback} />
+        </Suspense>
     </div>
 );
 
 function App() {
+    
     const currentUser = useUserStore(state => state.currentUser);
     const switchingTarget = useUserStore(state => state.switchingTarget);
     const isOverlayExiting = useUserStore(state => state.isOverlayExiting);
@@ -85,22 +110,34 @@ function App() {
 
     const isDevWindow = location.pathname === '/dev' || location.pathname === '#/dev';
 
+    
     useEffect(() => {
-        if (isDevWindow || !window.api?.invoke) return;
+        
+        if (process.env.NODE_ENV === 'production' && !isDevWindow) return;
+        if (!window.api?.invoke) return;
+
         const syncInterval = setInterval(() => {
             try {
-                const sanitize = (obj) => {
-                    const result = {};
-                    for (const key in obj) { if (typeof obj[key] !== 'function') result[key] = obj[key]; }
-                    return result;
-                };
+                
+                
                 window.api.invoke('debug:update-state-snapshot', {
-                    user: sanitize(useUserStore.getState()),
-                    music: sanitize(useMusicStore.getState()),
-                    download: sanitize(useDownloadStore.getState())
+                    user: {
+                        currentUser: useUserStore.getState().currentUser?.id,
+                        accountsCount: useUserStore.getState().accounts.length
+                    },
+                    music: {
+                        isPlaying: useMusicStore.getState().isPlaying,
+                        currentTrack: useMusicStore.getState().currentTrack?.title
+                    },
+                    download: {
+                        activeCount: Object.keys(useDownloadStore.getState().downloads).length
+                    }
                 });
-            } catch (e) {}
-        }, 1000);
+            } catch (e) {
+                
+            }
+        }, 2000); 
+
         return () => clearInterval(syncInterval);
     }, [isDevWindow]);
 
@@ -143,15 +180,18 @@ function App() {
         return () => unsubscribe();
     }, [navigate]);
 
+    
     if (isDevWindow) {
         return (
             <React.Fragment>
                 <ModalManager />
                 <DynamicIsland />
                 <ContextMenuManager />
-                <Routes>
-                    <Route path="/dev" element={<DevPage />} />
-                </Routes>
+                <Suspense fallback={<PageLoader />}>
+                    <Routes>
+                        <Route path="/dev" element={<DevPage />} />
+                    </Routes>
+                </Suspense>
             </React.Fragment>
         );
     }
@@ -163,36 +203,48 @@ function App() {
             {snowEnabled && <Snowfall />}
             <ErrorBoundary><TitleBar /></ErrorBoundary>
             <ModalManager />
+            <LockScreen />
 
             <AuthFlow>
+                {}
                 <React.Fragment key={currentUser?.id || 'guest'}>
                     <DynamicIsland />
                     <ContextMenuManager />
+                    
+                    {}
                     <NotificationWatcher />
                     <DownloadWatcher />
                     <AnnouncementWatcher />
+                    <ServerStatusWatcher /> 
                     <PresenceManager />
                     <DiscordManager />
+                    
+                    {}
                     <ScrollToTop />
                     <BottomDock />
                     <UploadManager />
                     <InternalBrowser />
 
-                    <Routes>
-                        <Route element={<DefaultLayout />}>
-                            <Route path="/" element={<RouteEl name="Page.Feed" fallback={Feed} />} />
-                            <Route path="/explore" element={<RouteEl name="Page.Explore" fallback={Explore} />} />
-                            <Route path="/notifications" element={<RouteEl name="Page.Notifications" fallback={Notifications} />} />
-                            <Route path="/music" element={<RouteEl name="Page.Music" fallback={Music} />} />
-                            <Route path="/profile/:username" element={<RouteEl name="Page.Profile" fallback={Profile} />} />
-                            <Route path="/post/:id" element={<RouteEl name="Page.PostDetails" fallback={PostDetails} />} />
-                            <Route path="/downloads" element={<Downloads />} />
-                            <Route path="/bookmarks" element={<RouteEl name="Page.Bookmarks" fallback={Bookmarks} />} />
-                        </Route>
+                    <Suspense fallback={<PageLoader />}>
+                        <Routes>
+                            <Route element={<DefaultLayout />}>
+                                <Route path="/" element={<RouteEl name="Page.Feed" fallback={Feed} />} />
+                                <Route path="/explore" element={<RouteEl name="Page.Explore" fallback={Explore} />} />
+                                <Route path="/notifications" element={<RouteEl name="Page.Notifications" fallback={Notifications} />} />
+                                <Route path="/music" element={<RouteEl name="Page.Music" fallback={Music} />} />
+                                <Route path="/profile/:username" element={<RouteEl name="Page.Profile" fallback={Profile} />} />
+                                <Route path="/post/:id" element={<RouteEl name="Page.PostDetails" fallback={PostDetails} />} />
+                                <Route path="/downloads" element={<Downloads />} />
+                                <Route path="/bookmarks" element={<RouteEl name="Page.Bookmarks" fallback={Bookmarks} />} />
+                                <Route path="/recent" element={<RouteEl name="Page.RecentPosts" fallback={RecentPosts} />} />
+                            </Route>
 
-                        <Route path="/login" element={<Login />} />
-                        <Route path="*" element={<Navigate to="/" replace />} />
-                    </Routes>
+                            <Route path="/login" element={<Login />} />
+                            <Route path="/login/refresh_token/:token" element={<Login />} />
+                            
+                            <Route path="*" element={<Navigate to="/" replace />} />
+                        </Routes>
+                    </Suspense>
                 </React.Fragment>
             </AuthFlow>
         </>

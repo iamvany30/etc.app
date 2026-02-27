@@ -10,6 +10,7 @@ import { FontLoader } from './core/FontLoader';
 import { initIpcListeners } from './core/ipcManager';
 import { useDownloadStore } from './store/downloadStore';
 import { bookmarkUtils } from './utils/bookmarkUtils';
+import { historyUtils } from './utils/historyUtils'; 
 
 import { ContextMenuProvider } from './context/ContextMenuContext';
 import { BrowserProvider } from './context/BrowserContext';
@@ -35,11 +36,12 @@ const Bootstrapper = () => {
     useLayoutEffect(() => {
         const boot = async () => {
             try {
-                
                 await ThemeLoader.init(); 
                 await FontLoader.init(); 
                 
                 await bookmarkUtils.init();
+                await historyUtils.init(); 
+                
                 initIpcListeners();
                 setupDownloadListeners();
             } catch (e) {

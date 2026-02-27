@@ -1,5 +1,4 @@
-/* @source electron/ipc.js */
-const { ipcMain, shell, app, session, dialog, BrowserWindow } = require('electron');
+const { ipcMain, shell, app, session, dialog, BrowserWindow, Notification, nativeImage } = require('electron');
 const path = require('path');
 const fs = require('fs/promises');
 const ffmpeg = require('fluent-ffmpeg');
@@ -17,10 +16,13 @@ const { API_BASE, USER_AGENT, PATHS} = require('./config');
 const fonts = require('./fonts');
 const os = require('os');
 const downloadManager = require('./downloadManager');
-const streamManager = require('./stream'); 
+const streamManager = require('./stream');
+const assetCache = require('./assetCache');
 
 let appStateSnapshot = {};
 let isHandlersRegistered = false;
+
+const activeNotifications = new Set();
 
 function decryptCookieEditorData(encryptedBase64, password) {
     try {
@@ -28,7 +30,7 @@ function decryptCookieEditorData(encryptedBase64, password) {
         const iv = rawData.subarray(0, 12);
         const authTag = rawData.subarray(rawData.length - 16);
         const encrypted = rawData.subarray(12, rawData.length - 16);
-        const salt = password + password; 
+        const salt = password + password;
         const key = crypto.pbkdf2Sync(password, salt, 1024, 32, 'sha256');
         const decipher = crypto.createDecipheriv('aes-256-gcm', key, iv);
         decipher.setAuthTag(authTag);
@@ -48,18 +50,18 @@ async function loginWithRefreshToken(refreshTokenStr) {
     const cookies = [{
         name: 'refresh_token',
         value: refreshTokenStr.trim(),
-        domain: '.xn--d1ah4a.com', 
+        domain: '.xn--d1ah4a.com',
         path: '/',
         secure: true,
         httpOnly: true,
         sameSite: 'lax',
-        expirationDate: (Date.now() / 1000) + 31536000 
+        expirationDate: (Date.now() / 1000) + 31536000
     }];
-    const sessionData = { 
-        cookies, 
-        localStorage: {}, 
-        userAgent: USER_AGENT, 
-        url: `${API_BASE}/feed` 
+    const sessionData = {
+        cookies,
+        localStorage: {},
+        userAgent: USER_AGENT,
+        url: `${API_BASE}/feed`
     };
     return await finalizeLoginFlow(sessionData);
 }
@@ -70,7 +72,7 @@ async function finalizeLoginFlow(sessionData) {
         if (sessionData.userAgent) {
             require('electron').session.defaultSession.setUserAgent(sessionData.userAgent);
         }
-        await new Promise(r => setTimeout(r, 500));  
+        await new Promise(r => setTimeout(r, 500));
         const refreshRes = await network.rawFetch('/v1/auth/refresh', { method: 'POST' });
         if (refreshRes.ok && refreshRes.data.accessToken) {
             network.setGlobalAccessToken(refreshRes.data.accessToken);
@@ -112,6 +114,65 @@ async function withTempFiles(inputData, extension, callback) {
 
 function registerHandlers() {
     if (isHandlersRegistered) return;
+ipcMain.handle('auth:biometric', async () => {
+        logDebug('[IPC] 🔒 Запрос auth:biometric получен');
+        try {
+            if (process.platform === 'darwin') {
+                const { systemPreferences } = require('electron');
+                if (systemPreferences.canPromptTouchID()) {
+                    await systemPreferences.promptTouchID('Разблокировка итд.app');
+                    return { success: true, platform: 'darwin' };
+                }
+                return { success: false, error: 'TouchID не настроен', platform: 'darwin' };
+            } else if (process.platform === 'win32') {
+                const { exec } = require('child_process');
+                return new Promise((resolve) => {
+                    
+                    
+                    
+                    
+                    const script = `
+Add-Type -AssemblyName System.Runtime.WindowsRuntime
+$asTaskGeneric = ([System.WindowsRuntimeSystemExtensions].GetMethods() | ? { $_.Name -eq 'AsTask' -and $_.GetParameters().Count -eq 1 -and $_.GetParameters()[0].ParameterType.Name -eq 'IAsyncOperation\`1' })[0]
+$ucv = [Windows.Security.Credentials.UI.UserConsentVerifier, Windows.Security.Credentials.UI, ContentType = WindowsRuntime]
+$op = $ucv::RequestVerificationAsync('Подтвердите личность для входа в итд.app')
+$asTask = $asTaskGeneric.MakeGenericMethod([Windows.Security.Credentials.UI.UserConsentVerificationResult]).Invoke($null, @($op))
+$result = $asTask.GetAwaiter().GetResult()
+Write-Output ([int]$result)
+`;
+                    
+                    const base64Script = Buffer.from(script, 'utf16le').toString('base64');
+                    
+                    exec(`powershell.exe -NoProfile -ExecutionPolicy Bypass -EncodedCommand ${base64Script}`, (error, stdout, stderr) => {
+                        const out = stdout ? stdout.trim() : '';
+                        
+                        
+                        logDebug(`[Windows Hello] PowerShell RAW Output: "${out}"`);
+                        
+                        
+                        if (stderr && stderr.length > 0) {
+                             logDebug(`[Windows Hello] PowerShell STDERR:`, stderr);
+                             
+                             
+                             
+                        }
+
+                        if (out === '0') {
+                            logDebug('[Windows Hello] ✅ Верификация успешна (Код 0)');
+                            resolve({ success: true, platform: 'win32' });
+                        } else {
+                            logDebug(`[Windows Hello] ❌ Верификация отклонена или ошибка скрипта. Код: "${out}"`);
+                            resolve({ success: false, error: `Biometric failed. Code: ${out}`, details: out, platform: 'win32' });
+                        }
+                    });
+                });
+            }
+            return { success: false, error: 'Unsupported platform', platform: process.platform };
+        } catch (e) {
+            logDebug('[IPC] ❌ Критическая ошибка auth:biometric:', e.message);
+            return { success: false, error: e.message };
+        }
+    });
 
     ipcMain.handle('downloads:control', (e, { id, action }) => {
         if (action === 'resume') {
@@ -123,7 +184,7 @@ function registerHandlers() {
 
     ipcMain.handle('app:get-stored-user', () => {
         try {
-            const store = require('./store'); 
+            const store = require('./store');
             const acc = store.getActiveAccount();
             if (!acc || !acc.user) return null;
             return {
@@ -137,47 +198,49 @@ function registerHandlers() {
     });
 
     ipcMain.handle('app:get-version', () => app.getVersion());
-    
-    ipcMain.handle('get-init-user', async () => {
+
+ipcMain.handle('get-init-user', async () => {
         logDebug("[IPC] get-init-user: Проверка активной сессии...");
         const refreshResult = await network.refreshSession();
-        
+
         if (!refreshResult.success) {
-            if (refreshResult.reason === 'network_error') return { error: { code: 'NETWORK_ERROR' } };
+            if (refreshResult.reason === 'network_error') {
+                const store = require('./store');
+                const activeAcc = store.getActiveAccount();
+                if (activeAcc && activeAcc.user) {
+                    return activeAcc.user; 
+                }
+                return { error: { code: 'NETWORK_ERROR' } };
+            }
             return null;
         }
 
         const res = await network.apiCall('/profile');
         if (res?.user?.id) {
             store.addAccount(res.user, store.loadSessionData());
-            
-            
             const token = network.getGlobalAccessToken();
             if (token) {
-                streamManager.init(token); 
+                streamManager.init(token);
             }
-            
-
             return res.user;
         }
         return null;
     });
-    
+
     ipcMain.handle('auth:get-accounts', () => store.getAccountsList());
 
     ipcMain.handle('auth:switch-account', async (e, userId) => {
         const targetAccount = store.getAccountById(userId);
         if (!targetAccount) return { success: false, error: "ACCOUNT_NOT_FOUND" };
 
-        streamManager.stop(); 
+        streamManager.stop();
 
         await network.captureAndSaveCookies();
         store.setActiveId(userId);
-        
-        const sessionResult = await switchUserSession(targetAccount);
-        if (!sessionResult.success) return { success: false, error: sessionResult.error }; 
 
-        
+        const sessionResult = await switchUserSession(targetAccount);
+        if (!sessionResult.success) return { success: false, error: sessionResult.error };
+
         const token = network.getGlobalAccessToken();
         if (token) streamManager.init(token);
 
@@ -186,25 +249,16 @@ function registerHandlers() {
 
     ipcMain.handle('auth:remove-account', async (e, userId) => {
         logDebug(`[IPC] Удаление аккаунта ${userId}`);
-        
         const currentActive = store.getActiveAccount();
         const removingCurrent = currentActive && currentActive.user.id === userId;
-        
-        
+
         store.removeAccount(userId);
-        
-        
+
         if (removingCurrent) {
-            
             await require('electron').session.defaultSession.clearStorageData({ storages: ['cookies'] });
-            
-            
             network.setGlobalAccessToken(null);
-            
-            
             streamManager.stop();
         }
-        
         return { success: true };
     });
 
@@ -255,6 +309,7 @@ function registerHandlers() {
         }
         return network.apiCall(a.endpoint, a.method, a.body);
     });
+
     ipcMain.handle('presence:start', () => {
         const token = network.getGlobalAccessToken();
         if (token) streamManager.init(token);
@@ -267,19 +322,15 @@ function registerHandlers() {
     ipcMain.handle('app:quick-check', () => network.quickInternetCheck());
     ipcMain.handle('app:check-api-status', () => network.checkApiStatus());
     ipcMain.handle('open-external-link', (e, u) => shell.openExternal(u));
-    
+
     ipcMain.handle('download-file', (e, { url }) => {
         getMainWindow()?.webContents.downloadURL(url);
     });
-    
+
     ipcMain.handle('fs:check-exists', (e, fullPath) => {
-        try {
-            return require('fs').existsSync(fullPath);
-        } catch (err) {
-            return false;
-        }
+        try { return require('fs').existsSync(fullPath); } catch (err) { return false; }
     });
-    
+
     ipcMain.handle('compress-audio', async (e, { data, name }) => {
         return await withTempFiles(data, path.extname(name) || '.tmp', (ip, op) => {
             const fp = op + '.mp3';
@@ -300,7 +351,7 @@ function registerHandlers() {
     });
 
     ipcMain.handle('upload-file', async (e, { fileBuffer, fileName, fileType }) => {
-        try { return await network.uploadFileInternal(fileBuffer, fileName, fileType); } 
+        try { return await network.uploadFileInternal(fileBuffer, fileName, fileType); }
         catch (error) { return { error: { message: error.message } }; }
     });
 
@@ -317,12 +368,7 @@ function registerHandlers() {
             let tags = { title: fileName.replace(/\.[^/.]+$/, ""), artist: 'Неизвестный исполнитель', album: 'Синглы', picture: null };
             try {
                 const readResult = await new Promise((resolve, reject) => {
-                    new jsmediatags.Reader(filePath)
-                        .setTagsToRead(['title', 'artist', 'album', 'picture'])
-                        .read({
-                            onSuccess: (tag) => resolve(tag),
-                            onError: (error) => reject(error)
-                        });
+                    new jsmediatags.Reader(filePath).setTagsToRead(['title', 'artist', 'album', 'picture']).read({ onSuccess: resolve, onError: reject });
                 });
                 if (readResult && readResult.tags) {
                     if (readResult.tags.title) tags.title = readResult.tags.title;
@@ -334,7 +380,7 @@ function registerHandlers() {
 
             const b64 = (str) => Buffer.from(str || "").toString('base64');
             const postContent = `#nowkie_music_track [title:${b64(tags.title)}] [artist:${b64(tags.artist)}] [album:${b64(tags.album)}]`;
-            
+
             sendStatus('uploading_audio');
             const fileBuffer = await fs.readFile(filePath);
             const audioRes = await network.uploadFileInternal(fileBuffer, fileName, fileType || 'audio/mpeg');
@@ -350,23 +396,15 @@ function registerHandlers() {
                     if (!coverRes.error) attachmentIds.push(coverRes.data.id);
                 } catch (coverErr) {}
             }
-            
+
             sendStatus('creating_post');
             const postRes = await network.apiCall('/posts', 'POST', { content: postContent, attachmentIds });
-            if (postRes.error) {
-                if (postRes.error.code === 'PHONE_VERIFICATION_REQUIRED' || postRes.error.message.includes('Phone verification')) {
-                    throw new Error('PHONE_VERIFICATION_REQUIRED');
-                }
-                throw new Error(postRes.error.message || 'Ошибка создания поста');
-            }
+            if (postRes.error) throw new Error(postRes.error.message || 'Ошибка создания поста');
+
             sendStatus('complete');
             return { success: true };
         } catch (err) {
-            if (err.message === 'PHONE_VERIFICATION_REQUIRED' || err.message.includes('Phone verification')) {
-                sendStatus('error', 'PHONE_VERIFICATION_REQUIRED');
-            } else {
-                sendStatus('error', err.message);
-            }
+            sendStatus('error', err.message);
             return { success: false, error: err.message };
         }
     });
@@ -375,9 +413,7 @@ function registerHandlers() {
         const win = getMainWindow();
         if (win && !win.isDestroyed()) {
             win.webContents.inspectElement(Math.round(x), Math.round(y));
-            if (!win.webContents.isDevToolsOpened()) {
-                win.webContents.openDevTools();
-            }
+            if (!win.webContents.isDevToolsOpened()) win.webContents.openDevTools();
         }
     });
 
@@ -390,9 +426,7 @@ function registerHandlers() {
             const base64 = buffer.toString('base64');
             const mime = response.headers.get('content-type') || 'image/jpeg';
             return `data:${mime};base64,${base64}`;
-        } catch (err) {
-            return null;
-        }
+        } catch (err) { return null; }
     });
 
     ipcMain.handle('app:dump-logs', async () => {
@@ -414,38 +448,30 @@ function registerHandlers() {
     ipcMain.handle('fonts:get-remote', () => fonts.fetchRemoteFonts());
     ipcMain.handle('fonts:get-local', () => fonts.getLocalFonts());
     ipcMain.handle('fonts:download', async (e, font) => {
-        try {
-            return await fonts.downloadFont(font);
-        } catch (err) {
-            return { success: false, error: err.message };
-        }
+        try { return await fonts.downloadFont(font); }
+        catch (err) { return { success: false, error: err.message }; }
     });
 
     ipcMain.handle('app:upload-wallpaper', async () => {
         try {
             const result = await dialog.showOpenDialog(getMainWindow(), {
                 properties: ['openFile'],
-                filters: [
-                    { name: 'Медиа', extensions: ['jpg', 'jpeg', 'png', 'webp', 'gif', 'mp4', 'webm'] }
-                ]
+                filters: [{ name: 'Медиа', extensions: ['jpg', 'jpeg', 'png', 'webp', 'gif', 'mp4', 'webm'] }]
             });
-            if (result.canceled || !result.filePaths[0]) {
-                return { success: false, reason: 'cancelled' };
-            }
+            if (result.canceled || !result.filePaths[0]) return { success: false, reason: 'cancelled' };
+
             const sourcePath = result.filePaths[0];
             const fileName = path.basename(sourcePath);
             const wallpapersDir = PATHS.WALLPAPERS;
-            if (!require('fs').existsSync(wallpapersDir)) {
-                await fs.mkdir(wallpapersDir, { recursive: true });
-            }
+            if (!require('fs').existsSync(wallpapersDir)) await fs.mkdir(wallpapersDir, { recursive: true });
+
             const uniqueFileName = `${Date.now()}-${fileName}`;
             const destPath = path.join(wallpapersDir, uniqueFileName);
             await fs.copyFile(sourcePath, destPath);
             const fileUrl = require('url').pathToFileURL(destPath).href;
+
             return { success: true, url: fileUrl, type: fileName.endsWith('.mp4') || fileName.endsWith('.webm') ? 'video' : 'image' };
-        } catch (error) {
-            return { success: false, error: error.message };
-        }
+        } catch (error) { return { success: false, error: error.message }; }
     });
 
     ipcMain.handle('fonts:delete', (e, { id, format }) => fonts.deleteFont(id, format));
@@ -479,19 +505,11 @@ function registerHandlers() {
         } catch (error) { return { success: false, error: error.message }; }
     });
 
-    ipcMain.handle('fs:open-path', async (e, fullPath) => {
-        const { shell } = require('electron');
-        return await shell.openPath(fullPath);
-    });
-
-    ipcMain.handle('fs:show-in-folder', async (e, fullPath) => {
-        const { shell } = require('electron');
-        shell.showItemInFolder(fullPath);
-    });
-    
+    ipcMain.handle('fs:open-path', async (e, fullPath) => { return await shell.openPath(fullPath); });
+    ipcMain.handle('fs:show-in-folder', async (e, fullPath) => { shell.showItemInFolder(fullPath); });
     ipcMain.handle('discord:set-activity', (e, activity) => discord.setActivity(activity));
     ipcMain.handle('discord:clear', () => discord.clearActivity());
-    
+
     ipcMain.handle('themes:fetch-remote', () => themes.fetchRemoteList());
     ipcMain.handle('themes:get-local', () => themes.getLocalList());
     ipcMain.handle('themes:download', (e, t) => themes.downloadTheme(t));
@@ -500,35 +518,19 @@ function registerHandlers() {
 
     ipcMain.handle('debug:open-dev-window', () => {
         const win = new BrowserWindow({
-            width: 800,
-            height: 600,
-            backgroundColor: '#0d1117',
-            webPreferences: {
-                nodeIntegration: false,
-                contextIsolation: true,
-                preload: PATHS.PRELOAD
-            }
+            width: 800, height: 600, backgroundColor: '#0d1117',
+            webPreferences: { nodeIntegration: false, contextIsolation: true, preload: PATHS.PRELOAD }
         });
-        
-        const devUrl = app.isPackaged 
-            ? `file://${path.join(__dirname, '../build/index.html')}#dev`
-            : 'http://localhost:3000/#/dev';
-            
+        const devUrl = app.isPackaged ? `file://${path.join(__dirname, '../build/index.html')}#dev` : 'http://localhost:3000/#/dev';
         win.loadURL(devUrl);
         win.setMenuBarVisibility(false);
     });
 
     ipcMain.handle('debug:get-system-info', () => {
         return {
-            platform: process.platform,
-            arch: process.arch,
-            version: app.getVersion(),
-            chrome: process.versions.chrome,
-            electron: process.versions.electron,
-            node: process.version, 
-            cpus: os.cpus().length,
-            memory: Math.round(os.totalmem() / 1024 / 1024 / 1024) + 'GB',
-            uptime: Math.round(process.uptime()) + 's'
+            platform: process.platform, arch: process.arch, version: app.getVersion(),
+            chrome: process.versions.chrome, electron: process.versions.electron, node: process.version,
+            cpus: os.cpus().length, memory: Math.round(os.totalmem() / 1024 / 1024 / 1024) + 'GB', uptime: Math.round(process.uptime()) + 's'
         };
     });
 
@@ -538,27 +540,86 @@ function registerHandlers() {
         return true;
     });
 
-    ipcMain.handle('debug:update-state-snapshot', (e, snapshot) => {
-        appStateSnapshot = snapshot;
-        return true;
+    ipcMain.handle('debug:update-state-snapshot', (e, snapshot) => { appStateSnapshot = snapshot; return true; });
+    ipcMain.handle('debug:get-state-snapshot', () => appStateSnapshot);
+    ipcMain.handle('debug:reload-main', () => { const win = getMainWindow(); if (win) win.reload(); });
+    ipcMain.handle('debug:toggle-devtools', () => { const win = getMainWindow(); if (win) win.webContents.toggleDevTools(); });
+    ipcMain.handle('debug:open-userdata', () => { shell.openPath(app.getPath('userData')); });
+
+    ipcMain.handle('app:show-notification', (e, opts) => {
+        if (!Notification.isSupported()) return { success: false };
+
+        let iconImg;
+        if (opts.icon && opts.icon.startsWith('data:image')) {
+            try {
+                iconImg = nativeImage.createFromDataURL(opts.icon);
+            } catch (err) {}
+        }
+
+        const notif = new Notification({
+            title: opts.title || 'итд.app',
+            body: opts.body || '',
+            icon: iconImg,
+            hasReply: !!opts.hasReply,
+            replyPlaceholder: 'Написать ответ...',
+            actions: opts.hasReply ? [{ type: 'button', text: 'Открыть и ответить' }] : [],
+            silent: false
+        });
+
+        activeNotifications.add(notif);
+
+        notif.on('click', () => {
+            const win = getMainWindow();
+            if (win) {
+                if (win.isMinimized()) win.restore();
+                win.show();
+                win.focus();
+                win.webContents.send('notification-action', { action: 'click', payload: opts.payload });
+            }
+            activeNotifications.delete(notif);
+        });
+
+        notif.on('action', (event, index) => {
+            if (index === 0) {
+                const win = getMainWindow();
+                if (win) {
+                    if (win.isMinimized()) win.restore();
+                    win.show();
+                    win.focus();
+                    win.webContents.send('notification-action', { action: 'click', payload: opts.payload });
+                }
+            }
+            activeNotifications.delete(notif);
+        });
+
+        notif.on('reply', (event, replyText) => {
+            const win = getMainWindow();
+            if (win) {
+                win.webContents.send('notification-action', { action: 'reply', replyText, payload: opts.payload });
+            }
+            activeNotifications.delete(notif);
+        });
+
+        notif.on('close', () => {
+            activeNotifications.delete(notif);
+        });
+
+        notif.show();
+        return { success: true };
     });
 
-    ipcMain.handle('debug:get-state-snapshot', () => {
-        return appStateSnapshot;
-    });
-
-    ipcMain.handle('debug:reload-main', () => {
-        const win = getMainWindow();
-        if (win) win.reload();
-    });
-
-    ipcMain.handle('debug:toggle-devtools', () => {
-        const win = getMainWindow();
-        if (win) win.webContents.toggleDevTools();
-    });
-
-    ipcMain.handle('debug:open-userdata', () => {
-        shell.openPath(app.getPath('userData'));
+    ipcMain.handle('cache:get-stats', () => assetCache.getCacheStats());
+    ipcMain.handle('cache:clear', (e, categories) => assetCache.clearAllCache(categories));
+    ipcMain.handle('cache:update-limits', (e, limits) => assetCache.updateLimits(limits));
+    ipcMain.handle('cache:prefetch', async (e, urls) => {
+        try {
+            const assetCache = require('./assetCache');
+            
+            assetCache.prefetchUrls(urls).catch(() => {});
+            return { success: true };
+        } catch(err) {
+            return { success: false };
+        }
     });
 
     isHandlersRegistered = true;

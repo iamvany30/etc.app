@@ -1,24 +1,48 @@
-import React, { useLayoutEffect, useState, useRef, useEffect } from 'react';
+/* @source src/components/PostCard/PostMenu.jsx */
+import React, { useLayoutEffect, useState, useRef, useEffect, useCallback } from 'react';
 import ReactDOM from 'react-dom';
 import ConfirmDeleteModal from '../modals/ConfirmDeleteModal';
 import ReportModal from '../modals/ReportModal'; 
+import EditPostModal from '../modals/EditPostModal';
 import { apiClient } from '../../api/client';
 import { ShareIcon, EditIcon, DeleteIcon, PinIcon, ReportIcon } from '../icons/MenuIcons'; 
 import { useIslandStore } from '../../store/islandStore';
+import { ShieldCross } from "@solar-icons/react";
 import { useModalStore } from '../../store/modalStore'; 
-
+import ConfirmActionModal from '../modals/ConfirmActionModal';
 const PostMenu = ({ post, isOwner, isPinned, ctrl, onClose, anchorRef }) => {
     const [position, setPosition] = useState({ top: 0, left: 0 });
     const menuRef = useRef(null);
     const showIslandAlert = useIslandStore(state => state.showIslandAlert);
     const openModal = useModalStore(state => state.openModal); 
-
+    const handleBlock = () => {
+    onClose(); 
+    
+    openModal(
+        <ConfirmActionModal 
+            title="Заблокировать пользователя?"
+            message={`Вы уверены, что хотите заблокировать @${post.author?.username}? Вы больше не увидите посты этого пользователя.`}
+            confirmText="Заблокировать"
+            isDanger={true}
+            onConfirm={async () => {
+                try {
+                    await apiClient.blockUser(post.author.username);
+                    showIslandAlert('success', 'Пользователь заблокирован', '🛡️');
+                    window.location.reload(); 
+                } catch (e) {
+                    showIslandAlert('error', 'Ошибка блокировки', '❌');
+                }
+            }}
+            onCancel={() => {}} 
+        />
+    );
+};
     useLayoutEffect(() => {
         if (anchorRef.current && menuRef.current) {
             const rect = anchorRef.current.getBoundingClientRect();
             const menuRect = menuRef.current.getBoundingClientRect();
-            const scrollY = window.scrollY;
-            const scrollX = window.scrollX;
+            const scrollY = window.scrollY || 0;
+            const scrollX = window.scrollX || 0;
 
             setPosition({
                 top: rect.bottom + scrollY + 6,
@@ -26,6 +50,10 @@ const PostMenu = ({ post, isOwner, isPinned, ctrl, onClose, anchorRef }) => {
             });
         }
     }, [anchorRef]);
+
+    const handleCloseMenu = useCallback(() => {
+        onClose();
+    }, [onClose]);
 
     useEffect(() => {
         const handleClickOutside = (e) => {
@@ -35,23 +63,34 @@ const PostMenu = ({ post, isOwner, isPinned, ctrl, onClose, anchorRef }) => {
                 anchorRef.current &&
                 !anchorRef.current.contains(e.target)
             ) {
-                onClose();
+                handleCloseMenu();
+            }
+        };
+
+        let isClosed = false;
+        const handleScrollOrResize = () => {
+            if (!isClosed) {
+                isClosed = true;
+                handleCloseMenu();
             }
         };
 
         window.addEventListener('mousedown', handleClickOutside);
-        window.addEventListener('scroll', onClose, { capture: true }); 
-        window.addEventListener('resize', onClose);
+        window.addEventListener('scroll', handleScrollOrResize, { capture: true, passive: true }); 
+        window.addEventListener('resize', handleScrollOrResize, { passive: true });
 
         return () => {
             window.removeEventListener('mousedown', handleClickOutside);
-            window.removeEventListener('scroll', onClose, { capture: true });
-            window.removeEventListener('resize', onClose);
+            window.removeEventListener('scroll', handleScrollOrResize, { capture: true });
+            window.removeEventListener('resize', handleScrollOrResize);
         };
-    }, [onClose, anchorRef]);
+    }, [handleCloseMenu, anchorRef]);
 
     const handleShare = () => {
-        const url = `${window.location.origin}/#/post/${post.id}`;
+        
+        const username = post.author?.username || 'user';
+        const url = `https://xn--d1ah4a.com/@${username}/post/${post.id}`;
+        
         navigator.clipboard.writeText(url);
         onClose();
         showIslandAlert('success', 'Ссылка скопирована', '🔗');
@@ -66,6 +105,11 @@ const PostMenu = ({ post, isOwner, isPinned, ctrl, onClose, anchorRef }) => {
         } catch (e) { console.error(e); }
     };
 
+    const handleEdit = () => {
+        onClose();
+        openModal(<EditPostModal post={post} onSuccess={ctrl.updatePostData} />);
+    };
+
     const handleDelete = () => {
         onClose(); 
         ctrl.openModal(
@@ -77,7 +121,6 @@ const PostMenu = ({ post, isOwner, isPinned, ctrl, onClose, anchorRef }) => {
             }} />
         );
     };
-
     
     const handleReport = () => {
         onClose();
@@ -107,7 +150,7 @@ const PostMenu = ({ post, isOwner, isPinned, ctrl, onClose, anchorRef }) => {
                         <PinIcon pinned={isPinned} /> {isPinned ? 'Открепить' : 'Закрепить'}
                     </button>
                     {!isMusicPost && (
-                        <button onClick={() => { onClose(); ctrl.handleEditStart(); }}>
+                        <button onClick={handleEdit}>
                             <EditIcon /> Редактировать
                         </button>
                     )}
@@ -116,14 +159,19 @@ const PostMenu = ({ post, isOwner, isPinned, ctrl, onClose, anchorRef }) => {
                         <DeleteIcon /> Удалить
                     </button>
                 </>
-            ) : (
-                <>
-                    <div className="post-menu-separator" />
-                    <button className="delete-btn" onClick={handleReport}>
-                        <ReportIcon /> Пожаловаться
-                    </button>
-                </>
-            )}
+                ) : (
+                    <>
+                        <button onClick={handleBlock}>
+                            <ShieldCross size={18} /> Заблокировать
+                        </button>
+                        
+                        <div className="post-menu-separator" />
+                        
+                        <button className="delete-btn" onClick={handleReport}>
+                            <ReportIcon /> Пожаловаться
+                        </button>
+                    </>
+                )}
         </div>,
         document.body
     );

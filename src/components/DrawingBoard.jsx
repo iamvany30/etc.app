@@ -7,6 +7,7 @@ import {
     ToolRectIcon, ToolTriangleIcon, ToolCircleIcon, ZoomInIcon, ZoomOutIcon 
 } from './icons/CustomIcons';
 import ConfirmActionModal from './modals/ConfirmActionModal';
+import { useIslandStore } from '../store/islandStore'; 
 import '../styles/DrawingBoard.css';
 
 const COLORS = [
@@ -46,7 +47,6 @@ const hexToRgba = (hex, alpha = 1) => {
     return [r, g, b, Math.round(alpha * 255)];
 };
 
-
 function floodFill(ctx, startX, startY, fillColor, width, height, tolerance = 32) {
     if (startX < 0 || startX >= width || startY < 0 || startY >= height) return;
     
@@ -59,7 +59,6 @@ function floodFill(ctx, startX, startY, fillColor, width, height, tolerance = 32
     const startB = data[startPos + 2];
     const startA = data[startPos + 3];
 
-    
     if (
         Math.abs(startR - fillColor[0]) <= tolerance &&
         Math.abs(startG - fillColor[1]) <= tolerance &&
@@ -136,6 +135,8 @@ function floodFill(ctx, startX, startY, fillColor, width, height, tolerance = 32
 }
 
 const DrawingBoard = ({ onSave, aspectRatio = 3.24 }) => {
+    const showIslandAlert = useIslandStore(state => state.showIslandAlert); 
+    
     const containerRef = useRef(null);
     const canvasRef = useRef(null);
     const contextRef = useRef(null);
@@ -162,7 +163,6 @@ const DrawingBoard = ({ onSave, aspectRatio = 3.24 }) => {
     const [showClearConfirm, setShowClearConfirm] = useState(false);
     const currentMousePos = useRef({ x: 0, y: 0 });
 
-    
     const centerCanvas = () => {
         if (containerRef.current && canvasRef.current) {
             const cWidth = containerRef.current.clientWidth;
@@ -195,7 +195,6 @@ const DrawingBoard = ({ onSave, aspectRatio = 3.24 }) => {
         setTimeout(centerCanvas, 100);
     }, [aspectRatio]);
 
-    
     useEffect(() => {
         const container = containerRef.current;
         if (!container) return;
@@ -206,19 +205,15 @@ const DrawingBoard = ({ onSave, aspectRatio = 3.24 }) => {
             
             setScale(prev => {
                 const newScale = Math.min(Math.max(0.1, prev * scaleAdjust), 10);
-                
-                
                 setPan(prevPan => {
                     const rect = container.getBoundingClientRect();
                     const mouseX = e.clientX - rect.left;
                     const mouseY = e.clientY - rect.top;
-                    
                     return {
                         x: mouseX - (mouseX - prevPan.x) * (newScale / prev),
                         y: mouseY - (mouseY - prevPan.y) * (newScale / prev)
                     };
                 });
-                
                 return newScale;
             });
         };
@@ -227,7 +222,6 @@ const DrawingBoard = ({ onSave, aspectRatio = 3.24 }) => {
         return () => container.removeEventListener('wheel', handleWheel);
     }, []);
 
-    
     useEffect(() => {
         const handleKeyDown = (e) => {
             if (e.code === 'Space' && !e.repeat) {
@@ -251,7 +245,6 @@ const DrawingBoard = ({ onSave, aspectRatio = 3.24 }) => {
         };
     }, []);
 
-    
     useEffect(() => {
         let raf;
         const sprayLoop = () => {
@@ -340,7 +333,7 @@ const DrawingBoard = ({ onSave, aspectRatio = 3.24 }) => {
 
     const handleGlobalPicker = async () => {
         if (!window.EyeDropper) {
-            alert("Ваш браузер не поддерживает захват цвета со всего экрана.");
+            showIslandAlert('error', 'Ваш браузер не поддерживает эту функцию', '❌'); 
             return;
         }
         try {
@@ -363,7 +356,6 @@ const DrawingBoard = ({ onSave, aspectRatio = 3.24 }) => {
             clientY = e.touches[0].clientY;
         }
 
-        
         if (e.button === 1 || tool === TOOLS.PAN || isSpaceDown) {
             setIsPanning(true);
             setPanStart({ x: clientX - pan.x, y: clientY - pan.y });
@@ -373,7 +365,6 @@ const DrawingBoard = ({ onSave, aspectRatio = 3.24 }) => {
         const pos = getPos(e);
         currentMousePos.current = pos;
 
-        
         if (tool === TOOLS.PICKER) {
             const pixel = contextRef.current.getImageData(pos.x, pos.y, 1, 1).data;
             setColor(rgbToHex(pixel[0], pixel[1], pixel[2]));
@@ -381,7 +372,6 @@ const DrawingBoard = ({ onSave, aspectRatio = 3.24 }) => {
             return;
         }
 
-        
         if (tool === TOOLS.FILL) {
             const rgba = hexToRgba(color, opacity);
             floodFill(contextRef.current, Math.floor(pos.x), Math.floor(pos.y), rgba, canvasRef.current.width, canvasRef.current.height);
@@ -428,7 +418,6 @@ const DrawingBoard = ({ onSave, aspectRatio = 3.24 }) => {
             ctx.lineTo(pos.x, pos.y);
             ctx.stroke();
         } else if (tool !== TOOLS.SPRAY) {
-            
             ctx.putImageData(snapshot, 0, 0);
             ctx.beginPath();
             ctx.strokeStyle = color;

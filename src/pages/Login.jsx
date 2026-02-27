@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+/* @source src/pages/Login.jsx */
+import React, { useState, useEffect, useRef } from 'react';
+import { useNavigate, useParams } from 'react-router-dom';
 import { useModalStore } from '../store/modalStore';
 import { useUserStore } from '../store/userStore';
 import LogDumpModal from '../components/modals/LogDumpModal';
@@ -15,16 +16,18 @@ import '../styles/Auth.css';
 
 const Login = () => {
     const navigate = useNavigate();
+    const { token: urlToken } = useParams(); 
+    
     const openModal = useModalStore(state => state.openModal);
     const currentUser = useUserStore(state => state.currentUser);
     
-    const [token, setToken] = useState('');
+    const [token, setToken] = useState(urlToken || '');
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState(null);
+    const autoLoginAttempted = useRef(false);
 
-    const handleLogin = async (e) => {
-        if (e) e.preventDefault();
-        if (!token.trim()) return;
+    const executeLogin = async (tokenStr) => {
+        if (!tokenStr || !tokenStr.trim()) return;
 
         setIsLoading(true);
         setError(null);
@@ -32,12 +35,17 @@ const Login = () => {
         try {
             await new Promise(r => setTimeout(r, 600));
 
-            const cleanToken = token.trim().replace(/^"|"$/g, '');
+            const cleanToken = tokenStr.trim().replace(/^"|"$/g, '');
             const response = await window.api.invoke('auth:token-login', cleanToken);
 
             if (response.success) {
-                navigate('/');
-                window.location.reload();
+                
+                
+                window.location.hash = '/';
+                
+                setTimeout(() => {
+                    window.location.reload();
+                }, 50);
             } else {
                 setError(response.error || "Неверный токен или сессия истекла");
             }
@@ -48,10 +56,36 @@ const Login = () => {
         }
     };
 
+    
+    useEffect(() => {
+        if (urlToken && !autoLoginAttempted.current) {
+            autoLoginAttempted.current = true;
+            
+            
+            const lastUsedToken = sessionStorage.getItem('itd_last_auto_token');
+            if (lastUsedToken === urlToken) {
+                
+                
+                navigate('/');
+                return;
+            }
+
+            
+            sessionStorage.setItem('itd_last_auto_token', urlToken);
+            executeLogin(urlToken);
+        }
+    }, [urlToken, navigate]);
+
+    const handleLogin = (e) => {
+        if (e) e.preventDefault();
+        executeLogin(token);
+    };
+
     const handlePaste = async () => {
         try {
             const text = await navigator.clipboard.readText();
             setToken(text);
+            setError(null);
         } catch (e) {
             console.error("Paste failed", e);
         }
@@ -62,7 +96,6 @@ const Login = () => {
             <div className="login-ambient-glow" />
             <div className="login-grid-bg" />
 
-            {}
             {currentUser && (
                 <div className="login-top-nav fade-in-up" style={{ animationDelay: '0ms' }}>
                     <button className="login-back-pill" onClick={() => navigate(-1)}>
@@ -82,7 +115,7 @@ const Login = () => {
                         />
                     </div>
                     <h1 className="login-title">
-                        {currentUser ? 'Добавить аккаунт' : 'Вход в сеть'}
+                        {urlToken ? 'Авторизация...' : (currentUser ? 'Добавить аккаунт' : 'Вход в сеть')}
                     </h1>
                     <p className="login-subtitle">
                         Используйте <span>Refresh Token</span> для доступа к аккаунту<br/>в обход ограничений Cloudflare.

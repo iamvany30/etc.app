@@ -1,36 +1,55 @@
-/* @source ScrollToTop.jsx */
-import React, { useState, useEffect } from 'react';
+/* @source src/components/ScrollToTop.jsx */
+import React, { useState, useEffect, useRef } from 'react';
 import { AltArrowUp } from "@solar-icons/react";
 import '../styles/ScrollToTop.css';
 
 const ScrollToTop = () => {
     const [isVisible, setIsVisible] = useState(false);
+    
+    
+    const scrollerRef = useRef(null);
+    const ticking = useRef(false);
 
-    const toggleVisibility = () => {
+    useEffect(() => {
+        const handleScroll = () => {
+            if (!ticking.current) {
+                window.requestAnimationFrame(() => {
+                    
+                    if (!scrollerRef.current) {
+                        scrollerRef.current = document.querySelector('.content [data-virtuoso-scroller="true"]');
+                    }
+                    
+                    const scrolled = scrollerRef.current 
+                        ? scrollerRef.current.scrollTop 
+                        : window.scrollY; 
+
+                    setIsVisible(scrolled > 500);
+                    ticking.current = false;
+                });
+                ticking.current = true;
+            }
+        };
+
         
-        const virtuosoScroller = document.querySelector('.content [data-virtuoso-scroller="true"]');
-        const scrolled = virtuosoScroller ? virtuosoScroller.scrollTop : window.pageYOffset;
-
-        if (scrolled > 500) {
-            setIsVisible(true);
-        } else {
-            setIsVisible(false);
-        }
-    };
+        window.addEventListener('scroll', handleScroll, { capture: true, passive: true });
+        
+        return () => {
+            window.removeEventListener('scroll', handleScroll, { capture: true });
+        };
+    }, []);
 
     const scrollToTop = () => {
-        const virtuosoScroller = document.querySelector('[data-virtuoso-scroller="true"]');
-        if (virtuosoScroller) {
-            virtuosoScroller.scrollTo({ top: 0, behavior: 'smooth' });
+        
+        if (!scrollerRef.current) {
+            scrollerRef.current = document.querySelector('.content [data-virtuoso-scroller="true"]');
+        }
+        
+        if (scrollerRef.current) {
+            scrollerRef.current.scrollTo({ top: 0, behavior: 'smooth' });
         } else {
             window.scrollTo({ top: 0, behavior: 'smooth' });
         }
     };
-
-    useEffect(() => {
-        window.addEventListener('scroll', toggleVisibility, true);
-        return () => window.removeEventListener('scroll', toggleVisibility, true);
-    }, []);
 
     return (
         <div className={`scroll-to-top-wrapper ${isVisible ? 'show' : ''}`} onClick={scrollToTop}>

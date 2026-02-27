@@ -10,8 +10,15 @@ import { PinIcon } from '../icons/MenuIcons';
 import { RepostIcon } from '../icons/InteractionsIcons';
 import '../../styles/PostCard.css';
 
-const PostCard = ({ post, initialShowComments = false, highlightCommentId = null, isPinned = false }) => {
-    const ctrl = usePostCard(post, initialShowComments, highlightCommentId);
+const PostCard = ({ 
+    post, 
+    initialShowComments = false, 
+    highlightCommentId = null, 
+    isPinned = false,
+    disableHistory = false 
+}) => {
+    
+    const ctrl = usePostCard(post, initialShowComments, highlightCommentId, disableHistory);
 
     if (ctrl.isDeleted || !ctrl.localPost) return null;
 
@@ -73,14 +80,8 @@ const PostCard = ({ post, initialShowComments = false, highlightCommentId = null
                 
                 <PostContent 
                     post={localPost}
-                    isEditing={ctrl.isEditing}
-                    editContent={ctrl.editContent}
-                    setEditContent={ctrl.setEditContent}
-                    handleEditSave={ctrl.handleEditSave}
-                    setIsEditing={ctrl.setIsEditing}
                     musicData={ctrl.musicData}
                     onLinkClick={ctrl.handleLinkClick}
-                    textareaRef={ctrl.textareaRef}
                 />
 
                 <PostFooter ctrl={ctrl} />

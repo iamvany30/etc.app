@@ -19,10 +19,10 @@ import { ProfileSkeleton, PostSkeleton } from '../components/Skeletons';
 
 import { CameraIcon, SettingsIcon, CalendarIcon } from '../components/icons/CommonIcons';
 import { VerifiedBlue, VerifiedGold } from '../components/icons/VerifyIcons';
-
-import { IconDownload, IconMusic } from '../components/icons/SidebarIcons'; 
+import { ShieldCross } from "@solar-icons/react";
+import { IconDownload, IconMusic, IconHistory } from '../components/icons/SidebarIcons'; 
 import { BookmarkIcon } from '../components/icons/InteractionsIcons';
-
+import ConfirmActionModal from '../components/modals/ConfirmActionModal';
 import '../styles/Profile.css';
 
 const GOLD_VERIFIED_IDS = ['48f4cd67-58a2-4c0d-b1be-235fc4bb91a4'];
@@ -77,7 +77,7 @@ const Profile = () => {
     const setCurrentUser = useUserStore(state => state.setCurrentUser);
     const openModal = useModalStore(state => state.openModal);
     const setIslandTheme = useIslandStore(state => state.setIslandTheme);
-    
+    const showIslandAlert = useIslandStore(state => state.showIslandAlert);
     const [user, setUser] = useState(null);
     const [posts, setPosts] = useState([]);
     const [pinnedPost, setPinnedPost] = useState(null);
@@ -96,7 +96,7 @@ const Profile = () => {
 
     useEffect(() => { userRef.current = user; }, [user]);
     useEffect(() => { pinnedPostRef.current = pinnedPost; }, [pinnedPost]);
-
+    
     const isMyProfile = currentUser?.username === username;
 
     const canPostOnWall = useMemo(() => {
@@ -263,6 +263,26 @@ const Profile = () => {
         }
     }, [user, isMyProfile, isFollowing, followersCount]);
 
+const handleBlockUser = () => {
+    openModal(
+        <ConfirmActionModal 
+            title={`Заблокировать @${user.username}?`}
+            message="Пользователь не сможет писать вам и просматривать ваш профиль."
+            confirmText="Заблокировать"
+            isDanger={true}
+            onConfirm={async () => {
+                try {
+                    await apiClient.blockUser(user.username);
+                    showIslandAlert('success', 'Пользователь заблокирован', '🛡️');
+                    navigate('/'); 
+                } catch (e) {
+                    showIslandAlert('error', 'Ошибка блокировки', '❌');
+                }
+            }}
+        />
+    );
+};
+
     const handleBannerUpdate = useCallback((newUrl) => {
         setUser(prev => ({ ...prev, banner: newUrl }));
         setCurrentUser(prev => {
@@ -362,11 +382,21 @@ const Profile = () => {
                                     <button className="btn-modern-outline" onClick={() => openModal(<EditProfileModal />)}>Изменить профиль</button>
                                     <button className="btn-modern-icon" onClick={() => openModal(<SettingsModal />)}><SettingsIcon size={20} /></button>
                                 </>
-                            ) : (
-                                <button className={`btn-modern-follow ${isFollowing ? 'unfollow' : 'follow'}`} onClick={handleFollowToggle}>
-                                    {isFollowing ? 'Вы читаете' : 'Читать'}
-                                </button>
-                            )}
+                                ) : (
+                                    <>
+                                        <button className={`btn-modern-follow ${isFollowing ? 'unfollow' : 'follow'}`} onClick={handleFollowToggle}>
+                                            {isFollowing ? 'Вы читаете' : 'Читать'}
+                                        </button>
+                                        <button 
+                                            className="btn-modern-icon" 
+                                            style={{ color: '#f4212e', borderColor: 'rgba(244, 33, 46, 0.3)' }} 
+                                            onClick={handleBlockUser} 
+                                            title="Заблокировать"
+                                        >
+                                            <ShieldCross size={20} />
+                                        </button>
+                                    </>
+                                )}
                         </div>
                     </div>
 
@@ -417,6 +447,16 @@ const Profile = () => {
                                     <div className="personal-btn-text">
                                         <span className="p-title">Закладки</span>
                                         <span className="p-sub">Сохраненное</span>
+                                    </div>
+                                </button>
+
+                                <button className="personal-menu-btn" onClick={() => navigate('/recent')}>
+                                    <div className="icon-circle" style={{background: 'rgba(29, 155, 240, 0.15)', color: '#1d9bf0'}}>
+                                        <IconHistory size={20} />
+                                    </div>
+                                    <div className="personal-btn-text">
+                                        <span className="p-title">Недавние</span>
+                                        <span className="p-sub">Просмотренное</span>
                                     </div>
                                 </button>
 

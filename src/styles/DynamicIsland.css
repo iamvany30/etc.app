@@ -1,106 +1,104 @@
 /* @source src/styles/DynamicIsland.css */
 
+/* =========================================
+   1. КОНТЕЙНЕР (HOST)
+   Позиционирование и защитные зоны
+   ========================================= */
 .island-host {
     position: fixed;
     top: 0; 
     left: 50%;
+    transform: translateX(-50%);
     height: 56px; 
     display: flex;
     align-items: center;
     justify-content: center;
-    transform: translateX(-50%);
-    z-index: 10001;
-    pointer-events: none;
+    z-index: 10001; 
+    pointer-events: none; 
+    width: 100%;
+    max-width: calc(100vw - 280px);
+    transition: max-width 0.3s ease;
 }
 
+/* =========================================
+   2. ТЕЛО ОСТРОВА (MORPHER)
+   Визуал, фон, тени и анимация формы
+   ========================================= */
 .island-morpher {
-    background-color: var(--color-island-bg);
-    backdrop-filter: blur(28px) saturate(180%);
-    -webkit-backdrop-filter: blur(28px) saturate(180%);
-    border: 1px solid var(--color-border);
+    
+    background-color: rgba(10, 10, 12, 0.85);
+    
+    
+    backdrop-filter: blur(24px) saturate(180%);
+    -webkit-backdrop-filter: blur(24px) saturate(180%);
+    
+    
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    
+    
+    box-shadow: 
+        
+        0 8px 20px -5px rgba(0, 0, 0, 0.4), 
+        
+        0 30px 60px -10px rgba(0, 0, 0, 0.6),
+        
+        inset 0 1px 0 rgba(255, 255, 255, 0.15);
+
     display: flex;
     align-items: center;
     justify-content: center;
-    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
     overflow: hidden;
-    pointer-events: auto;
+    pointer-events: auto; 
     -webkit-app-region: no-drag; 
     position: relative;
-    will-change: width, height, border-radius, box-shadow, transform;
+    
+    
+    width: fit-content;   
+    min-width: 120px;     
+    max-width: 100%;      
+    padding: 0 4px;       
+    box-sizing: border-box;
+
+    
+    will-change: width, height, border-radius, transform, background-color;
+    transform: translateZ(0); 
+    
     
     transition: 
-        width 0.5s cubic-bezier(0.2, 0.8, 0.1, 1),
-        height 0.5s cubic-bezier(0.2, 0.8, 0.1, 1),
-        border-radius 0.5s cubic-bezier(0.2, 0.8, 0.1, 1),
-        box-shadow 0.4s ease,
-        background-color 0.4s ease,
-        border-color 0.4s ease;
+        width 0.5s cubic-bezier(0.25, 1, 0.5, 1),
+        height 0.5s cubic-bezier(0.25, 1, 0.5, 1),
+        min-width 0.5s cubic-bezier(0.25, 1, 0.5, 1),
+        border-radius 0.5s cubic-bezier(0.25, 1, 0.5, 1),
+        background-color 0.3s ease,
+        border-color 0.3s ease,
+        box-shadow 0.3s ease;
 }
+
+
+[data-bg='light'] .island-morpher {
+    background-color: rgba(255, 255, 255, 0.92);
+    border: 1px solid rgba(0, 0, 0, 0.06);
+    box-shadow: 
+        0 8px 20px -5px rgba(0, 0, 0, 0.1),
+        0 30px 50px -10px rgba(0, 0, 0, 0.15),
+        inset 0 1px 0 rgba(255, 255, 255, 1);
+}
+
+/* =========================================
+   3. ЦВЕТОВЫЕ РЕЖИМЫ (Alerts & Status)
+   ========================================= */
 
 
 .island-morpher[data-mode="offline"] {
-    background-color: #1a0505;
-    border-color: rgba(244, 33, 46, 0.3);
+    background-color: #2a0505;
+    border-color: rgba(244, 33, 46, 0.4);
+    box-shadow: 0 15px 40px rgba(244, 33, 46, 0.15), inset 0 1px 0 rgba(255, 100, 100, 0.1);
 }
+
+
 .island-morpher[data-mode="alert"] {
     background-color: var(--color-card);
     border-color: var(--color-primary-alpha);
-}
-.island-morpher[data-mode="update"],
-.island-morpher[data-mode="download"],
-.island-morpher[data-mode="upload"] {
-    background-color: var(--color-card);
-}
-
-
-.island-content-inner {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    width: max-content; 
-    height: 100%;
-    gap: 12px;
-    white-space: nowrap; 
-}
-
-
-.island-content-inner.entering {
-    animation: contentEnter 0.35s cubic-bezier(0.2, 0.8, 0.1, 1) forwards;
-}
-
-
-.island-content-inner.exiting {
-    position: absolute;
-    top: 0; left: 0; right: 0; bottom: 0;
-    margin: auto;
-    pointer-events: none;
-    animation: contentExit 0.15s ease-out forwards;
-}
-
-@keyframes contentEnter {
-    0% { opacity: 0; filter: blur(5px); transform: scale(0.9); }
-    100% { opacity: 1; filter: blur(0); transform: scale(1); }
-}
-
-@keyframes contentExit {
-    0% { opacity: 1; filter: blur(0); transform: scale(1); }
-    100% { opacity: 0; filter: blur(3px); transform: scale(0.92); }
-}
-
-
-@keyframes island-shake {
-    0%   { transform: translateX(-50%); }
-    15%  { transform: translateX(calc(-50% - 4px)); }
-    30%  { transform: translateX(calc(-50% + 4px)); }
-    45%  { transform: translateX(calc(-50% - 3px)); }
-    60%  { transform: translateX(calc(-50% + 3px)); }
-    75%  { transform: translateX(calc(-50% - 2px)); }
-    90%  { transform: translateX(calc(-50% + 2px)); }
-    100% { transform: translateX(-50%); }
-}
-
-.island-host.shaking {
-    animation: island-shake 0.45s cubic-bezier(0.36, 0.07, 0.19, 0.97) both;
 }
 
 
@@ -113,16 +111,117 @@
     animation: gradient-rotate 10s linear infinite;
 }
 
+/* =========================================
+   4. ВНУТРЕННИЙ КОНТЕНТ И ЕГО АНИМАЦИИ
+   ========================================= */
 
-.island-maintext {
-    font-size: 14px;
-    font-weight: 800;
+.island-content-inner {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    height: 100%;
+    gap: 12px;
+    white-space: nowrap; 
+    padding: 0 14px; 
+    opacity: 1;
+    transition: opacity 0.2s ease, filter 0.2s ease, transform 0.2s ease;
+}
+
+
+.island-content-inner.entering {
+    animation: contentFadeIn 0.35s cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
+}
+
+
+.island-content-inner.exiting {
+    position: absolute;
+    pointer-events: none;
+    animation: contentFadeOut 0.15s ease-out forwards;
+}
+
+@keyframes contentFadeIn {
+    from { opacity: 0; transform: scale(0.9) translateY(5px); filter: blur(8px); }
+    to { opacity: 1; transform: scale(1) translateY(0); filter: blur(0); }
+}
+
+@keyframes contentFadeOut {
+    from { opacity: 1; transform: scale(1); filter: blur(0); }
+    to { opacity: 0; transform: scale(0.95); filter: blur(4px); }
+}
+
+/* =========================================
+   5. АНИМАЦИЯ СМЕНЫ СТРАНИЦЫ (Page Pill)
+   ========================================= */
+
+@keyframes pillSlideUp {
+    0% { 
+        opacity: 0; 
+        transform: translateY(10px) scale(0.95); 
+        filter: blur(4px); 
+    }
+    100% { 
+        opacity: 1; 
+        transform: translateY(0) scale(1); 
+        filter: blur(0); 
+    }
+}
+
+.island-page-pill {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    
+    
+    max-width: 450px; 
+    min-width: 0;
+    
+    animation: pillSlideUp 0.4s cubic-bezier(0.2, 0.9, 0.3, 1.1) forwards;
+    will-change: transform, opacity, filter;
+}
+
+.island-page-icon {
+    font-size: 16px;
+    flex-shrink: 0;
+    display: flex;
+}
+
+.island-page-name {
+    font-size: 13px;
+    font-weight: 700;
     color: var(--color-text);
-    line-height: 1.1;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
-    max-width: 240px; 
+    
+}
+
+/* =========================================
+   6. ТЕКСТОВЫЕ ЭЛЕМЕНТЫ (Уведомления)
+   ========================================= */
+
+.island-column {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    gap: 1px;
+    text-align: left;
+    min-width: 0;
+    
+    flex: 1; 
+}
+
+.island-maintext {
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--color-text);
+    line-height: 1.2;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    
+    
+    max-width: 500px; 
 }
 
 .island-caption {
@@ -130,63 +229,42 @@
     font-weight: 700;
     color: var(--color-text-secondary);
     text-transform: uppercase;
-    letter-spacing: 0.05em;
-    line-height: 1.1;
+    letter-spacing: 0.5px;
+    line-height: 1.2;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
-    max-width: 240px;
+    
+    
+    max-width: 500px;
+    opacity: 0.8;
 }
+
 
 .island-time {
     font-size: 14px;
-    font-weight: 800;
+    font-weight: 700;
     color: var(--color-text);
-    letter-spacing: -0.5px;
-    white-space: nowrap;
+    letter-spacing: -0.2px;
+    font-variant-numeric: tabular-nums;
+    opacity: 0.9;
 }
 
 .island-v-sep {
     width: 1px;
-    height: 14px;
+    height: 16px;
     background: var(--color-border);
+    opacity: 0.5;
     flex-shrink: 0;
 }
 
-.island-page-pill {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    min-width: 0;
-    overflow: hidden;
-}
-
-.island-page-icon {
-    font-size: 14px;
-    flex-shrink: 0;
-}
-
-.island-page-name {
-    font-size: 13px;
-    font-weight: 800;
-    color: var(--color-text);
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-}
-
-.island-column {
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-    gap: 2px;
-    text-align: left;
-}
-
+/* =========================================
+   7. ИКОНКИ, СТАТУСЫ И ЛОАДЕРЫ
+   ========================================= */
 
 .island-status-icon {
-    width: 28px;
-    height: 28px;
+    width: 26px;
+    height: 26px;
     border-radius: 50%;
     display: flex;
     align-items: center;
@@ -197,15 +275,16 @@
     transition: background-color 0.3s ease;
 }
 
-.island-status-icon.success { background: rgba(0, 186, 124, 0.15); color: #00ba7c; }
-.island-status-icon.error { background: rgba(244, 33, 46, 0.15); color: #f4212e; }
+.island-status-icon.success { background: rgba(0, 186, 124, 0.2); color: #00ba7c; }
+.island-status-icon.error { background: rgba(244, 33, 46, 0.2); color: #f4212e; }
+.island-status-icon.warning { background: rgba(255, 173, 31, 0.2); color: #ffad1f; }
 .island-status-icon.clipboard { background: rgba(255, 255, 255, 0.15); color: #fff; }
 .island-status-icon.discord { background: #5865f2; color: #fff; }
 
 
 .progress-stack {
-    width: 32px;
-    height: 32px;
+    width: 28px;
+    height: 28px;
     position: relative;
     display: flex;
     align-items: center;
@@ -216,35 +295,21 @@
 .island-ring {
     position: absolute;
     inset: 0;
-    width: 32px;
-    height: 32px;
+    width: 100%;
+    height: 100%;
     transform: rotate(-90deg);
 }
 
-.ring-track {
-    fill: none;
-    stroke: var(--color-border);
-    stroke-width: 3;
-}
-
-.ring-progress {
-    fill: none;
-    stroke-width: 3;
-    stroke-linecap: round;
-    transition: stroke-dasharray 0.5s cubic-bezier(0.4, 0, 0.2, 1);
-}
+.ring-track { fill: none; stroke: rgba(255,255,255,0.1); stroke-width: 3; }
+.ring-progress { fill: none; stroke-width: 3; stroke-linecap: round; transition: stroke-dasharray 0.5s ease; }
 
 .island-spinner-arc {
-    width: 24px;
-    height: 24px;
-    border: 3px solid var(--color-border);
+    width: 20px;
+    height: 20px;
+    border: 2px solid rgba(255,255,255,0.1);
     border-top-color: var(--color-primary);
     border-radius: 50%;
     animation: spin 0.9s linear infinite;
-}
-
-@keyframes spin {
-    to { transform: rotate(360deg); }
 }
 
 .dir-arrow {
@@ -253,38 +318,69 @@
     display: flex;
     align-items: center;
     justify-content: center;
+    font-size: 12px;
+    font-weight: 800;
 }
 
-.dir-arrow svg {
-    width: 14px;
-    height: 14px;
+
+@keyframes spin { to { transform: rotate(360deg); } }
+.island-ring.spinning { animation: ring-spin 1.5s linear infinite; }
+@keyframes ring-spin { from { transform: rotate(-90deg); } to { transform: rotate(270deg); } }
+
+
+.island-host.shaking {
+    animation: island-shake 0.4s cubic-bezier(0.36, 0.07, 0.19, 0.97) both;
+}
+
+@keyframes island-shake {
+    0%   { transform: translateX(-50%); }
+    25%  { transform: translateX(calc(-50% - 4px)); }
+    50%  { transform: translateX(calc(-50% + 4px)); }
+    75%  { transform: translateX(calc(-50% - 2px)); }
+    100% { transform: translateX(-50%); }
 }
 
 
 .offline-mode .island-maintext { color: #f4212e; }
-.offline-mode .island-caption { color: #ff6b6b; }
+.offline-mode .island-caption { color: rgba(244, 33, 46, 0.8); }
+
+.alert-warning .island-maintext { color: #ffad1f; }
+.alert-warning .island-caption { color: rgba(255, 173, 31, 0.8); }
+.alert-error .island-maintext { color: #f4212e; }
+.alert-error .island-caption { color: rgba(244, 33, 46, 0.8); }
+
 .alert-discord .island-maintext { color: #fff; }
-.alert-discord .island-caption { color: #b9bbbe; }
+.alert-discord .island-caption { color: rgba(255,255,255,0.7); }
+
+/* =========================================
+   8. СПЕЦИАЛЬНЫЕ РЕЖИМЫ (Low Perf / Mobile)
+   ========================================= */
 
 
 [data-perf="low"] .island-morpher {
     backdrop-filter: none !important;
     -webkit-backdrop-filter: none !important;
-    background-color: rgba(var(--glass-bg-rgb), 0.98) !important;
-    transition-duration: 0.15s !important;
-}
-[data-perf="low"] .island-content-inner.entering {
-    animation-duration: 0.1s !important;
-}
-[data-perf="low"] .island-content-inner.exiting {
-    animation-duration: 0.08s !important;
+    background-color: #151515 !important;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+    transition-duration: 0.1s !important;
 }
 
-.island-ring.spinning {
-    animation: ring-spin 1.5s linear infinite;
-}
 
-@keyframes ring-spin {
-    from { transform: rotate(-90deg); }
-    to { transform: rotate(270deg); }
+@media (max-width: 600px) {
+    .island-host {
+        max-width: calc(100vw - 24px); 
+        padding: 0 12px;
+    }
+    
+    .island-maintext, .island-caption {
+        max-width: 200px;
+    }
+    
+    .island-page-pill {
+        max-width: 140px;
+    }
+
+    .island-maintext, .island-caption, .island-page-pill {
+        max-width: calc(100vw - 80px);
+    }
 }

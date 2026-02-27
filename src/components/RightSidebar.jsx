@@ -6,10 +6,13 @@ import { useUploadStore } from '../store/uploadStore';
 import { useDownloadStore } from '../store/downloadStore';
 import { useMusicStore } from '../store/musicStore';
 import { useBrowser } from '../context/BrowserContext';
+import { useUserStore } from '../store/userStore'; 
 import { WidgetSkeleton } from './Skeletons';
 import GlobalPlayer from './GlobalPlayer';
 import { SidebarExpandIcon, SidebarCloseIcon } from './icons/CustomIcons';
 import '../styles/RightSidebar.css';
+
+const PROMOTED_USERNAMES = ['vany', "itdStatus"];
 
 const WidgetBox = ({ title, children, showMoreLink, className = "", delay = "0s", headerAccessory }) => (
     <div 
@@ -52,6 +55,9 @@ const RightSidebar = () => {
     const uploads = useUploadStore(state => state.uploads);
     const downloads = useDownloadStore(state => state.downloads);
     const { isOpen, isMinimized, title, url, maximizeBrowser, closeBrowser } = useBrowser();
+    
+    
+    const currentUser = useUserStore(state => state.currentUser);
 
     const activeUploads = Object.values(uploads).filter(u => u.status !== 'complete' && u.status !== 'error');
     const activeDownloads = Object.values(downloads);
@@ -62,16 +68,40 @@ const RightSidebar = () => {
         const fetchSidebarData = async () => {
             setLoading(true);
             try {
+                
                 const usersRes = await apiClient.getSuggestions();
-                setUsers(usersRes?.users?.slice(0, 5) || []);
+                let apiUsers = usersRes?.users || [];
+
+                
+                const promotedPromises = PROMOTED_USERNAMES.map(username =>
+                    apiClient.getProfile(username).catch(() => null) 
+                );
+                const promotedResults = await Promise.all(promotedPromises);
+
+                
+                const promotedUsers = promotedResults
+                    .map(res => res?.user || res?.data || res)
+                    .filter(u => u && u.username && u.username !== currentUser?.username);
+
+                
+                const promotedSet = new Set(promotedUsers.map(u => u.username));
+                apiUsers = apiUsers.filter(u => !promotedSet.has(u.username));
+
+                
+                const finalUsers = [...promotedUsers, ...apiUsers].slice(0, 5);
+
+                setUsers(finalUsers);
             } catch (error) {
                 console.error("Ошибка загрузки:", error);
             } finally {
                 setLoading(false);
             }
         };
-        fetchSidebarData();
-    }, []);
+        
+        if (currentUser) {
+            fetchSidebarData();
+        }
+    }, [currentUser?.username]); 
 
     const handleDevTrigger = () => {
         const now = Date.now();
@@ -185,7 +215,7 @@ const RightSidebar = () => {
                 users.length > 0 &&
                 <WidgetBox title="Кого читать" showMoreLink="/explore" delay="0s">
                     {users.map((user, idx) => (
-                        <Link to={`/profile/${user.username}`} key={user.id} className="widget-item stagger-item" style={{ '--i': idx }}>
+                        <Link to={`/profile/${user.username}`} key={user.id || user.username} className="widget-item stagger-item" style={{ '--i': idx }}>
                             <div className="avatar" style={{ width: 40, height: 40, fontSize: 20 }}>{user.avatar || "👤"}</div>
                             <div className="widget-item-info">
                                 <span className="name">{user.displayName}</span>

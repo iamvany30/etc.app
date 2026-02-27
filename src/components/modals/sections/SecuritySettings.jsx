@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { apiClient } from '../../../api/client';
 import { useModalStore } from '../../../store/modalStore';
 import DeleteAccountModal from '../DeleteAccountModal';
@@ -8,6 +8,24 @@ const SecuritySettings = ({ setStatus }) => {
     const [loading, setLoading] = useState(false);
     const [exporting, setExporting] = useState(false);
     const openModal = useModalStore(s => s.openModal);
+
+    const [pin, setPin] = useState('');
+    const [isLockEnabled, setIsLockEnabled] = useState(false);
+
+    useEffect(() => {
+        setIsLockEnabled(localStorage.getItem('itd_app_lock_enabled') === 'true');
+        setPin(localStorage.getItem('itd_app_lock_pin') || '');
+    }, []);
+
+    const handleSavePin = () => {
+        if (isLockEnabled && pin.length < 4) {
+            setStatus({ type: 'error', msg: 'ПИН-код должен содержать минимум 4 цифры' });
+            return;
+        }
+        localStorage.setItem('itd_app_lock_enabled', isLockEnabled ? 'true' : 'false');
+        localStorage.setItem('itd_app_lock_pin', pin);
+        setStatus({ type: 'success', msg: 'Настройки блокировки сохранены' });
+    };
 
     const handleSave = async () => {
         if (passwords.new !== passwords.confirm) {
@@ -74,6 +92,33 @@ const SecuritySettings = ({ setStatus }) => {
 
     return (
         <div className="settings-form">
+            <div className="settings-section-title">Блокировка приложения</div>
+            <div className="settings-option" onClick={() => setIsLockEnabled(!isLockEnabled)}>
+                <div className="settings-option-info">
+                    <span className="settings-option-name">Вход по ПИН-коду и Биометрии</span>
+                    <span className="settings-option-desc">Запрашивать ПИН-код или сканирование при открытии приложения</span>
+                </div>
+                <button className={`toggle-switch ${isLockEnabled ? 'active' : ''}`}>
+                    <span className="toggle-thumb" />
+                </button>
+            </div>
+            {isLockEnabled && (
+                <div className="form-group" style={{marginTop: 10}}>
+                    <label className="form-label">Установите ПИН-код</label>
+                    <input
+                        type="password"
+                        className="form-input"
+                        placeholder="Минимум 4 цифры"
+                        value={pin}
+                        onChange={e => setPin(e.target.value.replace(/\D/g, ''))}
+                        maxLength={10}
+                    />
+                </div>
+            )}
+            <button className="settings-save-btn" onClick={handleSavePin} style={{marginBottom: 24}}>
+                Сохранить настройки блокировки
+            </button>
+
             <div className="settings-section-title">Изменение пароля</div>
             <div className="form-group">
                 <label className="form-label">Текущий пароль</label>

@@ -69,7 +69,6 @@
     padding-top: 16px; 
 }
 
-
 .post-container:has(.post-meta-row) .post-avatar-column {
     padding-top: 0; 
 }
@@ -81,8 +80,18 @@
     border-radius: 50%;
     display: block;
     transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1), filter 0.2s ease;
+    
+    
+    text-decoration: none;
+    border: none;
+    color: inherit;
 }
 
+.avatar-wrapper-post:hover {
+    filter: brightness(0.9);
+    transform: scale(1.05);
+    text-decoration: none; 
+}
 .avatar-wrapper-post:hover {
     filter: brightness(0.9);
     transform: scale(1.05);

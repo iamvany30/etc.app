@@ -9,10 +9,11 @@ import PostCard from '../components/PostCard';
 import CreatePost from '../components/CreatePost';
 import { PostSkeleton } from '../components/Skeletons';
 
-import { Ghost, Planet, RefreshCircle, MagicStick3 } from "@solar-icons/react";
+import { Ghost, Planet, RefreshCircle, MagicStick3, UsersGroupTwoRounded } from "@solar-icons/react";
 import '../styles/Feed.css';
 
 const Feed = () => {
+    
     const [tab, setTab] = useState('popular');
     const virtuosoRef = useRef(null);
     const queryClient = useQueryClient();
@@ -27,13 +28,10 @@ const Feed = () => {
         isError
     } = usePosts(tab);
 
-    
-    
     const allPosts = useMemo(() => {
         if (!data?.pages) return [];
         return data.pages.flatMap(page => {
             if (!page) return [];
-            
             const postsArray = page.posts || (Array.isArray(page) ? page : (page.data && Array.isArray(page.data) ? page.data : []));
             return postsArray;
         }).filter(Boolean); 
@@ -43,7 +41,6 @@ const Feed = () => {
         queryClient.setQueryData(['posts', tab], (oldData) => {
             if (!oldData || !oldData.pages || oldData.pages.length === 0) return oldData;
             const newPages = [...oldData.pages];
-            
             
             if (Array.isArray(newPages[0])) {
                 newPages[0] = [newPost, ...newPages[0]];
@@ -71,8 +68,14 @@ const Feed = () => {
                         Популярное
                     </button>
                     <button
-                        className={`feed-tab ${tab === 'subscribed' ? 'active' : ''}`}
-                        onClick={() => setTab('subscribed')}
+                        className={`feed-tab ${tab === 'clan' ? 'active' : ''}`}
+                        onClick={() => setTab('clan')}
+                    >
+                        Клан
+                    </button>
+                    <button
+                        className={`feed-tab ${tab === 'following' ? 'active' : ''}`}
+                        onClick={() => setTab('following')}
                     >
                         Подписки
                     </button>
@@ -92,12 +95,20 @@ const Feed = () => {
             {!isLoading && !isError && allPosts.length === 0 && (
                 <div className="empty-state">
                     <div className="empty-state-icon">
-                        {tab === 'subscribed' ? <Ghost size={48} /> : <Planet size={48} />}
+                        {tab === 'following' ? <Ghost size={48} /> : 
+                         tab === 'clan' ? <UsersGroupTwoRounded size={48} /> :
+                         <Planet size={48} />}
                     </div>
-                    <h3>{tab === 'subscribed' ? 'Ваша лента пуста' : 'Ничего не найдено'}</h3>
+                    <h3>
+                        {tab === 'following' ? 'Ваша лента пуста' : 
+                         tab === 'clan' ? 'В клане тихо' : 
+                         'Ничего не найдено'}
+                    </h3>
                     <p>
-                        {tab === 'subscribed' 
+                        {tab === 'following' 
                             ? <>Посты от тех, на кого вы подписаны, появятся здесь. <Link to="/explore" className="empty-feed-link">Найти друзей</Link>.</>
+                            : tab === 'clan'
+                            ? 'Здесь будут посты участников вашего эмодзи-клана.'
                             : 'В этой ленте пока нет постов. Станьте первым, кто напишет!'}
                     </p>
                 </div>

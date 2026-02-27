@@ -1,11 +1,25 @@
-const { app, BrowserWindow, Menu, nativeTheme, protocol, net, globalShortcut, session } = require('electron');
+/* @source electron/main.js */
+const { app, BrowserWindow, Menu, nativeTheme, protocol, net, globalShortcut, session, ipcMain } = require('electron');
 const path = require('path');
 const fs = require('fs');
 const { autoUpdater } = require('electron-updater');
 const { pathToFileURL } = require('url');
 
-const localAppData = process.env.LOCALAPPDATA || path.join(process.env.USERPROFILE, 'AppData', 'Local');
-const sharedProfilePath = path.join(localAppData, 'etc.app', 'electron_profile_v1');
+
+const { logDebug } = require('./logger');
+const discord = require('./discord');
+const { createMainWindow, getMainWindow } = require('./window');
+const { registerHandlers } = require('./ipc');
+const themes = require('./themes');
+const { PATHS, USER_AGENT } = require('./config');
+const { setupAssetProtocol, cleanupCache } = require('./assetCache'); 
+
+
+const localAppData = process.env.LOCALAPPDATA || path.join(process.env.USERPROFILE || process.env.HOME, 'AppData', 'Local');
+
+const sharedProfilePath = process.platform === 'win32' 
+    ? path.join(localAppData, 'etc.app', 'electron_profile_v1')
+    : path.join(app.getPath('userData'), 'electron_profile_v1');
 
 if (!fs.existsSync(sharedProfilePath)) {
     try { fs.mkdirSync(sharedProfilePath, { recursive: true }); } catch (e) {}
@@ -16,64 +30,63 @@ try {
     app.commandLine.appendSwitch('user-data-dir', sharedProfilePath);
 } catch (e) {}
 
-let startupUrl = null;
-const { logDebug } = require('./logger');
-const discord = require('./discord');
-const { createMainWindow, getMainWindow } = require('./window');
-const { registerHandlers } = require('./ipc');
-const themes = require('./themes');
-const { PATHS, USER_AGENT } = require('./config');
 
+
+const settingsPath = path.join(app.getPath('userData'), 'app-settings.json');
+let appSettings = { hardwareAcceleration: true };
+
+try {
+    if (fs.existsSync(settingsPath)) {
+        appSettings = JSON.parse(fs.readFileSync(settingsPath, 'utf8'));
+    }
+} catch (e) { 
+    console.error("[Main] Error reading app-settings:", e); 
+}
+
+if (!appSettings.hardwareAcceleration) {
+    console.log('[Main] Hardware Acceleration DISABLED by user setting');
+    app.disableHardwareAcceleration();
+} else {
+    
+    app.commandLine.appendSwitch('enable-gpu-rasterization');
+    app.commandLine.appendSwitch('enable-zero-copy');
+}
+
+
+let startupUrl = null;
 let isAppLaunched = false;
 let isCheckingContent = false;
 
-function handleUrl(win, urlStr) {
-    if (!win || !urlStr) return;
 
-    const protocolSeparator = "://";
-    const startIndex = urlStr.indexOf(protocolSeparator);
-    
-    if (startIndex === -1) return;
-    let rawPath = urlStr.substring(startIndex + protocolSeparator.length);
-    let navigateTo;
-    if (rawPath.startsWith('http')) {
-        navigateTo = rawPath; 
-    } else {
-        navigateTo = '/' + rawPath.replace(/^\/+/, '');
+protocol.registerSchemesAsPrivileged([
+    {
+        scheme: 'font',
+        privileges: { secure: true, standard: true, supportFetchAPI: true, corsEnabled: true, bypassCSP: true }
+    },
+    {
+        scheme: 'asset', 
+        privileges: { secure: true, standard: true, supportFetchAPI: true, corsEnabled: true, bypassCSP: true }
     }
+]);
 
-    if (win.webContents) {
-        if (win.webContents.isLoading()) {
-            win.webContents.once('did-finish-load', () => {
-                win.webContents.send('navigate-to', navigateTo);
-            });
-        } else {
-            win.webContents.send('navigate-to', navigateTo);
-        }
-    }
-}
-
-protocol.registerSchemesAsPrivileged([{
-    scheme: 'font',
-    privileges: { secure: true, standard: true, supportFetchAPI: true, corsEnabled: true, bypassCSP: true }
-}]);
 
 app.commandLine.appendSwitch('disable-site-isolation-trials');
 app.commandLine.appendSwitch('disable-features', 'OutOfBlinkCors,SameSiteByDefaultCookies,CookiesWithoutSameSiteMustBeSecure,IsolateOrigins,site-per-process');
 app.commandLine.appendSwitch('ignore-certificate-errors');
-app.commandLine.appendSwitch('enable-gpu-rasterization');
-app.commandLine.appendSwitch('enable-zero-copy');
+app.commandLine.appendSwitch('disable-http2');
 
 Menu.setApplicationMenu(null);
 
 process.on('uncaughtException', (error) => logDebug('[CRITICAL EXCEPTION]', error));
 process.on('unhandledRejection', (reason) => logDebug('[UNHANDLED REJECTION]', reason));
 
+
 const ffmpeg = require('fluent-ffmpeg');
 const ffmpegPath = require('ffmpeg-static');
 ffmpeg.setFfmpegPath(ffmpegPath);
 
 if (process.platform === 'win32') app.setAppUserModelId('com.etc.app');
+
 
 const ICONS = {
     DEFAULT: PATHS.ICON,
@@ -90,6 +103,37 @@ function updateAppIcon() {
 }
 
 nativeTheme.on('updated', updateAppIcon);
+
+
+function handleDeepLink(urlStr) {
+    if (!urlStr) return;
+    const protocolSeparator = "://";
+    const startIndex = urlStr.indexOf(protocolSeparator);
+    
+    if (startIndex === -1) return;
+    
+    
+    let rawPath = urlStr.substring(startIndex + protocolSeparator.length);
+    
+    
+    rawPath = rawPath.replace(/^\/+/, '');
+    
+    
+    
+    const safePath = '/' + rawPath.replace(/[^a-zA-Z0-9/_\-?=&%.@]/g, '');
+
+    const mw = getMainWindow();
+    if (mw && !mw.isDestroyed()) {
+        if (mw.isMinimized()) mw.restore();
+        mw.show();
+        mw.focus();
+        mw.webContents.send('navigate-to', safePath);
+    } else {
+        startupUrl = 'etc-app://' + safePath; 
+    }
+}
+
+
 let splashWindow = null;
 
 function updateSplash(status, details, progress) {
@@ -124,6 +168,7 @@ async function runUpdateSequence() {
         return;
     }
 
+    
     autoUpdater.logger = {
         info: (m) => logDebug('[Updater Info]', m),
         warn: (m) => logDebug('[Updater Warn]', m),
@@ -137,6 +182,7 @@ async function runUpdateSequence() {
     autoUpdater.autoDownload = true;
     autoUpdater.allowPrerelease = false;
 
+    
     const updaterCacheDir = path.join(process.env.LOCALAPPDATA || '', 'etc.app-updater');
     if (fs.existsSync(updaterCacheDir)) {
         try { fs.rmSync(updaterCacheDir, { recursive: true, force: true }); } catch (e) {}
@@ -233,7 +279,7 @@ function launchApp() {
         mainWin.on('blur', () => mainWin && !mainWin.isDestroyed() && mainWin.webContents.send('window-focus-state', { isFocused: false }));
         mainWin.once('ready-to-show', () => {
             if (startupUrl) {
-                handleUrl(mainWin, startupUrl);
+                handleDeepLink(startupUrl);
                 startupUrl = null;
             }
             setTimeout(() => {
@@ -244,31 +290,54 @@ function launchApp() {
     }
 }
 
+
 if (process.defaultApp) {
     if (process.argv.length >= 2) app.setAsDefaultProtocolClient('etc-app', process.execPath, [path.resolve(process.argv[1])]);
 } else {
     app.setAsDefaultProtocolClient('etc-app');
 }
 
+
 const gotTheLock = app.requestSingleInstanceLock();
 if (!gotTheLock) {
     app.quit();
 } else {
     app.on('second-instance', (event, commandLine) => {
-        const mw = getMainWindow();
-        if (mw) {
-            if (mw.isMinimized()) mw.restore();
-            mw.focus();
-            const urlStr = commandLine.find(arg => arg.startsWith('etc-app://'));
-            if (urlStr) {
-                handleUrl(mw, urlStr);
-            }
-        }
+        
+        const urlStr = commandLine.find(arg => arg.startsWith('etc-app://'));
+        handleDeepLink(urlStr);
     });
 }
 
+
+app.on('open-url', (event, url) => {
+    event.preventDefault();
+    handleDeepLink(url);
+});
+
 app.whenReady().then(async () => {
+    
+    setupAssetProtocol();
+    
+    cleanupCache();
+
     registerHandlers();
+
+    
+    ipcMain.handle('app:toggle-hardware-acceleration', (e, enable) => {
+        appSettings.hardwareAcceleration = enable;
+        try {
+            fs.writeFileSync(settingsPath, JSON.stringify(appSettings, null, 2));
+            app.relaunch();
+            app.exit(0);
+        } catch (err) {
+            console.error("Failed to save settings:", err);
+        }
+    });
+    
+    ipcMain.handle('app:get-hardware-acceleration', () => appSettings.hardwareAcceleration);
+
+    
     if (process.platform === 'win32' || process.platform === 'linux') {
         const urlStr = process.argv.find(arg => arg.startsWith('etc-app://'));
         if (urlStr) {
@@ -276,6 +345,7 @@ app.whenReady().then(async () => {
         }
     }
 
+    
     protocol.handle('font', (request) => {
         try {
             let fontName = request.url.slice('font://'.length);
@@ -287,6 +357,7 @@ app.whenReady().then(async () => {
         } catch (error) { return new Response('Error', { status: 500 }); }
     });
 
+    
     const sendMediaControl = (command) => {
         const win = getMainWindow();
         if (win && !win.isDestroyed()) win.webContents.send('media-control', command);
@@ -296,6 +367,7 @@ app.whenReady().then(async () => {
     globalShortcut.register('MediaNextTrack', () => sendMediaControl('next'));
     globalShortcut.register('MediaPreviousTrack', () => sendMediaControl('prev'));
 
+    
     const filter = { urls: ['https://xn--d1ah4a.com/*', 'https://*.xn--d1ah4a.com/*'] };
     session.defaultSession.webRequest.onBeforeSendHeaders(filter, (details, callback) => {
         const headers = details.requestHeaders;
@@ -307,8 +379,9 @@ app.whenReady().then(async () => {
         callback({ requestHeaders: headers });
     });
 
+    
     session.defaultSession.webRequest.onHeadersReceived((details, callback) => {
-        const policy = "default-src * 'unsafe-inline' 'unsafe-eval' data: blob: font: file:; script-src * 'unsafe-inline' 'unsafe-eval' data: blob:; connect-src * 'unsafe-inline' data: blob: font: font://* file:; style-src * 'unsafe-inline' font:; font-src * 'unsafe-inline' data: blob: font: font://*; frame-src * 'unsafe-inline' data: blob:; img-src * 'unsafe-inline' data: blob: file:; media-src * 'unsafe-inline' data: blob: file:;";
+        const policy = "default-src * 'unsafe-inline' 'unsafe-eval' data: blob: font: file: asset:; script-src * 'unsafe-inline' 'unsafe-eval' data: blob:; connect-src * 'unsafe-inline' data: blob: font: font://* file: asset:; style-src * 'unsafe-inline' font:; font-src * 'unsafe-inline' data: blob: font: font://*; frame-src * 'unsafe-inline' data: blob:; img-src * 'unsafe-inline' data: blob: file: asset:; media-src * 'unsafe-inline' data: blob: file: asset:;";
         callback({ responseHeaders: { ...details.responseHeaders, 'Content-Security-Policy': [policy] } });
     });
 

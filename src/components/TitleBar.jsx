@@ -1,5 +1,5 @@
 /* @source src/components/TitleBar.jsx */
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
 import { FeedCache } from '../core/FeedCache';
@@ -15,6 +15,8 @@ const TitleBar = () => {
     const [networkStatus, setNetworkStatus] = useState('online');
     const [canGoBack, setCanGoBack] = useState(false);
     const [isScrolled, setIsScrolled] = useState(false);
+    
+    const ticking = useRef(false);
 
     useEffect(() => {
         setCanGoBack(window.history.state && window.history.state.idx > 0);
@@ -25,30 +27,40 @@ const TitleBar = () => {
         window.addEventListener('app-network-status', handleStatusChange);
         
         const handleScroll = (e) => {
-            const target = e.target;
-            if (target.closest && target.closest('[data-virtuoso-scroller="true"]')) {
-                const scroller = target.closest('[data-virtuoso-scroller="true"]');
-                setIsScrolled(scroller.scrollTop > 15);
+            if (!ticking.current) {
+                window.requestAnimationFrame(() => {
+                    const target = e.target;
+                    
+                    
+                    
+                    if (target && target.getAttribute && target.getAttribute('data-virtuoso-scroller') === 'true') {
+                        setIsScrolled(target.scrollTop > 15);
+                    } else if (target === document || target === window) {
+                        
+                        setIsScrolled(window.scrollY > 15);
+                    }
+                    
+                    ticking.current = false;
+                });
+                ticking.current = true;
             }
         };
 
-        window.addEventListener('scroll', handleScroll, true);
+        
+        window.addEventListener('scroll', handleScroll, { capture: true, passive: true });
+        
         return () => {
             window.removeEventListener('app-network-status', handleStatusChange);
-            window.removeEventListener('scroll', handleScroll, true);
+            window.removeEventListener('scroll', handleScroll, { capture: true });
         };
     }, []);
 
     const handleReload = (e) => {
-        
         if (e.ctrlKey || e.metaKey) {
             window.location.reload();
         } else {
-            
             FeedCache.clear(); 
             queryClient.invalidateQueries(); 
-            
-            
             window.dispatchEvent(new Event('content-refresh'));
         }
     };

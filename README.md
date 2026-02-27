@@ -1,6 +1,6 @@
 # итд.app (etc.app) - Windows App
 
-![Version](https://img.shields.io/badge/version-0.9.1-blue.svg)
+![Version](https://img.shields.io/badge/version-0.9.4-blue.svg)
 ![Electron](https://img.shields.io/badge/Electron-34.0-2F3336.svg?logo=electron)
 ![React](https://img.shields.io/badge/React-19.0-20232a.svg?logo=react)
 ![License](https://img.shields.io/badge/license-MIT-green.svg)
@@ -9,7 +9,7 @@
 
 **итд.app** — это современный десктопный клиент для социальной платформы, построенный на базе Electron и React. Приложение обеспечивает нативный опыт использования соцсети с фокусом на производительность, кастомизацию и медиа-возможности.
 
-![App Screenshot](https://raw.githubusercontent.com/iamvany30/etc.app/main/showcase.png)
+![App Screenshot](https://raw.githubusercontent.com/iamvany30/etc.app/main/showcase.gif)
 
 
 ---

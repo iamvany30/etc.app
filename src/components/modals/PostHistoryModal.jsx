@@ -1,7 +1,8 @@
+/* @source src/components/modals/PostHistoryModal.jsx */
 import React, { useState, useEffect } from 'react';
 import { apiClient } from '../../api/client';
 import { useModalStore } from '../../store/modalStore';
-import { renderTextWithSpans } from '../../utils/markdownUtils';
+import { RichText } from '../RichText';
 
 const PostHistoryModal = ({ postId }) => {
     const [history, setHistory] = useState([]);
@@ -29,7 +30,11 @@ const PostHistoryModal = ({ postId }) => {
                                 {new Date(item.editedAt).toLocaleString('ru-RU')}
                             </div>
                             <div style={{ fontSize: '15px', color: 'var(--color-text)', whiteSpace: 'pre-wrap', wordBreak: 'break-word', lineHeight: 1.5 }}>
-                                {renderTextWithSpans(item.content, item.spans || [], () => {})}
+                                <RichText
+                                    text={item.content}
+                                    spans={item.spans}
+                                    onLinkClick={() => { }}
+                                />
                             </div>
                         </div>
                     ))

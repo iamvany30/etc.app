@@ -63,24 +63,34 @@ const BottomDock = () => {
                 window.requestAnimationFrame(() => {
                     const target = e.target;
                     let currentScrollY = 0;
+                    let isMainScroller = false;
 
-                    if (target && target.getAttribute && target.getAttribute('data-virtuoso-scroller') === 'true') {
-                        currentScrollY = target.scrollTop;
-                    } else if (target === document || target === window) {
+                    if (target === document || target === window) {
                         currentScrollY = window.scrollY;
-                    } else {
-                        currentScrollY = target.scrollTop || 0;
+                        isMainScroller = true;
+                    } else if (
+                        target.getAttribute('data-virtuoso-scroller') === 'true' ||
+                        target.classList.contains('custom-scroll-area') ||
+                        target.classList.contains('explore-scroll-area') ||
+                        target.classList.contains('downloads-content') ||
+                        target.classList.contains('music-content-scroll') ||
+                        target.classList.contains('post-details-page')
+                    ) {
+                        currentScrollY = target.scrollTop;
+                        isMainScroller = true;
                     }
 
-                    if (currentScrollY > lastScrollY.current + 15) {
-                        setIsVisible(false);
-                    } else if (currentScrollY < lastScrollY.current - 10) {
-                        setIsVisible(true);
+                    if (isMainScroller) {
+                        if (currentScrollY > lastScrollY.current + 15) {
+                            setIsVisible(false);
+                        } else if (currentScrollY < lastScrollY.current - 10) {
+                            setIsVisible(true);
+                        }
+                        
+                        if (currentScrollY <= 50) setIsVisible(true);
+                        lastScrollY.current = currentScrollY;
                     }
                     
-                    if (currentScrollY <= 50) setIsVisible(true);
-
-                    lastScrollY.current = currentScrollY;
                     ticking.current = false;
                 });
                 ticking.current = true;

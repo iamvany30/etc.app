@@ -1,5 +1,7 @@
+/* @source src/components/CreatePost/Attachments.jsx */
 import React from 'react';
 import { AttachmentCloseIcon } from '../icons/CustomIcons';
+import { getCachedUrl } from '../../utils/assetHelper'; 
 
 const UploadSpinner = () => (
     <div className="attachment-spinner-overlay">
@@ -9,33 +11,44 @@ const UploadSpinner = () => (
 
 const Attachments = ({ attachments, onRemove }) => {
     
-    if (attachments.length === 0) return null;
+    if (!attachments || attachments.length === 0) return null;
 
     return (
         <div className="attachments-preview">
             {attachments.map(att => {
                 
                 const isPending = att.status === 'pending';
-                const previewUrl = isPending ? att.previewUrl : att.url;
-                const key = isPending ? att.localId : att.id;
+                const key = isPending ? att.localId : (att.id || att.localId);
                 
                 
-                const mime = att.type || (att.file ? att.file.type : '');
+                let rawUrl = att.previewUrl || att.url || att.serverData?.url;
+                
+                
+                let finalUrl = rawUrl;
+                if (rawUrl && rawUrl.startsWith('http')) {
+                    finalUrl = getCachedUrl(rawUrl);
+                }
+                
+                
+                const mime = (att.type || att.serverData?.mimeType || att.serverData?.type || (att.file ? att.file.type : '')).toLowerCase();
                 const isVid = mime.startsWith('video/');
 
                 return (
-                    <div key={key} className="attachment-item">
+                    <div key={key} className={`attachment-item ${isPending ? 'pending' : ''}`}>
                         {isVid ? (
-                            <video src={previewUrl} className="attachment-media" muted playsInline />
+                            <video src={finalUrl} className="attachment-media" muted playsInline />
                         ) : (
-                            <img src={previewUrl} alt="media" className="attachment-media" />
+                            <img src={finalUrl} alt="media" className="attachment-media" />
                         )}
                         
                         {}
                         {isPending && <UploadSpinner />}
                         
                         {}
-                        <button className="remove-att-btn" onClick={() => onRemove(key)}>
+                        <button className="remove-att-btn" onClick={(e) => {
+                            e.preventDefault();
+                            onRemove(key);
+                        }}>
                             <AttachmentCloseIcon />
                         </button>
                     </div>

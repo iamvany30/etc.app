@@ -6,6 +6,7 @@ import { Routes, Route, Navigate, Outlet, useNavigate, useLocation } from 'react
 import { useUserStore } from './store/userStore'; 
 import { useMusicStore } from './store/musicStore';
 import { useDownloadStore } from './store/downloadStore';
+import { useItdPlusStore } from './store/itdPlusStore'; 
 
 
 import { DynamicComponent } from './core/ComponentRegistry';
@@ -19,20 +20,24 @@ import ScrollToTop from './components/ScrollToTop';
 import TitleBar from './components/TitleBar';
 import ErrorBoundary from './components/ErrorBoundary';
 import Snowfall from './components/Snowfall';
-import UploadManager from './components/UploadManager';
 import DynamicIsland from './components/DynamicIsland';
 import CustomBackground from './components/CustomBackground';
 import AuthFlow from './components/AuthFlow';
+
+
 import NotificationWatcher from './components/NotificationWatcher';
 import DownloadWatcher from './components/DownloadWatcher'; 
+import AnnouncementWatcher from './components/AnnouncementWatcher';
+import ServerStatusWatcher from './components/ServerStatusWatcher'; 
 import PresenceManager from './components/PresenceManager'; 
-import ContextMenuManager from './components/ContextMenuManager';
 import DiscordManager from './components/DiscordManager'; 
+import SystemWatcher from './components/SystemWatcher'; 
+
+
+import ContextMenuManager from './components/ContextMenuManager';
 import InternalBrowser from './components/InternalBrowser';
 import ModalManager from './components/ModalManager';
 import AccountSwitchOverlay from './components/AccountSwitchOverlay';
-import AnnouncementWatcher from './components/AnnouncementWatcher';
-import ServerStatusWatcher from './components/ServerStatusWatcher'; 
 import LockScreen from './components/LockScreen';
 
 
@@ -51,8 +56,6 @@ const Downloads = lazy(() => import('./pages/Downloads'));
 const Bookmarks = lazy(() => import('./pages/Bookmarks'));
 const RecentPosts = lazy(() => import('./pages/RecentPosts'));
 const DevPage = lazy(() => import('./pages/DevPage'));
-
-
 
 const PageLoader = () => (
     <div style={{ 
@@ -89,7 +92,6 @@ const DefaultLayout = () => {
     );
 };
 
-
 const RouteEl = ({ name, fallback: Fallback }) => (
     <div className="page-container">
         <Suspense fallback={<PageLoader />}>
@@ -99,7 +101,6 @@ const RouteEl = ({ name, fallback: Fallback }) => (
 );
 
 function App() {
-    
     const currentUser = useUserStore(state => state.currentUser);
     const switchingTarget = useUserStore(state => state.switchingTarget);
     const isOverlayExiting = useUserStore(state => state.isOverlayExiting);
@@ -112,14 +113,22 @@ function App() {
 
     
     useEffect(() => {
-        
+        useItdPlusStore.getState().fetchVerifiedUsers();
+    }, []);
+
+    useEffect(() => {
+        if (currentUser) {
+            useItdPlusStore.getState().registerCurrentUser(currentUser);
+        }
+    }, [currentUser]);
+
+    
+    useEffect(() => {
         if (process.env.NODE_ENV === 'production' && !isDevWindow) return;
         if (!window.api?.invoke) return;
 
         const syncInterval = setInterval(() => {
             try {
-                
-                
                 window.api.invoke('debug:update-state-snapshot', {
                     user: {
                         currentUser: useUserStore.getState().currentUser?.id,
@@ -133,9 +142,7 @@ function App() {
                         activeCount: Object.keys(useDownloadStore.getState().downloads).length
                     }
                 });
-            } catch (e) {
-                
-            }
+            } catch (e) {}
         }, 2000); 
 
         return () => clearInterval(syncInterval);
@@ -146,7 +153,9 @@ function App() {
         const accent = localStorage.getItem('nowkie_accent') || '#1d9bf0';
         const isSnow = localStorage.getItem('nowkie_snow_enabled') === 'true';
         const perfMode = localStorage.getItem('nowkie_perf_mode') || 'high';
-
+        const scrollbarMode = localStorage.getItem('itd_scrollbar_mode') || 'visible';
+        
+        document.documentElement.setAttribute('data-scrollbar', scrollbarMode);
         document.documentElement.setAttribute('data-bg', bgMode);
         document.documentElement.setAttribute('data-perf', perfMode);
         document.documentElement.style.setProperty('--color-primary', accent);
@@ -180,7 +189,6 @@ function App() {
         return () => unsubscribe();
     }, [navigate]);
 
-    
     if (isDevWindow) {
         return (
             <React.Fragment>
@@ -218,11 +226,10 @@ function App() {
                     <ServerStatusWatcher /> 
                     <PresenceManager />
                     <DiscordManager />
+                    <SystemWatcher /> {}
                     
-                    {}
                     <ScrollToTop />
                     <BottomDock />
-                    <UploadManager />
                     <InternalBrowser />
 
                     <Suspense fallback={<PageLoader />}>

@@ -1,12 +1,13 @@
 /* @source src/pages/RecentPosts.jsx */
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Virtuoso } from 'react-virtuoso';
 import { historyUtils } from '../utils/historyUtils';
 import PostCard from '../components/PostCard';
 import { useModalStore } from '../store/modalStore';
 import ConfirmActionModal from '../components/modals/ConfirmActionModal';
-import { AltArrowLeft, History } from "@solar-icons/react";
+import { AltArrowLeft, History, Magnifer, CloseCircle } from "@solar-icons/react";
+import Fuse from 'fuse.js'; 
 import '../styles/Downloads.css'; 
 
 const RecentPosts = () => {
@@ -15,6 +16,7 @@ const RecentPosts = () => {
     const closeModal = useModalStore(state => state.closeModal);
     
     const [posts, setPosts] = useState([]);
+    const [searchQuery, setSearchQuery] = useState(''); 
 
     const loadHistory = () => {
         setPosts(historyUtils.getAll());
@@ -25,6 +27,19 @@ const RecentPosts = () => {
         window.addEventListener('history-updated', loadHistory);
         return () => window.removeEventListener('history-updated', loadHistory);
     }, []);
+
+    
+    const fuse = useMemo(() => new Fuse(posts, {
+        keys: ['content', 'author.displayName', 'author.username'],
+        threshold: 0.3,
+        ignoreLocation: true
+    }), [posts]);
+
+    
+    const displayPosts = useMemo(() => {
+        if (!searchQuery.trim()) return posts;
+        return fuse.search(searchQuery).map(result => result.item);
+    }, [searchQuery, posts, fuse]);
 
     const handleClear = () => {
         openModal(
@@ -44,13 +59,28 @@ const RecentPosts = () => {
     return (
         <div className="downloads-page">
             <header className="dl-sticky-header">
-                <div className="dl-header-left">
-                    <button className="dl-back-btn" onClick={() => navigate(-1)}>
+                <div className="dl-header-left" style={{ flex: 1 }}>
+                    <button className="dl-back-btn" onClick={() => navigate(-1)} style={{ flexShrink: 0 }}>
                         <AltArrowLeft size={24} />
                     </button>
-                    <h2 className="dl-header-title">Недавние</h2>
+                    
+                    {}
+                    <div className="dl-search-wrapper">
+                        <Magnifer size={18} className="dl-search-icon" />
+                        <input 
+                            type="text" 
+                            placeholder="Поиск по истории..." 
+                            value={searchQuery}
+                            onChange={(e) => setSearchQuery(e.target.value)}
+                        />
+                        {searchQuery && (
+                            <button className="dl-search-clear" onClick={() => setSearchQuery('')}>
+                                <CloseCircle size={18} variant="Bold" />
+                            </button>
+                        )}
+                    </div>
                 </div>
-                {posts.length > 0 && (
+                {posts.length > 0 && !searchQuery && (
                     <button className="dl-clear-history-btn" onClick={handleClear}>
                         Очистить
                     </button>
@@ -66,10 +96,16 @@ const RecentPosts = () => {
                         <h3>История пуста</h3>
                         <p>Здесь будут отображаться посты, которые вы недавно просмотрели в ленте.</p>
                     </div>
+                ) : displayPosts.length === 0 ? (
+                    <div className="dl-empty-state">
+                        <Magnifer size={48} color="var(--color-text-secondary)" style={{marginBottom: 16, opacity: 0.5}} />
+                        <h3>Ничего не найдено</h3>
+                        <p>По вашему запросу «{searchQuery}» ничего не найдено в истории.</p>
+                    </div>
                 ) : (
                     <Virtuoso
                         style={{ height: '100%' }}
-                        data={posts}
+                        data={displayPosts} 
                         data-virtuoso-scroller="true"
                         itemContent={(index, post) => (
                             <PostCard 

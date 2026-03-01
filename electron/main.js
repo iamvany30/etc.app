@@ -15,6 +15,14 @@ const { PATHS, USER_AGENT } = require('./config');
 const { setupAssetProtocol, cleanupCache } = require('./assetCache'); 
 
 
+
+const gotTheLock = app.requestSingleInstanceLock();
+if (!gotTheLock) {
+    app.quit();
+    process.exit(0);
+}
+
+
 const localAppData = process.env.LOCALAPPDATA || path.join(process.env.USERPROFILE || process.env.HOME, 'AppData', 'Local');
 
 const sharedProfilePath = process.platform === 'win32' 
@@ -29,7 +37,6 @@ try {
     app.setPath('userData', sharedProfilePath);
     app.commandLine.appendSwitch('user-data-dir', sharedProfilePath);
 } catch (e) {}
-
 
 
 const settingsPath = path.join(app.getPath('userData'), 'app-settings.json');
@@ -47,7 +54,6 @@ if (!appSettings.hardwareAcceleration) {
     console.log('[Main] Hardware Acceleration DISABLED by user setting');
     app.disableHardwareAcceleration();
 } else {
-    
     app.commandLine.appendSwitch('enable-gpu-rasterization');
     app.commandLine.appendSwitch('enable-zero-copy');
 }
@@ -56,6 +62,7 @@ if (!appSettings.hardwareAcceleration) {
 let startupUrl = null;
 let isAppLaunched = false;
 let isCheckingContent = false;
+let splashWindow = null;
 
 
 protocol.registerSchemesAsPrivileged([
@@ -105,6 +112,35 @@ function updateAppIcon() {
 nativeTheme.on('updated', updateAppIcon);
 
 
+app.on('second-instance', (event, commandLine, workingDirectory) => {
+    const mainWin = getMainWindow();
+    
+    
+    
+    
+
+    if (mainWin) {
+        if (mainWin.isMinimized()) mainWin.restore();
+        if (!mainWin.isVisible()) mainWin.show();
+        mainWin.focus();
+
+        
+        const isCreatePost = commandLine.some(arg => arg.includes('--create-post'));
+        const isOpenMusic = commandLine.some(arg => arg.includes('--open-music'));
+
+        if (isCreatePost) {
+            mainWin.webContents.send('navigate-to', '/');
+        } else if (isOpenMusic) {
+            mainWin.webContents.send('navigate-to', '/music');
+        } else {
+            
+            const urlStr = commandLine.find(arg => arg.startsWith('etc-app://'));
+            handleDeepLink(urlStr);
+        }
+    }
+});
+
+
 function handleDeepLink(urlStr) {
     if (!urlStr) return;
     const protocolSeparator = "://";
@@ -112,13 +148,8 @@ function handleDeepLink(urlStr) {
     
     if (startIndex === -1) return;
     
-    
     let rawPath = urlStr.substring(startIndex + protocolSeparator.length);
-    
-    
     rawPath = rawPath.replace(/^\/+/, '');
-    
-    
     
     const safePath = '/' + rawPath.replace(/[^a-zA-Z0-9/_\-?=&%.@]/g, '');
 
@@ -133,8 +164,6 @@ function handleDeepLink(urlStr) {
     }
 }
 
-
-let splashWindow = null;
 
 function updateSplash(status, details, progress) {
     if (splashWindow && !splashWindow.isDestroyed()) splashWindow.webContents.send('updater-state', { status, details, progress });
@@ -168,7 +197,6 @@ async function runUpdateSequence() {
         return;
     }
 
-    
     autoUpdater.logger = {
         info: (m) => logDebug('[Updater Info]', m),
         warn: (m) => logDebug('[Updater Warn]', m),
@@ -182,7 +210,6 @@ async function runUpdateSequence() {
     autoUpdater.autoDownload = true;
     autoUpdater.allowPrerelease = false;
 
-    
     const updaterCacheDir = path.join(process.env.LOCALAPPDATA || '', 'etc.app-updater');
     if (fs.existsSync(updaterCacheDir)) {
         try { fs.rmSync(updaterCacheDir, { recursive: true, force: true }); } catch (e) {}
@@ -262,6 +289,7 @@ async function checkContentAndLaunch() {
     launchApp();
 }
 
+
 function launchApp() {
     if (isAppLaunched) return;
     isAppLaunched = true;
@@ -273,15 +301,59 @@ function launchApp() {
     createMainWindow();
     const mainWin = getMainWindow();
 
+    
+    if (process.platform === 'win32') {
+        const isPackaged = app.isPackaged;
+        
+        
+        
+        
+        const execArgs = isPackaged ? '' : '. '; 
+        const iconPath = isPackaged ? process.execPath : PATHS.ICON;
+
+        app.setUserTasks([
+            {
+                program: process.execPath,
+                arguments: `${execArgs}--create-post`,
+                iconPath: iconPath,
+                iconIndex: 0,
+                title: 'Написать новый пост',
+                description: 'Открывает окно создания поста'
+            },
+            {
+                program: process.execPath,
+                arguments: `${execArgs}--open-music`,
+                iconPath: iconPath,
+                iconIndex: 0,
+                title: 'Моя музыка',
+                description: 'Перейти в аудиотеку'
+            }
+        ]);
+    } else if (process.platform === 'darwin') {
+        app.dock.setMenu(Menu.buildFromTemplate([
+            { label: 'Новый пост', click() { mainWin?.webContents.send('navigate-to', '/'); } },
+            { label: 'Музыка', click() { mainWin?.webContents.send('navigate-to', '/music'); } }
+        ]));
+    }
+
     if (mainWin) {
         updateAppIcon();
         mainWin.on('focus', () => mainWin && !mainWin.isDestroyed() && mainWin.webContents.send('window-focus-state', { isFocused: true }));
         mainWin.on('blur', () => mainWin && !mainWin.isDestroyed() && mainWin.webContents.send('window-focus-state', { isFocused: false }));
+        
         mainWin.once('ready-to-show', () => {
             if (startupUrl) {
                 handleDeepLink(startupUrl);
                 startupUrl = null;
             }
+            
+            
+            if (process.argv.some(arg => arg.includes('--create-post'))) {
+                mainWin.webContents.send('navigate-to', '/');
+            } else if (process.argv.some(arg => arg.includes('--open-music'))) {
+                mainWin.webContents.send('navigate-to', '/music');
+            }
+
             setTimeout(() => {
                 if (mainWin && !mainWin.isDestroyed()) mainWin.show();
                 if (splashWindow && !splashWindow.isDestroyed()) splashWindow.destroy();
@@ -290,37 +362,15 @@ function launchApp() {
     }
 }
 
-
-if (process.defaultApp) {
-    if (process.argv.length >= 2) app.setAsDefaultProtocolClient('etc-app', process.execPath, [path.resolve(process.argv[1])]);
-} else {
-    app.setAsDefaultProtocolClient('etc-app');
-}
-
-
-const gotTheLock = app.requestSingleInstanceLock();
-if (!gotTheLock) {
-    app.quit();
-} else {
-    app.on('second-instance', (event, commandLine) => {
-        
-        const urlStr = commandLine.find(arg => arg.startsWith('etc-app://'));
-        handleDeepLink(urlStr);
-    });
-}
-
-
 app.on('open-url', (event, url) => {
     event.preventDefault();
     handleDeepLink(url);
 });
 
-app.whenReady().then(async () => {
-    
-    setupAssetProtocol();
-    
-    cleanupCache();
 
+app.whenReady().then(async () => {
+    setupAssetProtocol();
+    cleanupCache();
     registerHandlers();
 
     

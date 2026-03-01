@@ -4,7 +4,7 @@
     left: 0;
     right: 0;
     height: calc(100vh - 56px);
-    z-index: 8500;
+    z-index: var(--z-internal-browser);
     background-color: var(--color-background);
     display: flex;
     flex-direction: column;

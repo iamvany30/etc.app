@@ -1,29 +1,37 @@
 import React, { useState, useEffect } from 'react';
 import { apiClient } from '../../../api/client';
 import { useModalStore } from '../../../store/modalStore';
+import { useUserStore } from '../../../store/userStore';
 import DeleteAccountModal from '../DeleteAccountModal';
 
 const SecuritySettings = ({ setStatus }) => {
+    const currentUser = useUserStore(state => state.currentUser);
+    const openModal = useModalStore(s => s.openModal);
+
     const [passwords, setPasswords] = useState({ current: '', new: '', confirm: '' });
     const [loading, setLoading] = useState(false);
     const [exporting, setExporting] = useState(false);
-    const openModal = useModalStore(s => s.openModal);
-
+    
     const [pin, setPin] = useState('');
     const [isLockEnabled, setIsLockEnabled] = useState(false);
 
     useEffect(() => {
-        setIsLockEnabled(localStorage.getItem('itd_app_lock_enabled') === 'true');
-        setPin(localStorage.getItem('itd_app_lock_pin') || '');
-    }, []);
+        if (currentUser?.id) {
+            setIsLockEnabled(localStorage.getItem(`itd_lock_enabled_${currentUser.id}`) === 'true');
+            setPin(localStorage.getItem(`itd_lock_pin_${currentUser.id}`) || '');
+        }
+    }, [currentUser?.id]);
 
     const handleSavePin = () => {
+        if (!currentUser?.id) return;
+        
         if (isLockEnabled && pin.length < 4) {
             setStatus({ type: 'error', msg: 'ПИН-код должен содержать минимум 4 цифры' });
             return;
         }
-        localStorage.setItem('itd_app_lock_enabled', isLockEnabled ? 'true' : 'false');
-        localStorage.setItem('itd_app_lock_pin', pin);
+        
+        localStorage.setItem(`itd_lock_enabled_${currentUser.id}`, isLockEnabled ? 'true' : 'false');
+        localStorage.setItem(`itd_lock_pin_${currentUser.id}`, pin);
         setStatus({ type: 'success', msg: 'Настройки блокировки сохранены' });
     };
 
@@ -96,7 +104,7 @@ const SecuritySettings = ({ setStatus }) => {
             <div className="settings-option" onClick={() => setIsLockEnabled(!isLockEnabled)}>
                 <div className="settings-option-info">
                     <span className="settings-option-name">Вход по ПИН-коду и Биометрии</span>
-                    <span className="settings-option-desc">Запрашивать ПИН-код или сканирование при открытии приложения</span>
+                    <span className="settings-option-desc">Только для текущего аккаунта @{currentUser?.username}</span>
                 </div>
                 <button className={`toggle-switch ${isLockEnabled ? 'active' : ''}`}>
                     <span className="toggle-thumb" />

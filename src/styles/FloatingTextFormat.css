@@ -1,0 +1,131 @@
+/* @source src/styles/FloatingTextFormat.css */
+
+.floating-text-toolbar {
+    position: fixed; 
+    z-index: var(--z-portal-dropdown);
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    background: rgba(var(--glass-bg-rgb), 0.95);
+    backdrop-filter: blur(16px) saturate(180%);
+    -webkit-backdrop-filter: blur(16px) saturate(180%);
+    padding: 6px 8px;
+    border-radius: 12px;
+    border: 1px solid var(--color-border);
+    box-shadow: 0 15px 50px rgba(0, 0, 0, 0.4), 0 0 0 1px rgba(255, 255, 255, 0.1);
+    transform: translate(-50%, calc(-100% - 12px)); 
+    animation: floatMenuIn 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+    pointer-events: auto;
+    user-select: none;
+}
+
+@keyframes floatMenuIn {
+    from { opacity: 0; transform: translate(-50%, -80%) scale(0.9); filter: blur(4px); }
+    to { opacity: 1; transform: translate(-50%, calc(-100% - 12px)) scale(1); filter: blur(0); }
+}
+
+.floating-text-toolbar::after {
+    content: '';
+    position: absolute;
+    bottom: -6px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 0; 
+    height: 0; 
+    border-left: 6px solid transparent;
+    border-right: 6px solid transparent;
+    border-top: 6px solid var(--color-border); 
+}
+
+.floating-text-toolbar::before {
+    content: '';
+    position: absolute;
+    bottom: -5px; 
+    left: 50%;
+    transform: translateX(-50%);
+    width: 0; 
+    height: 0; 
+    border-left: 5px solid transparent;
+    border-right: 5px solid transparent;
+    border-top: 5px solid var(--color-item-bg); 
+    z-index: 1;
+}
+
+.floating-text-toolbar button {
+    width: 34px;
+    height: 34px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: transparent;
+    border: none;
+    border-radius: 8px;
+    color: var(--color-text-secondary);
+    cursor: pointer;
+    transition: all 0.2s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+.floating-text-toolbar button:hover:not(:disabled) {
+    background: var(--color-text);
+    color: var(--color-background);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 10px rgba(0,0,0,0.15);
+}
+
+.floating-text-toolbar button:active:not(:disabled) {
+    transform: scale(0.95);
+}
+
+.floating-text-toolbar button:disabled {
+    opacity: 0.3;
+    cursor: not-allowed;
+}
+
+.float-divider {
+    width: 1px;
+    height: 18px;
+    background: var(--color-border);
+    margin: 0 4px;
+    opacity: 0.6;
+}
+
+
+.float-link-form {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 0 4px;
+}
+
+.float-link-form input {
+    background: var(--color-input-bg);
+    border: 1px solid var(--color-border);
+    color: var(--color-text);
+    padding: 6px 12px;
+    border-radius: 8px;
+    font-size: 13px;
+    font-family: 'JetBrains Mono', monospace;
+    outline: none;
+    width: 180px;
+}
+
+.float-link-form input:focus {
+    border-color: var(--color-primary);
+}
+
+.float-link-form button[type="submit"] {
+    background: var(--color-primary);
+    color: #fff;
+    font-weight: bold;
+    width: auto;
+    padding: 0 12px;
+}
+
+.float-link-form button.cancel-btn {
+    width: 34px;
+    color: #f4212e;
+}
+.float-link-form button.cancel-btn:hover {
+    background: rgba(244, 33, 46, 0.1);
+    color: #f4212e;
+}

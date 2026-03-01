@@ -4,6 +4,7 @@ import { apiClient } from '../api/client';
 import { useMusicStore } from '../store/musicStore';
 import { useUploadStore } from '../store/uploadStore';
 import { TrackSkeleton } from '../components/Skeletons';
+import ScrollArea from '../components/ScrollArea';
 
 import { 
     Magnifer, 
@@ -237,7 +238,7 @@ const Music = () => {
                 </div>
             </header>
 
-            <div className="music-content-scroll content-fade-in">
+            <ScrollArea className="music-content-scroll content-fade-in">
                 {loading ? (
                     <div className="flat-track-list">
                         {[...Array(8)].map((_, i) => <TrackSkeleton key={i} />)}
@@ -285,7 +286,7 @@ const Music = () => {
                     </>
                 )}
                 <div style={{ height: '140px' }} />
-            </div>
+            </ScrollArea>
         </div>
     );
 };

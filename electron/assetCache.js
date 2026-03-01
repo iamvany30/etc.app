@@ -12,9 +12,7 @@ const MAX_FILE_SIZE = 50 * 1024 * 1024;
 let cacheIndex = new Map(); 
 let activeDownloads = new Map(); 
 
-/**
- * Читает настройки лимитов кэша
- */
+
 function loadCacheSettings() {
     try {
         if (fs.existsSync(SETTINGS_PATH)) {
@@ -28,9 +26,7 @@ function loadCacheSettings() {
     return { maxSizeMB: 2048, maxAgeDays: 30 };
 }
 
-/**
- * Определяет правильное расширение файла
- */
+
 function getExt(mime, url) {
     if (mime.includes('image/gif')) return '.gif';
     if (mime.includes('image/png')) return '.png';
@@ -46,9 +42,7 @@ function getExt(mime, url) {
     return match ? '.' + match[1].toLowerCase() : '.bin';
 }
 
-/**
- * Оптимизирует (если нужно) и сохраняет файл на диск атомарно
- */
+
 async function processAndCache(buffer, mimeType, hash, ext) {
     const filename = hash + ext;
     const cachePath = path.join(CACHE_DIR, filename);
@@ -91,9 +85,7 @@ async function processAndCache(buffer, mimeType, hash, ext) {
     }
 }
 
-/**
- * Единая функция загрузки с таймаутом и защитой от дублирования
- */
+
 function fetchAndCache(remoteUrl, hash) {
     if (activeDownloads.has(hash)) {
         return activeDownloads.get(hash);
@@ -134,9 +126,7 @@ function fetchAndCache(remoteUrl, hash) {
     return downloadPromise;
 }
 
-/**
- * Установка кастомного протокола asset://
- */
+
 function setupAssetProtocol() {
     if (!fs.existsSync(CACHE_DIR)) fs.mkdirSync(CACHE_DIR, { recursive: true });
 
@@ -181,10 +171,7 @@ function setupAssetProtocol() {
     });
 }
 
-/**
- * ФОНОВОЕ ПРЕДКЭШИРОВАНИЕ (Плавная очередь - Sliding Window)
- * Улучшенная стабильность для больших профилей.
- */
+
 async function prefetchUrls(urls) {
     if (!Array.isArray(urls) || urls.length === 0) return;
     if (!fs.existsSync(CACHE_DIR)) fs.mkdirSync(CACHE_DIR, { recursive: true });
@@ -238,9 +225,7 @@ async function prefetchUrls(urls) {
     });
 }
 
-/**
- * Получение статистики кэша
- */
+
 async function getCacheStats() {
     const stats = { images: 0, videos: 0, audio: 0, other: 0, total: 0 };
     try {
@@ -261,9 +246,7 @@ async function getCacheStats() {
     return stats;
 }
 
-/**
- * Очистка
- */
+
 async function clearAllCache(categories) {
     if (!fs.existsSync(CACHE_DIR)) return getCacheStats();
     try {
@@ -283,9 +266,7 @@ async function clearAllCache(categories) {
     return getCacheStats();
 }
 
-/**
- * LRU Очистка старых файлов
- */
+
 async function cleanupCache() {
     if (!fs.existsSync(CACHE_DIR)) {
         fs.mkdirSync(CACHE_DIR, { recursive: true });

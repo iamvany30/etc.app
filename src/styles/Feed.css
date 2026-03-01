@@ -8,13 +8,11 @@
     position: relative;
 }
 
-/* =========================================
-   СТРОКА ВКЛАДОК (HEADER)
-   ========================================= */
+
 .feed-header {
     position: sticky;
     top: 0;
-    z-index: 40;
+    z-index: var(--z-sticky-header);;
     background-color: rgba(var(--glass-bg-rgb), 0.85);
     backdrop-filter: blur(24px) saturate(180%);
     -webkit-backdrop-filter: blur(24px) saturate(180%);
@@ -60,17 +58,13 @@
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
 }
 
-/* =========================================
-   ОБЕРТКА СОЗДАНИЯ ПОСТА
-   ========================================= */
+
 .feed-create-post-wrapper {
     margin-bottom: 0px; 
     background: var(--color-background);
 }
 
-/* =========================================
-   ПУСТОЕ СОСТОЯНИЕ (Empty State)
-   ========================================= */
+
 .empty-state {
     display: flex;
     flex-direction: column;
@@ -121,9 +115,7 @@
     text-decoration: underline;
 }
 
-/* =========================================
-   СОСТОЯНИЕ ОШИБКИ
-   ========================================= */
+
 .feed-error-state {
     display: flex;
     flex-direction: column;
@@ -170,9 +162,7 @@
 .retry-btn:hover { opacity: 0.9; }
 .retry-btn:active { transform: scale(0.96); }
 
-/* =========================================
-   КОНЕЦ ЛЕНТЫ
-   ========================================= */
+
 .feed-end-message {
     display: flex;
     align-items: center;
@@ -197,9 +187,7 @@
     color: var(--color-primary);
 }
 
-/* =========================================
-   АНИМАЦИИ И СКЕЛЕТОНЫ
-   ========================================= */
+
 @keyframes feedFadeIn {
     from { opacity: 0; transform: translateY(10px); }
     to { opacity: 1; transform: translateY(0); }

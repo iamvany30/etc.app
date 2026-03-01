@@ -1,20 +1,18 @@
 /* @source src/styles/Explore.css */
 
 .explore-page {
-    height: 100%;
+    height: 100vh; 
     display: flex;
     flex-direction: column;
-    overflow: hidden;
+    overflow: hidden; 
     background-color: var(--color-background);
 }
 
-/* =========================================
-   ШАПКА И ПОИСК (HEADER)
-   ========================================= */
+
 .explore-sticky-header {
     position: sticky;
     top: 0;
-    z-index: 40;
+    z-index: var(--z-sticky-header);;
     background-color: rgba(var(--glass-bg-rgb), 0.85);
     backdrop-filter: blur(24px) saturate(180%);
     -webkit-backdrop-filter: blur(24px) saturate(180%);
@@ -87,9 +85,7 @@
     transform: scale(1.1);
 }
 
-/* =========================================
-   ОСНОВНОЙ КОНТЕЙНЕР
-   ========================================= */
+
 .explore-content-container {
     flex: 1;
     overflow: hidden;
@@ -129,9 +125,7 @@
     color: var(--color-primary);
 }
 
-/* =========================================
-   КЛАНЫ / СООБЩЕСТВА
-   ========================================= */
+
 .clans-horizontal-scroll {
     display: flex;
     gap: 16px;
@@ -221,9 +215,7 @@
     width: 100%;
 }
 
-/* =========================================
-   ТРЕНДЫ (ХЕШТЕГИ)
-   ========================================= */
+
 .trends-list {
     display: flex;
     flex-direction: column;
@@ -286,9 +278,7 @@
     transform: translateX(0);
 }
 
-/* =========================================
-   РЕЗУЛЬТАТЫ ПОИСКА
-   ========================================= */
+
 .search-results-list {
     padding-top: 8px;
 }
@@ -337,9 +327,7 @@
 .res-name { font-weight: 700; font-size: 15px; }
 .res-sub { color: var(--color-text-secondary); font-size: 13px; margin-top: 2px; }
 
-/* =========================================
-   ШАПКА ЛЕНТЫ ПО ХЕШТЕГУ
-   ========================================= */
+
 .hashtag-feed-header {
     padding: 24px 16px;
     display: flex;
@@ -369,9 +357,7 @@
     font-weight: 800;
 }
 
-/* =========================================
-   ПУСТЫЕ СОСТОЯНИЯ (Empty States)
-   ========================================= */
+
 .explore-empty-state {
     display: flex;
     flex-direction: column;

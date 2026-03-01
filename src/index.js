@@ -14,8 +14,6 @@ import { historyUtils } from './utils/historyUtils';
 
 import { ContextMenuProvider } from './context/ContextMenuContext';
 import { BrowserProvider } from './context/BrowserContext';
-
-import './index.css';
 import './App.css';
 
 const queryClient = new QueryClient({

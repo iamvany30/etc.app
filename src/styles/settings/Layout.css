@@ -73,11 +73,15 @@
 
 
 .nav-item.active {
-    background: var(--color-primary);
-    color: #fff;
-    box-shadow: 0 4px 12px var(--color-primary-alpha);
+    background: var(--color-primary-pastel); 
+    color: var(--color-primary); 
+    font-weight: 700;
+    box-shadow: none;
 }
-.nav-item.active .nav-icon { color: #fff; }
+
+.nav-item.active .nav-icon { 
+    color: var(--color-primary); 
+}
 
 .nav-item.danger { color: #f4212e; margin-top: 12px; }
 .nav-item.danger:hover { background: #f4212e; color: #fff; }
@@ -118,7 +122,12 @@
 .back-button:active { transform: scale(0.9); background: var(--color-border); }
 
 .content-scroller {
-    flex: 1; overflow-y: auto; padding: 24px 40px 60px; scrollbar-gutter: stable;
+    flex: 1; 
+    
+    overflow-y: overlay; 
+    padding: 24px 40px 60px; 
+    
+    scrollbar-gutter: auto;
 }
 
 

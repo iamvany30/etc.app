@@ -16,7 +16,7 @@ body.modal-open {
 .modal-overlay {
     position: fixed;
     inset: 0;
-    z-index: 9000;
+    z-index: var(--z-modal-overlay);
     
     
     background-color: rgba(0, 0, 0, 0.4); 
@@ -102,13 +102,6 @@ body.modal-open {
 }
 
 
-.modal-body::-webkit-scrollbar { width: 6px; }
-.modal-body::-webkit-scrollbar-track { background: transparent; }
-.modal-body::-webkit-scrollbar-thumb { 
-    background: rgba(255, 255, 255, 0.1); 
-    border-radius: 10px; 
-}
-.modal-body::-webkit-scrollbar-thumb:hover { background: rgba(255, 255, 255, 0.2); }
 
 
 .modal-close-btn {

@@ -5,10 +5,10 @@
     bottom: 24px;
     left: 50%;
     transform: translateX(-50%);
-    z-index: 9500;
+    z-index: var(--z-bottom-dock);
     width: clamp(320px, calc(100% - 32px), 500px);
-    
-    
+
+
     transition: transform 0.45s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.3s ease;
     will-change: transform, opacity;
 }
@@ -24,16 +24,16 @@
     background: rgba(var(--glass-bg-rgb), 0.65);
     backdrop-filter: blur(40px) saturate(250%);
     -webkit-backdrop-filter: blur(40px) saturate(250%);
-    
+
     border: 1px solid rgba(255, 255, 255, 0.1);
-    border-top: 1px solid rgba(255, 255, 255, 0.25); 
-    
+    border-top: 1px solid rgba(255, 255, 255, 0.25);
+
     border-radius: 36px;
-    box-shadow: 
+    box-shadow:
         0 25px 50px rgba(0, 0, 0, 0.5),
         0 4px 15px rgba(0, 0, 0, 0.2),
         inset 0 1px 0 rgba(255, 255, 255, 0.1);
-    
+
     overflow: hidden;
     display: flex;
     flex-direction: column;
@@ -44,20 +44,18 @@
     background: rgba(255, 255, 255, 0.85);
     border: 1px solid rgba(0, 0, 0, 0.05);
     border-top: 1px solid rgba(255, 255, 255, 0.9);
-    box-shadow: 
+    box-shadow:
         0 25px 50px rgba(0, 0, 0, 0.12),
         0 4px 15px rgba(0, 0, 0, 0.05);
 }
 
-/* =========================================
-   ДИНАМИЧЕСКИЕ СЕКЦИИ (Пружинная анимация высоты)
-   ========================================= */
+
 .dock-dynamic-section {
     display: grid;
     grid-template-rows: 0fr;
     opacity: 0;
-    transition: 
-        grid-template-rows 0.45s cubic-bezier(0.34, 1.56, 0.64, 1), 
+    transition:
+        grid-template-rows 0.45s cubic-bezier(0.34, 1.56, 0.64, 1),
         opacity 0.3s ease;
     will-change: grid-template-rows, opacity;
 }
@@ -71,20 +69,18 @@
     overflow: hidden;
     display: flex;
     flex-direction: column;
-    min-height: 0; 
+    min-height: 0;
 }
 
-/* =========================================
-   СТИЛИ ВНУТРЕННИХ СЕКЦИЙ
-   ========================================= */
-.dock-player-section, 
-.dock-upload-section, 
+
+.dock-player-section,
+.dock-upload-section,
 .dock-browser-section {
     border-bottom: 1px solid rgba(255, 255, 255, 0.08);
 }
 
-[data-bg='light'] .dock-player-section, 
-[data-bg='light'] .dock-upload-section, 
+[data-bg='light'] .dock-player-section,
+[data-bg='light'] .dock-upload-section,
 [data-bg='light'] .dock-browser-section {
     border-bottom-color: rgba(0, 0, 0, 0.05);
 }
@@ -149,7 +145,7 @@
 
 .upload-mini-fill {
     height: 100%;
-    width: 40%; 
+    width: 40%;
     background: var(--color-primary);
     border-radius: 4px;
     animation: dock-progress-move 2s infinite linear;
@@ -157,14 +153,30 @@
 }
 
 @keyframes dock-dot-pulse {
-    0% { opacity: 1; transform: scale(1); }
-    50% { opacity: 0.4; transform: scale(1.2); }
-    100% { opacity: 1; transform: scale(1); }
+    0% {
+        opacity: 1;
+        transform: scale(1);
+    }
+
+    50% {
+        opacity: 0.4;
+        transform: scale(1.2);
+    }
+
+    100% {
+        opacity: 1;
+        transform: scale(1);
+    }
 }
 
 @keyframes dock-progress-move {
-    0% { transform: translateX(-150%); }
-    100% { transform: translateX(350%); }
+    0% {
+        transform: translateX(-150%);
+    }
+
+    100% {
+        transform: translateX(350%);
+    }
 }
 
 .dock-nav-section {
@@ -181,12 +193,12 @@
 }
 
 @media (min-width: 1280px) {
-    .bottom-dock-container { display: none; }
+    .bottom-dock-container {
+        display: none;
+    }
 }
 
-/* =========================================
-   БЕСШОВНАЯ ИНТЕГРАЦИЯ ПЛЕЕРА В ДОК
-   ========================================= */
+
 .bottom-dock-container .gp-glass-card {
     border: none !important;
     box-shadow: none !important;

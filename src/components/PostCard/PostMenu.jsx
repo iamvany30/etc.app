@@ -137,7 +137,7 @@ const PostMenu = ({ post, isOwner, isPinned, ctrl, onClose, anchorRef }) => {
                 top: position.top,
                 left: position.left,
                 position: 'absolute',
-                zIndex: 9999, 
+                zIndex: 'var(--z-post-menu)',
                 opacity: position.top === 0 ? 0 : 1
             }}
             onClick={(e) => e.stopPropagation()}

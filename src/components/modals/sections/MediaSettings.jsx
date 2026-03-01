@@ -5,7 +5,8 @@ import { useUserStore } from '../../../store/userStore';
 import { useModalStore } from '../../../store/modalStore';
 import ConfirmActionModal from '../ConfirmActionModal';
 import { 
-    TrashBinTrash, Gallery, VideoFrame, MusicNotes, FileText, CheckCircle, InfoCircle, User
+    TrashBinTrash, Gallery, VideoFrame, MusicNotes, FileText, CheckCircle, InfoCircle, User,
+    SquareShareLine 
 } from "@solar-icons/react";
 import { storage } from '../../../utils/storage';
 import { historyUtils } from '../../../utils/historyUtils';
@@ -33,6 +34,8 @@ const MediaSettings = ({ setStatus, reopenModal }) => {
     
     const [compress, setCompress] = useState(true);
     const [appGpu, setAppGpu] = useState(true);
+    
+    const [useInternalBrowser, setUseInternalBrowser] = useState(false);
 
     const [stats, setStats] = useState({ images: 0, videos: 0, audio: 0, other: 0, idb: 0, total: 0 });
     const [accountSizes, setAccountSizes] = useState({});
@@ -48,6 +51,8 @@ const MediaSettings = ({ setStatus, reopenModal }) => {
 
     const loadData = async () => {
         setCompress(localStorage.getItem('itd_compress_files') !== 'false');
+        
+        setUseInternalBrowser(localStorage.getItem('itd_use_internal_browser') === 'true');
         
         const currentLimit = historyUtils.getLimit();
         const hIdx = HISTORY_LIMITS.findIndex(m => m.v === currentLimit);
@@ -257,6 +262,22 @@ const MediaSettings = ({ setStatus, reopenModal }) => {
 
                     <div className="settings-section-title">Система</div>
                     
+                    {}
+                    <div className="settings-option" onClick={() => {
+                        const next = !useInternalBrowser;
+                        setUseInternalBrowser(next);
+                        localStorage.setItem('itd_use_internal_browser', next ? 'true' : 'false');
+                    }}>
+                        <div className="settings-option-left">
+                            <SquareShareLine size={24} color={useInternalBrowser ? 'var(--color-primary)' : 'var(--color-text-secondary)'} />
+                            <div className="settings-option-info">
+                                <span className="settings-option-name">Встроенный браузер</span>
+                                <span className="settings-option-desc">Открывать ссылки внутри приложения</span>
+                            </div>
+                        </div>
+                        <button className={`toggle-switch ${useInternalBrowser ? 'active' : ''}`}><span className="toggle-thumb" /></button>
+                    </div>
+
                     <div className="settings-option" onClick={toggleAppGpu}>
                         <div className="settings-option-info">
                             <span className="settings-option-name">Аппаратное ускорение (GPU)</span>
@@ -277,6 +298,7 @@ const MediaSettings = ({ setStatus, reopenModal }) => {
                 </>
             ) : (
                 <div className="cache-clear-mode animation-fade">
+                    {}
                     <div className="settings-section-title">Медиафайлы (Общие)</div>
                     
                     <div className="clear-check-list">

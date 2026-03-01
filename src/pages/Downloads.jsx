@@ -2,6 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { useDownloadStore } from '../store/downloadStore';
 import { useNavigate } from 'react-router-dom';
+import ScrollArea from '../components/ScrollArea';
 import { 
     AltArrowLeft, TrashBinTrash, Folder, MonitorSmartphone, Laptop, Archive, 
     MusicNotes, Gallery, VideoFrame, FileText, DownloadSquare, CloseCircle, PlayCircle
@@ -170,7 +171,7 @@ const Downloads = () => {
                 )}
             </header>
 
-            <div className="downloads-content content-fade-in">
+            <ScrollArea className="downloads-content content-fade-in">
                 {activeItems.length > 0 && (
                     <div className="downloads-section">
                         <h3 className="dl-section-title">Активные</h3>
@@ -203,7 +204,7 @@ const Downloads = () => {
                     </div>
                 )}
                 <div style={{ height: '140px' }} />
-            </div>
+            </ScrollArea>
         </div>
     );
 };

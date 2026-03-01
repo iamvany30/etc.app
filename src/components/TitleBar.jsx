@@ -31,13 +31,17 @@ const TitleBar = () => {
                 window.requestAnimationFrame(() => {
                     const target = e.target;
                     
-                    
-                    
-                    if (target && target.getAttribute && target.getAttribute('data-virtuoso-scroller') === 'true') {
-                        setIsScrolled(target.scrollTop > 15);
-                    } else if (target === document || target === window) {
-                        
+                    if (target === document || target === window) {
                         setIsScrolled(window.scrollY > 15);
+                    } else if (
+                        target.getAttribute('data-virtuoso-scroller') === 'true' ||
+                        target.classList.contains('custom-scroll-area') ||
+                        target.classList.contains('explore-scroll-area') ||
+                        target.classList.contains('downloads-content') ||
+                        target.classList.contains('music-content-scroll') ||
+                        target.classList.contains('post-details-page')
+                    ) {
+                        setIsScrolled(target.scrollTop > 15);
                     }
                     
                     ticking.current = false;
@@ -46,7 +50,6 @@ const TitleBar = () => {
             }
         };
 
-        
         window.addEventListener('scroll', handleScroll, { capture: true, passive: true });
         
         return () => {

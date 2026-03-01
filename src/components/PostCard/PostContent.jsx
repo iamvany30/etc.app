@@ -1,15 +1,12 @@
-import React, { useMemo } from 'react';
-import { renderTextWithSpans } from '../../utils/markdownUtils';
+/* @source src/components/PostCard/PostContent.jsx */
+import React from 'react';
+import { RichText } from '../RichText';
 import MediaGrid from '../MediaGrid';
 import MusicPlayer from '../MusicPlayer';
 import QuotedPost from './QuotedPost';
 import Poll from './Poll';
 
 const PostContent = ({ post, musicData, onLinkClick }) => {
-
-    const parsedContent = useMemo(() => {
-        return renderTextWithSpans(post.content, post.spans || [], onLinkClick);
-    }, [post.content, post.spans, onLinkClick]);
 
     if (musicData) {
         return (
@@ -21,7 +18,15 @@ const PostContent = ({ post, musicData, onLinkClick }) => {
 
     return (
         <div>
-            {post.content && <div className="post-text-content">{parsedContent}</div>}
+            {post.content && (
+                <div className="post-text-content">
+                    <RichText 
+                        text={post.content} 
+                        spans={post.spans} 
+                        onLinkClick={onLinkClick} 
+                    />
+                </div>
+            )}
             
             {post.originalPost && (
                 <QuotedPost post={post.originalPost} onLinkClick={onLinkClick} />

@@ -1,20 +1,18 @@
 /* @source src/styles/Notifications.css */
 
 .notifications-page {
-    height: 100%;
+    height: 100vh;
     display: flex;
     flex-direction: column;
     overflow: hidden;
     background-color: var(--color-background);
 }
 
-/* =========================================
-   HEADER
-   ========================================= */
+
 .notif-sticky-header {
     position: sticky;
     top: 0;
-    z-index: 40;
+    z-index: var(--z-sticky-header);;
     background-color: rgba(var(--glass-bg-rgb), 0.85);
     backdrop-filter: blur(24px) saturate(180%);
     -webkit-backdrop-filter: blur(24px) saturate(180%);
@@ -86,9 +84,7 @@
     box-shadow: 0 2px 8px rgba(0,0,0,0.05);
 }
 
-/* =========================================
-   LIST ITEM
-   ========================================= */
+
 .notifications-list-scroll {
     flex: 1;
     overflow-y: auto;
@@ -237,9 +233,7 @@
     flex-shrink: 0;
 }
 
-/* =========================================
-   ПУСТОЕ СОСТОЯНИЕ
-   ========================================= */
+
 .notif-empty-state {
     display: flex;
     flex-direction: column;

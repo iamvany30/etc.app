@@ -1,0 +1,50 @@
+/* @source src/styles/App.zindex.css */
+
+
+:root {
+
+  --z-snowfall: 5;
+
+
+  --z-content-base: 10;
+  --z-sticky-header: 40;
+
+
+  --z-drag-overlay: 50;
+  --z-sidebar: 50;
+  --z-floating-btn: 90;
+
+
+  --z-local-overlay: 100;
+
+
+  --z-internal-browser: 8500;
+
+
+  --z-modal-overlay: 9000;
+  --z-modal-content: 9001;
+
+
+  --z-bottom-dock: 9500;
+
+
+  --z-post-menu: 9950;
+  --z-context-backdrop: 9998;
+  --z-context-menu: 9999;
+
+
+  --z-titlebar: 10000;
+
+
+  --z-profile-menu-backdrop: 10010;
+  --z-profile-menu: 10011;
+  --z-dynamic-island: 10020;
+
+
+  --z-image-viewer: 20000;
+
+
+  --z-account-switch: 99990;
+  --z-portal-dropdown: 99995;
+  --z-lock-screen: 99999;
+}

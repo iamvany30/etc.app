@@ -68,13 +68,19 @@ export const checkIsTrusted = (url) => {
     return false;
 };
 
-export const handleGlobalLinkClick = (e, url, navigate, openModal) => {
+export const handleGlobalLinkClick = (e, rawUrl, navigate, openModal) => {
     if (e && e.preventDefault) {
         e.preventDefault();
         e.stopPropagation();
     }
 
-    if (!url) return;
+    if (!rawUrl) return;
+
+    
+    let url = rawUrl;
+    if (url.startsWith('asset://') && url.includes('?url=')) {
+        try { url = decodeURIComponent(url.split('?url=')[1]); } catch(err){}
+    }
 
     if (isFileLink(url)) {
         if (window.api?.downloadFile) window.api.downloadFile(url);
@@ -114,7 +120,6 @@ export const handleGlobalLinkClick = (e, url, navigate, openModal) => {
 
     if (isTrusted) {
         if (useInternalBrowser) {
-             
              window.dispatchEvent(new CustomEvent('open-internal-browser', { detail: url }));
         } else {
              if (window.api?.openExternalLink) window.api.openExternalLink(url);

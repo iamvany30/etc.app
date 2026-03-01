@@ -6,7 +6,9 @@ import { apiClient } from '../api/client';
 import { useUserStore } from '../store/userStore';
 import { useModalStore } from '../store/modalStore';
 import { useIslandStore } from '../store/islandStore';
+import { useItdPlusStore } from '../store/itdPlusStore';
 import { getAverageColor } from '../utils/colorUtils'; 
+import { useFormatNumber } from '../hooks/useFormatNumber'; 
 
 import PostCard from '../components/PostCard';
 import { DynamicComponent } from '../core/ComponentRegistry';
@@ -16,10 +18,12 @@ import SettingsModal from '../components/modals/SettingsModal';
 import UserListModal from '../components/modals/UserListModal';
 import BannerEditorModal from '../components/modals/BannerEditorModal';
 import { ProfileSkeleton, PostSkeleton } from '../components/Skeletons';
+import Tooltip from '../components/Tooltip'; 
 
 import { CameraIcon, SettingsIcon, CalendarIcon } from '../components/icons/CommonIcons';
-import { VerifiedBlue, VerifiedGold } from '../components/icons/VerifyIcons';
-import { ShieldCross } from "@solar-icons/react";
+import VerifiedBadgeWithTooltip from '../components/VerifiedBadgeWithTooltip';
+import PinBadge from '../components/PinBadge';
+import { ShieldCross, LockKeyhole } from "@solar-icons/react";
 import { IconDownload, IconMusic, IconHistory } from '../components/icons/SidebarIcons'; 
 import { BookmarkIcon } from '../components/icons/InteractionsIcons';
 import ConfirmActionModal from '../components/modals/ConfirmActionModal';
@@ -59,11 +63,6 @@ const BannerImage = React.memo(({ src, alt }) => {
                     alt={alt} 
                     className={`profile-banner-img ${isLoaded ? 'loaded' : ''}`}
                     onLoad={handleLoad}
-                    ref={(img) => {
-                        if (img && img.complete && !isLoaded) {
-                            handleLoad();
-                        }
-                    }}
                 />
             )}
         </>
@@ -73,18 +72,24 @@ const BannerImage = React.memo(({ src, alt }) => {
 const Profile = () => {
     const { username } = useParams();
     const navigate = useNavigate();
+    const formatNumber = useFormatNumber();
+    
     const currentUser = useUserStore(state => state.currentUser);
     const setCurrentUser = useUserStore(state => state.setCurrentUser);
     const openModal = useModalStore(state => state.openModal);
     const setIslandTheme = useIslandStore(state => state.setIslandTheme);
     const showIslandAlert = useIslandStore(state => state.showIslandAlert);
+    
     const [user, setUser] = useState(null);
     const [posts, setPosts] = useState([]);
+    const [deletedIds, setDeletedIds] = useState(new Set()); 
     const [pinnedPost, setPinnedPost] = useState(null);
     const [activeTab, setActiveTab] = useState('posts'); 
     const [loadingProfile, setLoadingProfile] = useState(true);
     const [isFollowing, setIsFollowing] = useState(false);
     const [followersCount, setFollowersCount] = useState(0);
+
+    const [userPins, setUserPins] = useState([]);
 
     const nextCursorRef = useRef(null);
     const hasMoreRef = useRef(true);
@@ -93,11 +98,14 @@ const Profile = () => {
 
     const userRef = useRef(null);
     const pinnedPostRef = useRef(null);
-
     useEffect(() => { userRef.current = user; }, [user]);
     useEffect(() => { pinnedPostRef.current = pinnedPost; }, [pinnedPost]);
-    
+
     const isMyProfile = currentUser?.username === username;
+    
+    
+    const verifiedUsersSet = useItdPlusStore(state => state.verifiedUsers);
+    const isUserItdPlus = user ? (verifiedUsersSet.has(user.id) || verifiedUsersSet.has(user.username)) : false;
 
     const canPostOnWall = useMemo(() => {
         if (!user) return false;
@@ -106,15 +114,15 @@ const Profile = () => {
     }, [user, isMyProfile]);
 
     const displayPosts = useMemo(() => {
-        if (activeTab !== 'posts') {
-            return posts;
-        }
-        const regularPosts = posts.filter(p => p.id !== pinnedPost?.id);
-        if (pinnedPost) {
+        let filtered = posts.filter(p => !deletedIds.has(p.id));
+        if (activeTab !== 'posts') return filtered;
+        
+        const regularPosts = filtered.filter(p => p.id !== pinnedPost?.id);
+        if (pinnedPost && !deletedIds.has(pinnedPost.id)) {
             return [pinnedPost, ...regularPosts];
         }
-        return posts;
-    }, [posts, pinnedPost, activeTab]);
+        return regularPosts;
+    }, [posts, pinnedPost, activeTab, deletedIds]);
     
     const fetchProfile = useCallback(async () => {
         if (!username) return null;
@@ -141,21 +149,27 @@ const Profile = () => {
                     setPinnedPost(null);
                 }
 
-                return processedUser;
+                if (processedUser.id === currentUser?.id) {
+                    apiClient.getMyPins().then(pinsRes => {
+                        if (pinsRes && pinsRes.data) {
+                            setUserPins(pinsRes.data);
+                        }
+                    }).catch(e => console.error("Ошибка загрузки пинов:", e));
+                }
 
+                return processedUser;
             } else {
                 setUser(null);
                 setPinnedPost(null);
             }
         } catch (error) {
-            console.error("Ошибка загрузки профиля:", error);
             setUser(null);
             setPinnedPost(null);
         } finally {
             setLoadingProfile(false);
         }
         return null;
-    }, [username]);
+    }, [username, currentUser?.id]);
     
     const loadPosts = useCallback(async (isInitial = false, forcePinnedId = undefined) => {
         if (!username) return;
@@ -172,10 +186,8 @@ const Profile = () => {
             const cursor = isInitial ? null : nextCursorRef.current;
             let res;
             if (activeTab === 'posts') {
-                let pinnedId = forcePinnedId;
-                if (pinnedId === undefined) {
-                    pinnedId = userRef.current?.pinnedPostId || userRef.current?.pinnedPost?.id || pinnedPostRef.current?.id || null;
-                }
+                let pinnedId = forcePinnedId !== undefined ? forcePinnedId : 
+                               (userRef.current?.pinnedPostId || userRef.current?.pinnedPost?.id || pinnedPostRef.current?.id || null);
                 res = await apiClient.getUserPosts(username, cursor, 20, pinnedId);
             } else {
                 res = await apiClient.getUserLikedPosts(username, cursor);
@@ -186,12 +198,21 @@ const Profile = () => {
 
             if (isInitial && activeTab === 'posts') {
                 const foundPinned = responseData.find(p => p.isPinned === true);
-                if (foundPinned) {
-                    setPinnedPost(foundPinned);
-                }
+                if (foundPinned) setPinnedPost(foundPinned);
             }
 
-            setPosts(prev => isInitial ? responseData : [...prev, ...responseData]);
+            setPosts(prev => {
+                const list = isInitial ? responseData : [...prev, ...responseData];
+                const uniqueIds = new Set();
+                const uniquePosts = [];
+                for (const post of list) {
+                    if (!uniqueIds.has(post.id)) {
+                        uniqueIds.add(post.id);
+                        uniquePosts.push(post);
+                    }
+                }
+                return uniquePosts;
+            });
 
             if (pagination) {
                 nextCursorRef.current = pagination.nextCursor;
@@ -200,7 +221,7 @@ const Profile = () => {
                 hasMoreRef.current = false;
             }
         } catch (e) {
-            console.error("Ошибка загрузки постов:", e);
+            console.error(e);
         } finally {
             isFetchingRef.current = false;
         }
@@ -208,37 +229,32 @@ const Profile = () => {
     
     useEffect(() => {
         let isCancelled = false;
-
         const init = async () => {
             let fetchedUser = userRef.current;
+            
             if (!fetchedUser || fetchedUser.username !== username) {
                 fetchedUser = await fetchProfile();
             }
+            
             if (!isCancelled) {
                 const pId = fetchedUser?.pinnedPostId || fetchedUser?.pinnedPost?.id || null;
                 await loadPosts(true, pId);
             }
         };
-
         init();
-
         return () => { isCancelled = true; };
     }, [username, activeTab, fetchProfile, loadPosts]);
 
     useEffect(() => {
         let isCancelled = false;
-
         const updateIslandColor = async () => {
             if (user?.banner) {
                 const color = await getAverageColor(user.banner);
-                if (!isCancelled && color) {
-                    setIslandTheme(color);
-                }
+                if (!isCancelled && color) setIslandTheme(color);
             } else {
                 if (!isCancelled) setIslandTheme(null);
             }
         };
-
         updateIslandColor();
         return () => {
             isCancelled = true;
@@ -263,43 +279,49 @@ const Profile = () => {
         }
     }, [user, isMyProfile, isFollowing, followersCount]);
 
-const handleBlockUser = () => {
-    openModal(
-        <ConfirmActionModal 
-            title={`Заблокировать @${user.username}?`}
-            message="Пользователь не сможет писать вам и просматривать ваш профиль."
-            confirmText="Заблокировать"
-            isDanger={true}
-            onConfirm={async () => {
-                try {
-                    await apiClient.blockUser(user.username);
-                    showIslandAlert('success', 'Пользователь заблокирован', '🛡️');
-                    navigate('/'); 
-                } catch (e) {
-                    showIslandAlert('error', 'Ошибка блокировки', '❌');
-                }
-            }}
-        />
-    );
-};
+    const handleBlockUser = () => {
+        openModal(
+            <ConfirmActionModal 
+                title={`Заблокировать @${user.username}?`}
+                message="Пользователь не сможет писать вам и просматривать ваш профиль."
+                confirmText="Заблокировать"
+                isDanger={true}
+                onConfirm={async () => {
+                    try {
+                        await apiClient.blockUser(user.username);
+                        showIslandAlert('success', 'Пользователь заблокирован', '🛡️');
+                        navigate('/'); 
+                    } catch (e) {
+                        showIslandAlert('error', 'Ошибка блокировки', '❌');
+                    }
+                }}
+            />
+        );
+    };
 
     const handleBannerUpdate = useCallback((newUrl) => {
         setUser(prev => ({ ...prev, banner: newUrl }));
-        setCurrentUser(prev => {
-            if (prev.username === username) { 
-                return { ...prev, banner: newUrl };
-            }
-            return prev;
-        });
+        setCurrentUser(prev => prev.username === username ? { ...prev, banner: newUrl } : prev);
     }, [setCurrentUser, username]);
     
     const handlePostCreated = useCallback((newPost) => {
         setActiveTab(currentTab => {
             if (currentTab === 'posts') {
-                setPosts(prev => [newPost, ...prev]);
+                setPosts(prev => {
+                    if (prev.some(p => p.id === newPost.id)) return prev; 
+                    return [newPost, ...prev];
+                });
             }
             return currentTab;
         });
+    }, []);
+
+    const handleRemovePost = useCallback((postId) => {
+        setDeletedIds(prev => new Set(prev).add(postId));
+        setPosts(prev => prev.filter(p => p.id !== postId));
+        if (pinnedPostRef.current?.id === postId) {
+            setPinnedPost(null);
+        }
     }, []);
 
     const renderOnlineStatus = useCallback(() => {
@@ -335,11 +357,22 @@ const handleBlockUser = () => {
 
     const ProfileHeader = useMemo(() => {
         if (!user) return null;
+        
         const hasGoldVerify = GOLD_VERIFIED_IDS.includes(user.id);
-        const hasBlueVerify = user.verified && !hasGoldVerify;
+        const hasBlueVerify = user.verified || user.isVerified;
+        
         const isMutual = user.isFollowing && user.isFollowedBy;
         const followsYou = user.isFollowedBy && !user.isFollowing;
+        const isPrivate = user.isPrivate || user.is_private;
+
         const formattedRegDate = formatDate(user.createdAt);
+        const fullRegDate = user.createdAt 
+            ? new Date(user.createdAt).toLocaleString('ru-RU', {
+                day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit'
+            })
+            : null;
+        
+        const activePinData = isMyProfile ? userPins.find(p => p.slug === user.activePin) : (user.activePin ? { name: "Активный пин" } : null);
         
         return (
             <div className="profile-header-container">
@@ -382,21 +415,21 @@ const handleBlockUser = () => {
                                     <button className="btn-modern-outline" onClick={() => openModal(<EditProfileModal />)}>Изменить профиль</button>
                                     <button className="btn-modern-icon" onClick={() => openModal(<SettingsModal />)}><SettingsIcon size={20} /></button>
                                 </>
-                                ) : (
-                                    <>
-                                        <button className={`btn-modern-follow ${isFollowing ? 'unfollow' : 'follow'}`} onClick={handleFollowToggle}>
-                                            {isFollowing ? 'Вы читаете' : 'Читать'}
-                                        </button>
-                                        <button 
-                                            className="btn-modern-icon" 
-                                            style={{ color: '#f4212e', borderColor: 'rgba(244, 33, 46, 0.3)' }} 
-                                            onClick={handleBlockUser} 
-                                            title="Заблокировать"
-                                        >
-                                            <ShieldCross size={20} />
-                                        </button>
-                                    </>
-                                )}
+                            ) : (
+                                <>
+                                    <button className={`btn-modern-follow ${isFollowing ? 'unfollow' : 'follow'}`} onClick={handleFollowToggle}>
+                                        {isFollowing ? 'Вы читаете' : 'Читать'}
+                                    </button>
+                                    <button 
+                                        className="btn-modern-icon" 
+                                        style={{ color: '#f4212e', borderColor: 'rgba(244, 33, 46, 0.3)' }} 
+                                        onClick={handleBlockUser} 
+                                        title="Заблокировать"
+                                    >
+                                        <ShieldCross size={20} />
+                                    </button>
+                                </>
+                            )}
                         </div>
                     </div>
 
@@ -404,12 +437,29 @@ const handleBlockUser = () => {
                         <div className="profile-name-row">
                             <h1 className="profile-full-name">{user.displayName}</h1>
                             <div className="verify-badges">
-                                {hasGoldVerify && <VerifiedGold />}
-                                {hasBlueVerify && <VerifiedBlue />}
+                                {}
+                                {hasGoldVerify && <VerifiedBadgeWithTooltip type="gold" size={24} />}
+                                {hasBlueVerify && <VerifiedBadgeWithTooltip type="blue" size={24} />}
+                                {isUserItdPlus && <VerifiedBadgeWithTooltip type="green" size={24} />}
+
+                                <PinBadge 
+                                    pin={activePinData || user.pin || user.activePin} 
+                                    size={24} 
+                                />
                             </div>
                             {renderOnlineStatus()}
                         </div>
-                        <span className="profile-handle-text">@{user.username}</span>
+
+                        <div style={{display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap'}}>
+                            <span className="profile-handle-text">@{user.username}</span>
+                            
+                            {isPrivate && (
+                                <div className="private-profile-badge">
+                                    <LockKeyhole size={14} /> 
+                                    <span>Приватный профиль</span>
+                                </div>
+                            )}
+                        </div>
                         
                         {(isMutual || followsYou) && (
                             <div className="profile-relationship">
@@ -422,66 +472,47 @@ const handleBlockUser = () => {
                         
                         <div className="profile-meta-row">
                             {formattedRegDate && (
-                                <div className="meta-item">
-                                    <CalendarIcon size={16} />
-                                    <span>В сообществе с {formattedRegDate}</span>
-                                </div>
+                                <Tooltip content={`Точная дата: ${fullRegDate}`}>
+                                    <div className="meta-item">
+                                        <CalendarIcon size={16} />
+                                        <span>В сообществе с {formattedRegDate}</span>
+                                    </div>
+                                </Tooltip>
                             )}
                         </div>
                         
                         <div className="profile-stats-row">
                             <button className="stat-link" onClick={() => openModal(<UserListModal username={username} type="following" title="Читаемые" />)}>
-                                <strong>{user.followingCount || 0}</strong> <span>читаемых</span>
+                                <strong>{formatNumber(user.followingCount || 0)}</strong> <span>читаемых</span>
                             </button>
                             <button className="stat-link" onClick={() => openModal(<UserListModal username={username} type="followers" title="Читатели" />)}>
-                                <strong>{followersCount}</strong> <span>читателей</span>
+                                <strong>{formatNumber(followersCount)}</strong> <span>читателей</span>
                             </button>
+                            <span className="stat-text" title="Опубликовано постов">
+                                <strong>{formatNumber(user.postsCount ?? user.stats?.posts ?? 0)}</strong> <span>постов</span>
+                            </span>
                         </div>
 
                         {isMyProfile && (
                             <div className="profile-personal-menu">
                                 <button className="personal-menu-btn" onClick={() => navigate('/bookmarks')}>
-                                    <div className="icon-circle bookmark">
-                                        <BookmarkIcon size={20} active={true} />
-                                    </div>
-                                    <div className="personal-btn-text">
-                                        <span className="p-title">Закладки</span>
-                                        <span className="p-sub">Сохраненное</span>
-                                    </div>
+                                    <div className="icon-circle bookmark"><BookmarkIcon size={20} active={true} /></div>
+                                    <div className="personal-btn-text"><span className="p-title">Закладки</span><span className="p-sub">Сохраненное</span></div>
                                 </button>
-
                                 <button className="personal-menu-btn" onClick={() => navigate('/recent')}>
-                                    <div className="icon-circle" style={{background: 'rgba(29, 155, 240, 0.15)', color: '#1d9bf0'}}>
-                                        <IconHistory size={20} />
-                                    </div>
-                                    <div className="personal-btn-text">
-                                        <span className="p-title">Недавние</span>
-                                        <span className="p-sub">Просмотренное</span>
-                                    </div>
+                                    <div className="icon-circle" style={{background: 'rgba(29, 155, 240, 0.15)', color: '#1d9bf0'}}><IconHistory size={20} /></div>
+                                    <div className="personal-btn-text"><span className="p-title">Недавние</span><span className="p-sub">Просмотренное</span></div>
                                 </button>
-
                                 <button className="personal-menu-btn" onClick={() => navigate('/downloads')}>
-                                    <div className="icon-circle download">
-                                        <IconDownload size={20} />
-                                    </div>
-                                    <div className="personal-btn-text">
-                                        <span className="p-title">Загрузки</span>
-                                        <span className="p-sub">Файлы</span>
-                                    </div>
+                                    <div className="icon-circle download"><IconDownload size={20} /></div>
+                                    <div className="personal-btn-text"><span className="p-title">Загрузки</span><span className="p-sub">Файлы</span></div>
                                 </button>
-
                                 <button className="personal-menu-btn" onClick={() => navigate('/music')}>
-                                    <div className="icon-circle music">
-                                        <IconMusic size={20} />
-                                    </div>
-                                    <div className="personal-btn-text">
-                                        <span className="p-title">Музыка</span>
-                                        <span className="p-sub">Библиотека</span>
-                                    </div>
+                                    <div className="icon-circle music"><IconMusic size={20} /></div>
+                                    <div className="personal-btn-text"><span className="p-title">Музыка</span><span className="p-sub">Библиотека</span></div>
                                 </button>
                             </div>
                         )}
-
                     </div>
                 </div>
 
@@ -494,23 +525,20 @@ const handleBlockUser = () => {
                     </button>
                 </nav>
 
-                <div className="profile-posts-header">
-                    {activeTab === 'posts' && (isMyProfile || canPostOnWall) && (
-                        <div className="profile-create-wrap">
-                            <DynamicComponent 
-                                name="Components.CreatePost" 
-                                fallback={CreatePostFallback} 
-                                onPostCreated={handlePostCreated}
-                                wallId={isMyProfile ? null : user.id}
-                                placeholder={isMyProfile ? "Что нового?" : `Написать @${user.username}...`}
-                            />
-                        </div>
-                    )}
-                </div>
+                {activeTab === 'posts' && (isMyProfile || canPostOnWall) && (
+                    <div className="profile-create-wrap">
+                        <DynamicComponent 
+                            name="Components.CreatePost" 
+                            fallback={CreatePostFallback} 
+                            onPostCreated={handlePostCreated}
+                            wallId={isMyProfile ? null : user.id}
+                            placeholder={isMyProfile ? "Что нового?" : `Написать @${user.username}...`}
+                        />
+                    </div>
+                )}
             </div>
         );
-        
-    }, [user, isMyProfile, isFollowing, followersCount, activeTab, username, openModal, handleBannerUpdate, handlePostCreated, renderOnlineStatus, navigate, canPostOnWall, handleFollowToggle]);
+    }, [user, isMyProfile, isFollowing, followersCount, activeTab, username, openModal, handleBannerUpdate, handlePostCreated, renderOnlineStatus, navigate, canPostOnWall, handleFollowToggle, isUserItdPlus, formatNumber, userPins]);
 
     if (loadingProfile) {
         return (
@@ -534,8 +562,8 @@ const handleBlockUser = () => {
         <div className="profile-page content-fade-in" style={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
             <Virtuoso
                 ref={virtuosoRef}
-                data-virtuoso-scroller="true"
-                style={{ flexGrow: 1 }}
+                className="custom-scroll-area profile-virtuoso-scroller"
+                style={{ height: '100%', width: '100%' }}
                 data={displayPosts}
                 endReached={() => loadPosts(false)}
                 overscan={1000}
@@ -552,6 +580,7 @@ const handleBlockUser = () => {
                         post={post} 
                         key={post.id} 
                         isPinned={pinnedPost ? post.id === pinnedPost.id && activeTab === 'posts' : false} 
+                        onDelete={() => handleRemovePost(post.id)} 
                     />
                 )}
             />

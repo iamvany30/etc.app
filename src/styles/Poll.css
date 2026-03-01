@@ -1,57 +1,85 @@
+
+
 .poll-container {
     margin-top: 12px;
     border: 1px solid var(--color-border);
     border-radius: 16px;
-    padding: 12px;
-    background: var(--color-background);
+    padding: 16px;
+    background: var(--color-item-bg);
+    overflow: hidden;
+    position: relative;
+    user-select: none;
 }
 
 .poll-question {
-    font-weight: 700;
-    margin-bottom: 12px;
-    font-size: 15px;
+    font-weight: 800;
+    margin-bottom: 16px;
+    font-size: 16px;
     color: var(--color-text);
+    line-height: 1.4;
 }
 
 .poll-options {
     display: flex;
     flex-direction: column;
-    gap: 8px;
+    gap: 10px;
 }
+
 
 .poll-option {
     position: relative;
-    padding: 10px 12px;
-    border: 1px solid var(--color-primary);
-    border-radius: 8px;
+    min-height: 44px;
+    border-radius: 12px;
     cursor: pointer;
     overflow: hidden;
-    transition: background 0.2s;
-    user-select: none;
+    transition: all 0.2s cubic-bezier(0.25, 0.8, 0.25, 1);
+    border: 2px solid transparent;
+    background-color: var(--color-input-bg);
 }
 
-.poll-option:hover:not(.voted) {
-    background: var(--color-primary-alpha);
+
+.poll-option.interactive:hover {
+    background-color: rgba(var(--color-primary-rgb), 0.1);
+    border-color: rgba(var(--color-primary-rgb), 0.3);
 }
 
-.poll-option.voted {
-    cursor: default;
-    border-color: var(--color-border);
+.poll-option.interactive:active {
+    transform: scale(0.98);
 }
 
-.poll-option.my-vote {
+
+.poll-option.selected-pending {
     border-color: var(--color-primary);
-    background: rgba(29, 155, 240, 0.05);
+    background-color: rgba(var(--color-primary-rgb), 0.1);
 }
+
+.poll-option.selected-pending .poll-check-circle {
+    background-color: var(--color-primary);
+    border-color: var(--color-primary);
+}
+
+
+.poll-option.result-view {
+    cursor: default;
+    background-color: var(--color-input-bg);
+    border-color: transparent;
+}
+
 
 .poll-bar-fill {
     position: absolute;
     left: 0;
     top: 0;
     bottom: 0;
-    background: var(--color-primary-alpha);
+    background: rgba(var(--color-primary-rgb), 0.15);
     z-index: 1;
-    transition: width 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+    transition: width 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
+    border-radius: 8px 0 0 8px;
+}
+
+
+.poll-option.my-vote .poll-bar-fill {
+    background: rgba(var(--color-primary-rgb), 0.3);
 }
 
 .poll-option-content {
@@ -60,21 +88,110 @@
     display: flex;
     justify-content: space-between;
     align-items: center;
+    padding: 10px 14px;
+    height: 100%;
+}
+
+.option-left {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex: 1;
+}
+
+
+.poll-check-circle {
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    border: 2px solid var(--color-text-secondary);
+    transition: all 0.2s;
+    flex-shrink: 0;
 }
 
 .option-text {
     font-size: 14px;
+    font-weight: 500;
     color: var(--color-text);
+}
+
+.poll-option.my-vote .option-text {
+    font-weight: 700;
 }
 
 .option-percent {
     font-size: 13px;
-    font-weight: 700;
-    color: var(--color-text-secondary);
+    font-weight: 800;
+    color: var(--color-text);
+    min-width: 36px;
+    text-align: right;
 }
 
+
+.voted-checkmark {
+    color: var(--color-primary);
+    display: flex;
+    align-items: center;
+    animation: popIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+@keyframes popIn {
+    from { transform: scale(0); opacity: 0; }
+    to { transform: scale(1); opacity: 1; }
+}
+
+
 .poll-footer {
-    margin-top: 12px;
+    margin-top: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
     font-size: 13px;
     color: var(--color-text-secondary);
+    height: 32px;
+}
+
+.poll-meta {
+    display: flex;
+    gap: 8px;
+}
+
+.poll-submit-btn {
+    background-color: var(--color-primary);
+    color: white;
+    border: none;
+    padding: 6px 16px;
+    border-radius: 99px;
+    font-weight: 700;
+    font-size: 13px;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.poll-submit-btn:hover {
+    filter: brightness(1.1);
+    transform: translateY(-1px);
+}
+
+.poll-submit-btn:disabled {
+    opacity: 0.5;
+    cursor: default;
+    transform: none;
+}
+
+.poll-revote-btn {
+    background: transparent;
+    border: 1px solid var(--color-border);
+    color: var(--color-text-secondary);
+    padding: 6px 12px;
+    border-radius: 99px;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.poll-revote-btn:hover {
+    color: var(--color-text);
+    border-color: var(--color-text-secondary);
 }

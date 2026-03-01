@@ -1,3 +1,4 @@
+/* @source src/styles/Layout.css */
 :root {
     --width-sidebar-left: 275px;
     --width-sidebar-right: 350px;
@@ -142,6 +143,10 @@ html, body {
     transition: none !important;
 }
 
-::-webkit-scrollbar {
+
+
+body::-webkit-scrollbar {
     display: none;
 }
+
+

@@ -1,19 +1,17 @@
 /* @source src/styles/MusicLibrary.css */
 .music-page-container {
+    height: 100vh;
     display: flex;
     flex-direction: column;
-    height: 100%; 
     overflow: hidden;
     background-color: var(--color-background);
 }
 
-/* =========================================
-   HEADER (ШАПКА И ПОИСК)
-   ========================================= */
+
 .music-sticky-header {
     position: sticky;
     top: 0;
-    z-index: 40;
+    z-index: var(--z-sticky-header);;
     background-color: rgba(var(--glass-bg-rgb), 0.85);
     backdrop-filter: blur(24px) saturate(180%);
     -webkit-backdrop-filter: blur(24px) saturate(180%);
@@ -100,19 +98,16 @@
     color: var(--color-text-secondary);
 }
 
-/* =========================================
-   ОСНОВНОЙ КОНТЕНТ И СКРОЛЛ
-   ========================================= */
+
 .music-content-scroll {
     flex: 1; 
-    overflow-y: auto; 
+    
+    overflow-y: overlay; 
     padding: 20px 16px;
     -webkit-overflow-scrolling: touch; 
 }
 
-/* =========================================
-   ГРУППИРОВКА ПО АЛЬБОМАМ
-   ========================================= */
+
 .album-group {
     margin-bottom: 32px;
 }
@@ -132,9 +127,7 @@
     gap: 6px;
 }
 
-/* =========================================
-   СТРОКА ТРЕКА (Track Row)
-   ========================================= */
+
 .track-row {
     display: flex;
     align-items: center;
@@ -296,9 +289,7 @@
     max-width: 100%;
 }
 
-/* =========================================
-   ПУСТОЕ СОСТОЯНИЕ (Empty State)
-   ========================================= */
+
 .music-empty-state {
     display: flex;
     flex-direction: column;

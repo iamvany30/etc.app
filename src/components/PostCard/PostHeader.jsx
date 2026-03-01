@@ -1,3 +1,4 @@
+
 import React, { useState, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import TimeAgo from './TimeAgo';
@@ -5,9 +6,22 @@ import PostMenu from './PostMenu';
 import PostHistoryModal from '../modals/PostHistoryModal';
 import { MoreIcon } from '../icons/MenuIcons';
 
+import { useItdPlusStore } from '../../store/itdPlusStore';
+import VerifiedBadgeWithTooltip from '../VerifiedBadgeWithTooltip';
+import PinBadge from '../PinBadge';
+
+const GOLD_VERIFIED_IDS = ['48f4cd67-58a2-4c0d-b1be-235fc4bb91a4'];
+
 const PostHeader = ({ post, ctrl, isPinned }) => {
     const [showMenu, setShowMenu] = useState(false);
     const menuAnchorRef = useRef(null);
+
+    
+    const verifiedUsersSet = useItdPlusStore(state => state.verifiedUsers);
+    const isGreenVerified = verifiedUsersSet.has(post.author?.id) || verifiedUsersSet.has(post.author?.username);
+    
+    const hasBlue = post.author?.verified || post.author?.isVerified;
+    const hasGold = post.author ? GOLD_VERIFIED_IDS.includes(post.author.id) : false;
 
     return (
         <div className="post-header-row">
@@ -15,6 +29,19 @@ const PostHeader = ({ post, ctrl, isPinned }) => {
                 <Link to={`/profile/${post.author?.username}`} className="post-author" onClick={e => e.stopPropagation()}>
                     {post.author?.displayName}
                 </Link>
+                
+                {}
+                {hasBlue ? (
+                    <VerifiedBadgeWithTooltip type="blue" size={16} />
+                ) : hasGold ? (
+                    <VerifiedBadgeWithTooltip type="gold" size={16} />
+                ) : isGreenVerified ? (
+                    <VerifiedBadgeWithTooltip type="green" size={16} />
+                ) : null}
+
+                {}
+                <PinBadge pin={post.author?.pin || post.author?.activePin} size={16} />
+
                 <span className="post-handle">@{post.author?.username}</span>
                 <span className="post-dot">·</span>
                 <TimeAgo dateStr={post.createdAt} />

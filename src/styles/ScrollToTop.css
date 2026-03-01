@@ -3,7 +3,7 @@
     position: fixed;
     bottom: 30px;
     right: 20px;
-    z-index: 90;
+    z-index: var(--z-floating-btn);
     opacity: 0;
     visibility: hidden;
     transform: translateY(15px);

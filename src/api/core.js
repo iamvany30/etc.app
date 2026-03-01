@@ -4,7 +4,6 @@ import { getCachedUrl } from '../utils/assetHelper';
 
 const MEDIA_KEYS = new Set(['url', 'avatar', 'cover', 'banner', 'image', 'src']);
 
-
 const mapMediaUrls = (obj) => {
     if (!obj || typeof obj !== 'object') return;
     
@@ -21,9 +20,11 @@ const mapMediaUrls = (obj) => {
             if (typeof obj[key] === 'string') {
                 
                 if (obj[key].startsWith('http') && MEDIA_KEYS.has(key)) {
+                    
+                    if (obj.type === 'link') continue;
+                    
                     obj[key] = getCachedUrl(obj[key]);
                 } 
-                
                 else if (obj[key].startsWith('asset://') && !obj[key].includes('?url=')) {
                     obj[key] = null; 
                 }

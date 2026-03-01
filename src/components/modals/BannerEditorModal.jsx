@@ -3,10 +3,11 @@ import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { useModalStore } from '../../store/modalStore';
 import { apiClient } from '../../api/client';
 import DrawingBoard from '../DrawingBoard';
-import { 
-    Upload, Pallete, 
+import {
+    Upload, Pallete,
     MagniferZoomIn, CheckCircle,
-    Maximize, MagicStick3, TrashBinMinimalistic, AddCircle
+    Maximize, MagicStick3, TrashBinMinimalistic,
+    Monitor, Smartphone
 } from "@solar-icons/react";
 import '../../styles/BannerEditorModal.css';
 
@@ -19,39 +20,51 @@ const GRADIENT_PRESETS = [
     { name: 'Dark', type: 'linear', angle: 60, stops: [{ color: '#232526', pos: 0 }, { color: '#414345', pos: 100 }] },
 ];
 
+
+
+const SAFE_ZONES = {
+    desktop: { widthPct: 100, heightPct: 100 },
+    mobile: { widthPct: 64, heightPct: 60 }
+};
+
 const BannerEditorModal = ({ onSaveSuccess }) => {
     const closeModal = useModalStore(state => state.closeModal);
-    
-    const [mode, setMode] = useState('upload'); 
+
+    const [mode, setMode] = useState('upload');
     const [imageSrc, setImageSrc] = useState(null);
     const [isSaving, setIsSaving] = useState(false);
 
-    
+
+    const [previewMode, setPreviewMode] = useState('desktop');
+
+
     const [zoom, setZoom] = useState(1);
     const [minZoom, setMinZoom] = useState(1);
     const [pan, setPan] = useState({ x: 0, y: 0 });
     const [isDragging, setIsDragging] = useState(false);
     const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
 
-    
-    const [gradType, setGradType] = useState('linear'); 
+
+    const [gradType, setGradType] = useState('linear');
     const [gradAngle, setGradAngle] = useState(135);
     const [gradStops, setGradStops] = useState([
         { id: 1, color: '#1d9bf0', pos: 0 },
         { id: 2, color: '#794bc4', pos: 100 }
     ]);
-    const [activeStopId, setActiveStopId] = useState(1); 
-    const trackRef = useRef(null); 
-    const draggingStopRef = useRef(null); 
+    const [activeStopId, setActiveStopId] = useState(1);
 
+
+    const trackRef = useRef(null);
+    const draggingStopRef = useRef(null);
     const containerRef = useRef(null);
     const imgRef = useRef(null);
     const fileInputRef = useRef(null);
     const gradientCanvasRef = useRef(null);
 
-    const CROP_ASPECT = 3.24; 
+    const CROP_ASPECT = 3.24;
     const EXPORT_WIDTH = 1296;
     const EXPORT_HEIGHT = 400;
+
 
     const handleFileSelect = (e) => {
         const file = e.target.files?.[0];
@@ -72,22 +85,28 @@ const BannerEditorModal = ({ onSaveSuccess }) => {
         if (e.dataTransfer.files?.[0]) processFile(e.dataTransfer.files[0]);
     };
 
-    
-    const getCropRect = () => {
+
+
+
+    const getCropRect = useCallback(() => {
         if (!containerRef.current) return { width: 0, height: 0, left: 0, top: 0 };
         const { clientWidth, clientHeight } = containerRef.current;
-        const marginX = 20; 
+        const marginX = 20;
         const maxWidth = clientWidth - (marginX * 2);
+
         let width = maxWidth;
         let height = width / CROP_ASPECT;
+
         if (height > clientHeight - 40) {
             height = clientHeight - 40;
             width = height * CROP_ASPECT;
         }
+
         const left = (clientWidth - width) / 2;
         const top = (clientHeight - height) / 2;
+
         return { width, height, left, top };
-    };
+    }, []);
 
     const clampPan = (x, y, currentZoom) => {
         if (!imgRef.current) return { x, y };
@@ -109,15 +128,18 @@ const BannerEditorModal = ({ onSaveSuccess }) => {
         const crop = getCropRect();
         const natW = imgRef.current.naturalWidth;
         const natH = imgRef.current.naturalHeight;
+
         const zoomCoverWidth = crop.width / natW;
         const zoomCoverHeight = crop.height / natH;
+
         const newMinZoom = Math.max(zoomCoverWidth, zoomCoverHeight);
         setMinZoom(newMinZoom);
         setZoom(newMinZoom);
+
         const initialX = crop.left - (natW * newMinZoom - crop.width) / 2;
         const initialY = crop.top - (natH * newMinZoom - crop.height) / 2;
         setPan({ x: initialX, y: initialY });
-    }, []);
+    }, [getCropRect]);
 
     useEffect(() => {
         if (mode === 'crop') {
@@ -130,6 +152,76 @@ const BannerEditorModal = ({ onSaveSuccess }) => {
         }
     }, [mode, imageSrc, initImage]);
 
+
+    const drawSafeOverlay = useCallback(() => {
+        const canvas = document.getElementById('banner-safe-overlay');
+        if (!canvas || !containerRef.current) return;
+
+        const ctx = canvas.getContext('2d');
+        const { clientWidth, clientHeight } = containerRef.current;
+
+
+        if (canvas.width !== clientWidth || canvas.height !== clientHeight) {
+            canvas.width = clientWidth;
+            canvas.height = clientHeight;
+        }
+
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+
+        if (previewMode === 'desktop') return;
+
+        const crop = getCropRect();
+
+
+        const safeW = crop.width * (SAFE_ZONES.mobile.widthPct / 100);
+        const safeH = crop.height * (SAFE_ZONES.mobile.heightPct / 100);
+
+        const safeX = crop.left + (crop.width - safeW) / 2;
+        const safeY = crop.top + (crop.height - safeH) / 2;
+
+        ctx.fillStyle = "rgba(0, 0, 0, 0.65)";
+
+
+
+        ctx.fillRect(crop.left, crop.top, crop.width, safeY - crop.top);
+
+        ctx.fillRect(crop.left, safeY + safeH, crop.width, (crop.top + crop.height) - (safeY + safeH));
+
+        ctx.fillRect(crop.left, safeY, safeX - crop.left, safeH);
+
+        ctx.fillRect(safeX + safeW, safeY, (crop.left + crop.width) - (safeX + safeW), safeH);
+
+
+        ctx.strokeStyle = "rgba(255, 255, 255, 0.9)";
+        ctx.lineWidth = 1.5;
+        ctx.setLineDash([6, 4]);
+        ctx.strokeRect(safeX, safeY, safeW, safeH);
+
+
+        ctx.fillStyle = "white";
+        ctx.font = "bold 12px Inter, sans-serif";
+        ctx.shadowColor = "rgba(0,0,0,0.8)";
+        ctx.shadowBlur = 4;
+        ctx.fillText("Видимая область (Телефон)", safeX + 8, safeY + 20);
+
+
+        ctx.shadowBlur = 0;
+
+    }, [previewMode, getCropRect]);
+
+
+    useEffect(() => {
+        if (mode === 'crop') {
+
+            setTimeout(drawSafeOverlay, 50);
+            window.addEventListener('resize', drawSafeOverlay);
+            return () => window.removeEventListener('resize', drawSafeOverlay);
+        }
+    }, [mode, previewMode, drawSafeOverlay]);
+
+
+
     const handleMouseDown = (e) => { e.preventDefault(); setIsDragging(true); setDragStart({ x: e.clientX - pan.x, y: e.clientY - pan.y }); };
     const handleMouseMove = (e) => { if (!isDragging) return; e.preventDefault(); const newX = e.clientX - dragStart.x; const newY = e.clientY - dragStart.y; setPan(clampPan(newX, newY, zoom)); };
     const handleMouseUp = () => setIsDragging(false);
@@ -141,7 +233,7 @@ const BannerEditorModal = ({ onSaveSuccess }) => {
         setPan(prev => clampPan(prev.x, prev.y, newZoom));
     };
 
-    
+
     const updateGradientCanvas = useCallback(() => {
         const canvas = gradientCanvasRef.current;
         if (!canvas) return;
@@ -170,33 +262,27 @@ const BannerEditorModal = ({ onSaveSuccess }) => {
         ctx.fillRect(0, 0, w, h);
     }, [gradType, gradAngle, gradStops]);
 
-    useEffect(() => {
-        if (mode === 'gradient') updateGradientCanvas();
-    }, [mode, gradType, gradAngle, gradStops, updateGradientCanvas]);
+    useEffect(() => { if (mode === 'gradient') updateGradientCanvas(); }, [mode, gradType, gradAngle, gradStops, updateGradientCanvas]);
 
-    
+
     useEffect(() => {
         const handleWindowMouseMove = (e) => {
             if (draggingStopRef.current !== null && trackRef.current) {
                 const rect = trackRef.current.getBoundingClientRect();
                 let newPos = ((e.clientX - rect.left) / rect.width) * 100;
                 newPos = Math.round(Math.min(Math.max(newPos, 0), 100));
-                
-                setGradStops(prev => prev.map(s => 
+
+                setGradStops(prev => prev.map(s =>
                     s.id === draggingStopRef.current ? { ...s, pos: newPos } : s
                 ));
             }
         };
-
-        const handleWindowMouseUp = () => {
-            draggingStopRef.current = null;
-        };
+        const handleWindowMouseUp = () => { draggingStopRef.current = null; };
 
         if (mode === 'gradient') {
             window.addEventListener('mousemove', handleWindowMouseMove);
             window.addEventListener('mouseup', handleWindowMouseUp);
         }
-
         return () => {
             window.removeEventListener('mousemove', handleWindowMouseMove);
             window.removeEventListener('mouseup', handleWindowMouseUp);
@@ -204,14 +290,13 @@ const BannerEditorModal = ({ onSaveSuccess }) => {
     }, [mode]);
 
     const handleTrackClick = (e) => {
-        if (gradStops.length >= 8) return; 
+        if (gradStops.length >= 8) return;
         if (e.target.classList.contains('grad-track-thumb')) return;
 
         const rect = trackRef.current.getBoundingClientRect();
         let newPos = ((e.clientX - rect.left) / rect.width) * 100;
         newPos = Math.round(Math.min(Math.max(newPos, 0), 100));
 
-        
         const activeColor = gradStops.find(s => s.id === activeStopId)?.color || '#ffffff';
         const newId = Math.max(...gradStops.map(s => s.id), 0) + 1;
 
@@ -219,22 +304,9 @@ const BannerEditorModal = ({ onSaveSuccess }) => {
         setActiveStopId(newId);
     };
 
-    const handleThumbMouseDown = (e, id) => {
-        e.stopPropagation();
-        setActiveStopId(id);
-        draggingStopRef.current = id;
-    };
-
-    const removeActiveStop = () => {
-        if (gradStops.length <= 2) return;
-        const newStops = gradStops.filter(s => s.id !== activeStopId);
-        setGradStops(newStops);
-        setActiveStopId(newStops[0].id);
-    };
-
-    const updateActiveStop = (field, value) => {
-        setGradStops(gradStops.map(s => s.id === activeStopId ? { ...s, [field]: value } : s));
-    };
+    const handleThumbMouseDown = (e, id) => { e.stopPropagation(); setActiveStopId(id); draggingStopRef.current = id; };
+    const removeActiveStop = () => { if (gradStops.length > 2) { const newStops = gradStops.filter(s => s.id !== activeStopId); setGradStops(newStops); setActiveStopId(newStops[0].id); } };
+    const updateActiveStop = (field, value) => { setGradStops(gradStops.map(s => s.id === activeStopId ? { ...s, [field]: value } : s)); };
 
     const applyPreset = (preset) => {
         setGradType(preset.type);
@@ -244,7 +316,7 @@ const BannerEditorModal = ({ onSaveSuccess }) => {
         setActiveStopId(newStops[0].id);
     };
 
-    
+
     const uploadBlob = async (blob, filename) => {
         const file = new File([blob], filename, { type: "image/jpeg" });
         try {
@@ -293,21 +365,20 @@ const BannerEditorModal = ({ onSaveSuccess }) => {
     };
 
     const cropStyle = containerRef.current ? getCropRect() : { width: '80%', height: 100, left: '10%', top: 50 };
-
-    
-    const trackGradientString = `linear-gradient(to right, ${[...gradStops].sort((a,b)=>a.pos-b.pos).map(s => `${s.color} ${s.pos}%`).join(', ')})`;
+    const trackGradientString = `linear-gradient(to right, ${[...gradStops].sort((a, b) => a.pos - b.pos).map(s => `${s.color} ${s.pos}%`).join(', ')})`;
     const activeStop = gradStops.find(s => s.id === activeStopId) || gradStops[0];
 
     return (
         <div className="banner-modal-root">
             <div className="bm-content">
-                
+
+                { }
                 {mode === 'upload' && (
                     <div className="bm-upload-container">
                         <h2 className="bm-title">Обложка профиля</h2>
                         <p className="bm-subtitle">Создайте уникальный стиль своего профиля</p>
 
-                        <div 
+                        <div
                             className="bm-upload-zone"
                             onDragOver={(e) => e.preventDefault()}
                             onDrop={onDrop}
@@ -334,13 +405,36 @@ const BannerEditorModal = ({ onSaveSuccess }) => {
                     </div>
                 )}
 
+                {/* 2. ЭКРАН КАДРИРОВАНИЯ */}
                 {mode === 'crop' && imageSrc && (
                     <div className="bm-crop-interface">
-                        <h2 className="bm-title">Кадрирование</h2>
-                        <p className="bm-subtitle">Перетащите для выбора области</p>
-                        
-                        <div 
-                            className="bm-crop-workspace" 
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+                            <div>
+                                <h2 className="bm-title" style={{ marginBottom: 4, textAlign: 'left' }}>Кадрирование</h2>
+                                <p className="bm-subtitle" style={{ margin: 0, textAlign: 'left' }}>Перетащите для выбора области</p>
+                            </div>
+
+                            { }
+                            <div className="device-toggles">
+                                <button
+                                    className={`device-btn ${previewMode === 'desktop' ? 'active' : ''}`}
+                                    onClick={() => setPreviewMode('desktop')}
+                                    title="Вид на ПК"
+                                >
+                                    <Monitor size={20} />
+                                </button>
+                                <button
+                                    className={`device-btn ${previewMode === 'mobile' ? 'active' : ''}`}
+                                    onClick={() => setPreviewMode('mobile')}
+                                    title="Вид на телефоне"
+                                >
+                                    <Smartphone size={20} />
+                                </button>
+                            </div>
+                        </div>
+
+                        <div
+                            className="bm-crop-workspace"
                             ref={containerRef}
                             onMouseDown={handleMouseDown}
                             onMouseMove={handleMouseMove}
@@ -348,7 +442,7 @@ const BannerEditorModal = ({ onSaveSuccess }) => {
                             onMouseLeave={handleMouseUp}
                             onWheel={handleWheel}
                         >
-                            <img 
+                            <img
                                 ref={imgRef}
                                 src={imageSrc}
                                 alt="Source"
@@ -360,16 +454,29 @@ const BannerEditorModal = ({ onSaveSuccess }) => {
                                 onLoad={initImage}
                                 draggable={false}
                             />
+
+                            { }
                             <div className="bm-mask-overlay">
                                 <div className="bm-crop-hole" style={{ width: cropStyle.width, height: cropStyle.height, left: cropStyle.left, top: cropStyle.top }}>
-                                    <div className="bm-grid-lines"><div className="hl h1"/><div className="hl h2"/><div className="vl v1"/><div className="vl v2"/></div>
+                                    <div className="bm-grid-lines"><div className="hl h1" /><div className="hl h2" /><div className="vl v1" /><div className="vl v2" /></div>
                                 </div>
                             </div>
+
+                            { }
+                            <canvas
+                                id="banner-safe-overlay"
+                                style={{
+                                    position: 'absolute',
+                                    inset: 0,
+                                    pointerEvents: 'none',
+                                    zIndex: 20
+                                }}
+                            />
                         </div>
 
                         <div className="bm-controls">
                             <div className="bm-slider-row">
-                                <button className="bm-icon-btn" onClick={initImage} title="Сброс"><Maximize size={20}/></button>
+                                <button className="bm-icon-btn" onClick={initImage} title="Сброс"><Maximize size={20} /></button>
                                 <MagniferZoomIn size={20} className="bm-zoom-icon" />
                                 <input type="range" min={minZoom} max={minZoom * 4} step="0.01" value={zoom} onChange={(e) => { const z = parseFloat(e.target.value); setZoom(z); setPan(prev => clampPan(prev.x, prev.y, z)); }} />
                             </div>
@@ -384,22 +491,16 @@ const BannerEditorModal = ({ onSaveSuccess }) => {
                     </div>
                 )}
 
+                { }
                 {mode === 'gradient' && (
                     <div className="bm-gradient-interface">
                         <h2 className="bm-title">Редактор градиента</h2>
-                        
+
                         <div className="gradient-preview-container">
-                            <canvas 
-                                ref={gradientCanvasRef} 
-                                width={1296} 
-                                height={400} 
-                                className="gradient-canvas-preview"
-                            />
+                            <canvas ref={gradientCanvasRef} width={1296} height={400} className="gradient-canvas-preview" />
                         </div>
 
                         <div className="gradient-controls-scroll custom-scrollbar">
-                            
-                            
                             <div className="grad-section">
                                 <div className="grad-track-header">
                                     <label>Цветовая шкала (клик для добавления)</label>
@@ -408,7 +509,7 @@ const BannerEditorModal = ({ onSaveSuccess }) => {
                                 <div className="grad-interactive-track" ref={trackRef} onMouseDown={handleTrackClick}>
                                     <div className="grad-track-bg" style={{ background: trackGradientString }}></div>
                                     {gradStops.map(stop => (
-                                        <div 
+                                        <div
                                             key={stop.id}
                                             className={`grad-track-thumb ${activeStopId === stop.id ? 'active' : ''}`}
                                             style={{ left: `${stop.pos}%`, backgroundColor: stop.color }}
@@ -418,35 +519,18 @@ const BannerEditorModal = ({ onSaveSuccess }) => {
                                 </div>
                             </div>
 
-                            
                             <div className="grad-active-stop-editor">
                                 <div className="grad-color-input-wrap">
-                                    <input 
-                                        type="color" 
-                                        value={activeStop.color} 
-                                        onChange={(e) => updateActiveStop('color', e.target.value)}
-                                        className="grad-color-picker-pro"
-                                    />
+                                    <input type="color" value={activeStop.color} onChange={(e) => updateActiveStop('color', e.target.value)} className="grad-color-picker-pro" />
                                     <span className="grad-hex-label">{activeStop.color.toUpperCase()}</span>
                                 </div>
-                                
+
                                 <div className="grad-pos-input-wrap">
-                                    <input 
-                                        type="number" 
-                                        min="0" max="100" 
-                                        value={activeStop.pos}
-                                        onChange={(e) => updateActiveStop('pos', Number(e.target.value))}
-                                        className="grad-number-input"
-                                    />
+                                    <input type="number" min="0" max="100" value={activeStop.pos} onChange={(e) => updateActiveStop('pos', Number(e.target.value))} className="grad-number-input" />
                                     <span>%</span>
                                 </div>
 
-                                <button 
-                                    className="grad-remove-btn-pro" 
-                                    onClick={removeActiveStop}
-                                    disabled={gradStops.length <= 2}
-                                    title="Удалить точку"
-                                >
+                                <button className="grad-remove-btn-pro" onClick={removeActiveStop} disabled={gradStops.length <= 2} title="Удалить точку">
                                     <TrashBinMinimalistic size={20} />
                                 </button>
                             </div>
@@ -459,17 +543,10 @@ const BannerEditorModal = ({ onSaveSuccess }) => {
                                         <button className={gradType === 'radial' ? 'active' : ''} onClick={() => setGradType('radial')}>Радиальный</button>
                                     </div>
                                 </div>
-
                                 <div className={`grad-section half ${gradType === 'radial' ? 'disabled' : ''}`}>
                                     <label>Угол ({gradAngle}°)</label>
                                     <div className="grad-angle-control">
-                                        <input 
-                                            type="range" min="0" max="360" 
-                                            value={gradAngle} 
-                                            onChange={(e) => setGradAngle(parseInt(e.target.value))} 
-                                            className="grad-slider"
-                                            disabled={gradType === 'radial'}
-                                        />
+                                        <input type="range" min="0" max="360" value={gradAngle} onChange={(e) => setGradAngle(parseInt(e.target.value))} className="grad-slider" disabled={gradType === 'radial'} />
                                     </div>
                                 </div>
                             </div>
@@ -478,12 +555,12 @@ const BannerEditorModal = ({ onSaveSuccess }) => {
                                 <label>Готовые пресеты</label>
                                 <div className="grad-presets">
                                     {GRADIENT_PRESETS.map((p) => (
-                                        <button 
-                                            key={p.name} 
+                                        <button
+                                            key={p.name}
                                             className="grad-preset-pill"
                                             onClick={() => applyPreset(p)}
                                             style={{
-                                                background: p.type === 'linear' 
+                                                background: p.type === 'linear'
                                                     ? `linear-gradient(${p.angle}deg, ${p.stops[0].color}, ${p.stops[1].color})`
                                                     : `radial-gradient(circle, ${p.stops[0].color}, ${p.stops[1].color})`
                                             }}
@@ -505,6 +582,7 @@ const BannerEditorModal = ({ onSaveSuccess }) => {
                     </div>
                 )}
 
+                { }
                 {mode === 'draw' && (
                     <div className="bm-draw-interface">
                         <h2 className="bm-title">Создание обложки</h2>

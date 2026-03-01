@@ -1,3 +1,4 @@
+/* @source src/pages/Explore.jsx */
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { Virtuoso } from 'react-virtuoso';
@@ -5,6 +6,7 @@ import { apiClient } from '../api/client';
 import { storage } from '../utils/storage'; 
 import PostCard from '../components/PostCard'; 
 import { PostSkeleton, ExploreSkeleton, WidgetSkeleton } from '../components/Skeletons';
+import ScrollArea from '../components/ScrollArea';
 
 import { 
     Magnifer, 
@@ -179,7 +181,7 @@ const Explore = () => {
 
         if (!searchQuery.trim()) {
             return (
-                <div className="explore-scroll-area content-fade-in">
+                <ScrollArea className="explore-scroll-area content-fade-in">
                     {trendsData.clans.length > 0 && (
                         <section className="explore-section">
                             <h3 className="explore-section-title">
@@ -222,7 +224,7 @@ const Explore = () => {
                             ))}
                         </div>
                     </section>
-                </div>
+                </ScrollArea>
             );
         }
 
@@ -262,13 +264,13 @@ const Explore = () => {
         }
 
         return (
-            <div className="explore-scroll-area">
+            <ScrollArea className="explore-scroll-area">
                 {loading ? (
                     <div style={{padding: 16}}><WidgetSkeleton /></div>
                 ) : (
                     <GlobalResultsList results={searchResults} onTagClick={(t) => setSearchQuery('#' + t)} searchType={searchType} />
                 )}
-            </div>
+            </ScrollArea>
         );
     };
 

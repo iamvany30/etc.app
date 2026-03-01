@@ -1,3 +1,4 @@
+/* @source src/components/PostCard/CommentRow.jsx */
 import React, { memo, useMemo, useCallback, useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useModalStore } from '../../store/modalStore';
@@ -5,6 +6,13 @@ import { handleGlobalLinkClick } from '../../utils/linkUtils';
 import MediaGrid from '../MediaGrid';
 import { Reply } from "@solar-icons/react";
 import '../../styles/CommentsSection.css';
+
+
+import { useItdPlusStore } from '../../store/itdPlusStore';
+import VerifiedBadgeWithTooltip from '../VerifiedBadgeWithTooltip';
+import PinBadge from '../PinBadge';
+
+const GOLD_VERIFIED_IDS = ['48f4cd67-58a2-4c0d-b1be-235fc4bb91a4'];
 
 const TimeAgo = ({ dateStr }) => {
     const [time, setTime] = useState('');
@@ -47,11 +55,20 @@ const CommentRow = ({ item, ctrl, highlightCommentId, postAuthorId, expandedIds,
 
     const [isLoadingReplies, setIsLoadingReplies] = useState(false);
 
+    
+    const comment = item.type === 'skeleton' ? null : item.data;
+    const depth = item.depth;
+    const authorId = comment?.author?.id;
+
+    
+    const verifiedUsersSet = useItdPlusStore(state => state.verifiedUsers);
+    const isGreenVerified = authorId ? (verifiedUsersSet.has(authorId) || verifiedUsersSet.has(comment?.author?.username)) : false;
+
     const handleLinkClick = useCallback((e, url) => {
         handleGlobalLinkClick(e, url, navigate, openModal);
     }, [navigate, openModal]);
 
-    const commentContent = item.data?.content;
+    const commentContent = comment?.content;
 
     const renderParsedText = useMemo(() => {
         if (!commentContent) return null;
@@ -67,13 +84,11 @@ const CommentRow = ({ item, ctrl, highlightCommentId, postAuthorId, expandedIds,
         });
     }, [commentContent, handleLinkClick]);
 
+    
     if (item.type === 'skeleton') {
-        return <CommentSkeleton depth={item.depth} />;
+        return <CommentSkeleton depth={depth} />;
     }
 
-    const comment = item.data;
-    const depth = item.depth;
-    
     const isExpanded = expandedIds.has(comment.id);
     const isHighlighted = highlightCommentId === comment.id;
     const visualDepth = Math.min(depth, 5); 
@@ -83,6 +98,9 @@ const CommentRow = ({ item, ctrl, highlightCommentId, postAuthorId, expandedIds,
     const missingCount = Math.max(0, repliesCount - loadedReplies.length);
     const hasReplies = repliesCount > 0 || loadedReplies.length > 0;
     const isPostAuthor = comment.author?.id === postAuthorId;
+
+    const hasBlue = comment.author?.verified || comment.author?.isVerified;
+    const hasGold = comment.author ? GOLD_VERIFIED_IDS.includes(comment.author.id) : false;
 
     const handleToggleReplies = async (e) => {
         e.stopPropagation();
@@ -98,7 +116,6 @@ const CommentRow = ({ item, ctrl, highlightCommentId, postAuthorId, expandedIds,
 
         setIsLoadingReplies(true);
         try {
-            
             const res = await window.api.call(`/comments/${comment.id}/replies?page=1&limit=50&sort=oldest`, 'GET');
             const dataObj = res?.data || res || {};
             const fetchedReplies = dataObj.replies || dataObj.comments || dataObj.data || [];
@@ -138,7 +155,7 @@ const CommentRow = ({ item, ctrl, highlightCommentId, postAuthorId, expandedIds,
 
                 <div className="comment-inner-container">
                     <div className="comment-avatar-area">
-                        <Link to={`/profile/${comment.author.username}`} className="comment-avatar-link">
+                        <Link to={`/profile/${comment.author.username}`} className="comment-avatar-link" style={{ position: 'relative' }}>
                             <div className="avatar small">
                                 {comment.author.avatar && comment.author.avatar.length > 5 ? (
                                     <img src={comment.author.avatar} alt={comment.author.username} />
@@ -154,6 +171,19 @@ const CommentRow = ({ item, ctrl, highlightCommentId, postAuthorId, expandedIds,
                             <Link to={`/profile/${comment.author.username}`} className="comment-author-name">
                                 {comment.author.displayName}
                             </Link>
+
+                            {}
+                            {hasBlue ? (
+                                <VerifiedBadgeWithTooltip type="blue" size={16} />
+                            ) : hasGold ? (
+                                <VerifiedBadgeWithTooltip type="gold" size={16} />
+                            ) : isGreenVerified ? (
+                                <VerifiedBadgeWithTooltip type="green" size={16} />
+                            ) : null}
+
+                            {}
+                            <PinBadge pin={comment.author?.pin || comment.author?.activePin} size={16} />
+
                             {isPostAuthor && <span className="comment-author-badge">Автор</span>}
                             <span className="comment-handle">@{comment.author.username}</span>
                             <span className="comment-dot">·</span>
@@ -185,7 +215,6 @@ const CommentRow = ({ item, ctrl, highlightCommentId, postAuthorId, expandedIds,
                 </div>
             </div>
 
-            {}
             {isExpanded && (
                 <div className="replies-container">
                     {isLoadingReplies && loadedReplies.length === 0 && (

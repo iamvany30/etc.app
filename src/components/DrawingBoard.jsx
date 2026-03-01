@@ -1,5 +1,5 @@
 /* @source src/components/DrawingBoard.jsx */
-import React, { useRef, useState, useEffect } from 'react';
+import React, { useRef, useState, useEffect, useCallback } from 'react';
 import { TrashIcon, NavBackIcon, NavForwardIcon } from './icons/CommonIcons'; 
 import { 
     ToolPanIcon, ToolPenIcon, ToolSprayIcon, ToolFillIcon, ToolEraserIcon,
@@ -8,6 +8,7 @@ import {
 } from './icons/CustomIcons';
 import ConfirmActionModal from './modals/ConfirmActionModal';
 import { useIslandStore } from '../store/islandStore'; 
+import { useDiscordStore } from '../store/discordStore'; 
 import '../styles/DrawingBoard.css';
 
 const COLORS = [
@@ -16,36 +17,23 @@ const COLORS = [
 ];
 
 const TOOLS = {
-    PEN: 'pen',
-    SPRAY: 'spray',
-    FILL: 'fill',
-    ERASER: 'eraser',
-    LINE: 'line',
-    ARROW: 'arrow',
-    RECT: 'rect',
-    CIRCLE: 'circle',
-    TRIANGLE: 'triangle',
-    PICKER: 'picker',
-    PAN: 'pan'
+    PEN: 'pen', SPRAY: 'spray', FILL: 'fill', ERASER: 'eraser', LINE: 'line',
+    ARROW: 'arrow', RECT: 'rect', CIRCLE: 'circle', TRIANGLE: 'triangle',
+    PICKER: 'picker', PAN: 'pan'
 };
 
-const rgbToHex = (r, g, b) => {
-    return "#" + (1 << 24 | r << 16 | g << 8 | b).toString(16).slice(1);
-};
+const rgbToHex = (r, g, b) => "#" + (1 << 24 | r << 16 | g << 8 | b).toString(16).slice(1);
 
 const hexToRgba = (hex, alpha = 1) => {
     let r = 0, g = 0, b = 0;
     if (hex.length === 4) {
-        r = parseInt(hex[1] + hex[1], 16);
-        g = parseInt(hex[2] + hex[2], 16);
-        b = parseInt(hex[3] + hex[3], 16);
+        r = parseInt(hex[1] + hex[1], 16); g = parseInt(hex[2] + hex[2], 16); b = parseInt(hex[3] + hex[3], 16);
     } else if (hex.length === 7) {
-        r = parseInt(hex.slice(1, 3), 16);
-        g = parseInt(hex.slice(3, 5), 16);
-        b = parseInt(hex.slice(5, 7), 16);
+        r = parseInt(hex.slice(1, 3), 16); g = parseInt(hex.slice(3, 5), 16); b = parseInt(hex.slice(5, 7), 16);
     }
     return [r, g, b, Math.round(alpha * 255)];
 };
+
 
 function floodFill(ctx, startX, startY, fillColor, width, height, tolerance = 32) {
     if (startX < 0 || startX >= width || startY < 0 || startY >= height) return;
@@ -64,26 +52,20 @@ function floodFill(ctx, startX, startY, fillColor, width, height, tolerance = 32
         Math.abs(startG - fillColor[1]) <= tolerance &&
         Math.abs(startB - fillColor[2]) <= tolerance &&
         Math.abs(startA - fillColor[3]) <= tolerance
-    ) {
-        return;
-    }
+    ) return;
 
     const pixelStack = [[startX, startY]];
 
-    const matchStartColor = (pos) => {
-        return (
-            Math.abs(data[pos] - startR) <= tolerance &&
-            Math.abs(data[pos + 1] - startG) <= tolerance &&
-            Math.abs(data[pos + 2] - startB) <= tolerance &&
-            Math.abs(data[pos + 3] - startA) <= tolerance
-        );
-    };
+    const matchStartColor = (pos) => (
+        Math.abs(data[pos] - startR) <= tolerance &&
+        Math.abs(data[pos + 1] - startG) <= tolerance &&
+        Math.abs(data[pos + 2] - startB) <= tolerance &&
+        Math.abs(data[pos + 3] - startA) <= tolerance
+    );
 
     const colorPixel = (pos) => {
-        data[pos] = fillColor[0];
-        data[pos + 1] = fillColor[1];
-        data[pos + 2] = fillColor[2];
-        data[pos + 3] = fillColor[3];
+        data[pos] = fillColor[0]; data[pos + 1] = fillColor[1];
+        data[pos + 2] = fillColor[2]; data[pos + 3] = fillColor[3];
     };
 
     while (pixelStack.length) {
@@ -92,82 +74,69 @@ function floodFill(ctx, startX, startY, fillColor, width, height, tolerance = 32
         let y = newPos[1];
         let pixelPos = (y * width + x) * 4;
 
-        while (y >= 0 && matchStartColor(pixelPos)) {
-            y--;
-            pixelPos -= width * 4;
-        }
-        pixelPos += width * 4;
-        y++;
+        while (y >= 0 && matchStartColor(pixelPos)) { y--; pixelPos -= width * 4; }
+        pixelPos += width * 4; y++;
 
-        let reachLeft = false;
-        let reachRight = false;
+        let reachLeft = false, reachRight = false;
 
         while (y < height && matchStartColor(pixelPos)) {
             colorPixel(pixelPos);
-
             if (x > 0) {
                 if (matchStartColor(pixelPos - 4)) {
-                    if (!reachLeft) {
-                        pixelStack.push([x - 1, y]);
-                        reachLeft = true;
-                    }
-                } else if (reachLeft) {
-                    reachLeft = false;
-                }
+                    if (!reachLeft) { pixelStack.push([x - 1, y]); reachLeft = true; }
+                } else if (reachLeft) { reachLeft = false; }
             }
-
             if (x < width - 1) {
                 if (matchStartColor(pixelPos + 4)) {
-                    if (!reachRight) {
-                        pixelStack.push([x + 1, y]);
-                        reachRight = true;
-                    }
-                } else if (reachRight) {
-                    reachRight = false;
-                }
+                    if (!reachRight) { pixelStack.push([x + 1, y]); reachRight = true; }
+                } else if (reachRight) { reachRight = false; }
             }
-
-            y++;
-            pixelPos += width * 4;
+            y++; pixelPos += width * 4;
         }
     }
     ctx.putImageData(imageData, 0, 0);
 }
 
 const DrawingBoard = ({ onSave, aspectRatio = 3.24 }) => {
-    const showIslandAlert = useIslandStore(state => state.showIslandAlert); 
+    const showIslandAlert = useIslandStore(state => state.showIslandAlert);
+    const setDiscordActivity = useDiscordStore(state => state.setActivity);
+    const clearDiscordActivity = useDiscordStore(state => state.clearActivity);
+    
     
     const containerRef = useRef(null);
     const canvasRef = useRef(null);
+    const draftCanvasRef = useRef(null); 
     const contextRef = useRef(null);
+    const draftContextRef = useRef(null);
+    const brushCursorRef = useRef(null); 
+    
     
     const [isDrawing, setIsDrawing] = useState(false);
     const [isPanning, setIsPanning] = useState(false);
     const [isSpaceDown, setIsSpaceDown] = useState(false);
-    
     const [tool, setTool] = useState(TOOLS.PEN);
     const [color, setColor] = useState('#ffffff');
     const [size, setSize] = useState(5);
     const [opacity, setOpacity] = useState(1);
-
     const [history, setHistory] = useState([]);
     const [historyIndex, setHistoryIndex] = useState(-1);
-
     const [startPos, setStartPos] = useState({ x: 0, y: 0 });
     const [panStart, setPanStart] = useState({ x: 0, y: 0 });
-    const [snapshot, setSnapshot] = useState(null);
-
     const [scale, setScale] = useState(1);
     const [pan, setPan] = useState({ x: 0, y: 0 });
-
     const [showClearConfirm, setShowClearConfirm] = useState(false);
     const currentMousePos = useRef({ x: 0, y: 0 });
 
-    const centerCanvas = () => {
+    
+    useEffect(() => {
+        setDiscordActivity('drawing');
+        return () => clearDiscordActivity();
+    }, [setDiscordActivity, clearDiscordActivity]);
+
+    const centerCanvas = useCallback(() => {
         if (containerRef.current && canvasRef.current) {
             const cWidth = containerRef.current.clientWidth;
             const cHeight = containerRef.current.clientHeight;
-            
             const baseScale = Math.min((cWidth - 40) / 1600, (cHeight - 40) / (1600 / aspectRatio));
             
             setScale(baseScale);
@@ -176,24 +145,28 @@ const DrawingBoard = ({ onSave, aspectRatio = 3.24 }) => {
                 y: (cHeight - (1600 / aspectRatio) * baseScale) / 2
             });
         }
-    };
+    }, [aspectRatio]);
 
     useEffect(() => {
-        const canvas = canvasRef.current;
-        canvas.width = 1600; 
-        canvas.height = 1600 / aspectRatio;
+        const initCtx = (canvas, isDraft = false) => {
+            canvas.width = 1600;
+            canvas.height = 1600 / aspectRatio;
+            const ctx = canvas.getContext('2d', { willReadFrequently: !isDraft });
+            ctx.lineCap = 'round';
+            ctx.lineJoin = 'round';
+            return ctx;
+        };
 
-        const ctx = canvas.getContext('2d', { willReadFrequently: true });
-        ctx.lineCap = 'round';
-        ctx.lineJoin = 'round';
+        contextRef.current = initCtx(canvasRef.current, false);
+        draftContextRef.current = initCtx(draftCanvasRef.current, true);
+
         
-        ctx.fillStyle = '#000000';
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        contextRef.current.fillStyle = '#000000';
+        contextRef.current.fillRect(0, 0, canvasRef.current.width, canvasRef.current.height);
         
-        contextRef.current = ctx;
         saveState();
         setTimeout(centerCanvas, 100);
-    }, [aspectRatio]);
+    }, [aspectRatio, centerCanvas]);
 
     useEffect(() => {
         const container = containerRef.current;
@@ -202,7 +175,6 @@ const DrawingBoard = ({ onSave, aspectRatio = 3.24 }) => {
         const handleWheel = (e) => {
             e.preventDefault();
             const scaleAdjust = e.deltaY < 0 ? 1.1 : 0.9;
-            
             setScale(prev => {
                 const newScale = Math.min(Math.max(0.1, prev * scaleAdjust), 10);
                 setPan(prevPan => {
@@ -224,11 +196,9 @@ const DrawingBoard = ({ onSave, aspectRatio = 3.24 }) => {
 
     useEffect(() => {
         const handleKeyDown = (e) => {
-            if (e.code === 'Space' && !e.repeat) {
-                if (e.target.tagName !== 'INPUT' && e.target.tagName !== 'TEXTAREA') {
-                    e.preventDefault();
-                    setIsSpaceDown(true);
-                }
+            if (e.code === 'Space' && !e.repeat && e.target.tagName !== 'INPUT') {
+                e.preventDefault();
+                setIsSpaceDown(true);
             }
         };
         const handleKeyUp = (e) => {
@@ -245,6 +215,7 @@ const DrawingBoard = ({ onSave, aspectRatio = 3.24 }) => {
         };
     }, []);
 
+    
     useEffect(() => {
         let raf;
         const sprayLoop = () => {
@@ -260,11 +231,7 @@ const DrawingBoard = ({ onSave, aspectRatio = 3.24 }) => {
                 for (let i = 0; i < density; i++) {
                     const angle = Math.random() * Math.PI * 2;
                     const r = Math.random() * radius;
-                    ctx.fillRect(
-                        pos.x + r * Math.cos(angle), 
-                        pos.y + r * Math.sin(angle), 
-                        1, 1
-                    );
+                    ctx.fillRect(pos.x + r * Math.cos(angle), pos.y + r * Math.sin(angle), 1, 1);
                 }
             }
             raf = requestAnimationFrame(sprayLoop);
@@ -272,25 +239,6 @@ const DrawingBoard = ({ onSave, aspectRatio = 3.24 }) => {
         if (isDrawing && tool === TOOLS.SPRAY) raf = requestAnimationFrame(sprayLoop);
         return () => cancelAnimationFrame(raf);
     }, [isDrawing, tool, size, color, opacity]);
-
-    const adjustZoom = (multiplier) => {
-        if (!containerRef.current) return;
-        const cWidth = containerRef.current.clientWidth;
-        const cHeight = containerRef.current.clientHeight;
-
-        setScale(prev => {
-            const newScale = Math.min(Math.max(0.1, prev * multiplier), 10);
-            setPan(prevPan => {
-                const mouseX = cWidth / 2;
-                const mouseY = cHeight / 2;
-                return {
-                    x: mouseX - (mouseX - prevPan.x) * (newScale / prev),
-                    y: mouseY - (mouseY - prevPan.y) * (newScale / prev)
-                };
-            });
-            return newScale;
-        });
-    };
 
     const saveState = () => {
         const data = canvasRef.current.toDataURL();
@@ -322,30 +270,9 @@ const DrawingBoard = ({ onSave, aspectRatio = 3.24 }) => {
         };
     };
 
-    const handleGlobalPicker = async () => {
-        if (!window.EyeDropper) {
-            showIslandAlert('error', 'Ваш браузер не поддерживает эту функцию', '❌'); 
-            return;
-        }
-        try {
-            const eyeDropper = new window.EyeDropper();
-            const result = await eyeDropper.open();
-            setColor(result.sRGBHex);
-            setTool(TOOLS.PEN);
-        } catch (e) {
-            console.log("Global color picker cancelled");
-        }
-    };
-
-    
     const handlePointerDown = (e) => {
-        
         e.preventDefault(); 
-        
-        
-        if (e.pointerId) {
-            e.currentTarget.setPointerCapture(e.pointerId);
-        }
+        if (e.pointerId) e.currentTarget.setPointerCapture(e.pointerId);
 
         if (e.button === 1 || tool === TOOLS.PAN || isSpaceDown) {
             setIsPanning(true);
@@ -372,7 +299,6 @@ const DrawingBoard = ({ onSave, aspectRatio = 3.24 }) => {
 
         setStartPos(pos);
         setIsDrawing(true);
-        setSnapshot(contextRef.current.getImageData(0, 0, canvasRef.current.width, canvasRef.current.height));
 
         if (tool === TOOLS.PEN || tool === TOOLS.ERASER) {
             contextRef.current.beginPath();
@@ -384,6 +310,13 @@ const DrawingBoard = ({ onSave, aspectRatio = 3.24 }) => {
     };
 
     const handlePointerMove = (e) => {
+        
+        if (brushCursorRef.current) {
+            const isBrushTool = [TOOLS.PEN, TOOLS.ERASER, TOOLS.SPRAY].includes(tool);
+            brushCursorRef.current.style.transform = `translate(${e.clientX}px, ${e.clientY}px)`;
+            brushCursorRef.current.style.opacity = (!isPanning && !isSpaceDown && isBrushTool) ? 1 : 0;
+        }
+
         if (isPanning) {
             setPan({ x: e.clientX - panStart.x, y: e.clientY - panStart.y });
             return;
@@ -394,76 +327,110 @@ const DrawingBoard = ({ onSave, aspectRatio = 3.24 }) => {
 
         if (!isDrawing) return;
         
-        const ctx = contextRef.current;
-
         if (tool === TOOLS.PEN || tool === TOOLS.ERASER) {
-            ctx.lineTo(pos.x, pos.y);
-            ctx.stroke();
-        } else if (tool !== TOOLS.SPRAY) {
-            ctx.putImageData(snapshot, 0, 0);
-            ctx.beginPath();
-            ctx.strokeStyle = color;
-            ctx.lineWidth = size;
-            ctx.globalAlpha = opacity;
+            contextRef.current.lineTo(pos.x, pos.y);
+            contextRef.current.stroke();
+        } else if (tool !== TOOLS.SPRAY && tool !== TOOLS.FILL && tool !== TOOLS.PICKER) {
+            
+            const dCtx = draftContextRef.current;
+            dCtx.clearRect(0, 0, draftCanvasRef.current.width, draftCanvasRef.current.height);
+            dCtx.beginPath();
+            dCtx.strokeStyle = color;
+            dCtx.lineWidth = size;
+            dCtx.globalAlpha = opacity;
 
             if (tool === TOOLS.LINE) {
-                ctx.moveTo(startPos.x, startPos.y);
-                ctx.lineTo(pos.x, pos.y);
+                dCtx.moveTo(startPos.x, startPos.y); dCtx.lineTo(pos.x, pos.y);
             } else if (tool === TOOLS.ARROW) {
-                ctx.moveTo(startPos.x, startPos.y);
-                ctx.lineTo(pos.x, pos.y);
+                dCtx.moveTo(startPos.x, startPos.y); dCtx.lineTo(pos.x, pos.y);
                 const headlen = Math.max(10, size * 2);
                 const angle = Math.atan2(pos.y - startPos.y, pos.x - startPos.x);
-                ctx.lineTo(pos.x - headlen * Math.cos(angle - Math.PI / 6), pos.y - headlen * Math.sin(angle - Math.PI / 6));
-                ctx.moveTo(pos.x, pos.y);
-                ctx.lineTo(pos.x - headlen * Math.cos(angle + Math.PI / 6), pos.y - headlen * Math.sin(angle + Math.PI / 6));
+                dCtx.lineTo(pos.x - headlen * Math.cos(angle - Math.PI/6), pos.y - headlen * Math.sin(angle - Math.PI/6));
+                dCtx.moveTo(pos.x, pos.y);
+                dCtx.lineTo(pos.x - headlen * Math.cos(angle + Math.PI/6), pos.y - headlen * Math.sin(angle + Math.PI/6));
             } else if (tool === TOOLS.RECT) {
-                ctx.strokeRect(startPos.x, startPos.y, pos.x - startPos.x, pos.y - startPos.y);
+                dCtx.strokeRect(startPos.x, startPos.y, pos.x - startPos.x, pos.y - startPos.y);
             } else if (tool === TOOLS.TRIANGLE) {
-                ctx.moveTo(startPos.x + (pos.x - startPos.x) / 2, startPos.y);
-                ctx.lineTo(startPos.x, pos.y);
-                ctx.lineTo(pos.x, pos.y);
-                ctx.closePath();
+                dCtx.moveTo(startPos.x + (pos.x - startPos.x)/2, startPos.y);
+                dCtx.lineTo(startPos.x, pos.y); dCtx.lineTo(pos.x, pos.y); dCtx.closePath();
             } else if (tool === TOOLS.CIRCLE) {
                 const radius = Math.sqrt(Math.pow(pos.x - startPos.x, 2) + Math.pow(pos.y - startPos.y, 2));
-                ctx.arc(startPos.x, startPos.y, radius, 0, 2 * Math.PI);
+                dCtx.arc(startPos.x, startPos.y, radius, 0, 2 * Math.PI);
             }
-            ctx.stroke();
+            dCtx.stroke();
         }
     };
 
     const handlePointerUp = (e) => {
-        
-        if (e && e.pointerId) {
-            e.currentTarget.releasePointerCapture(e.pointerId);
-        }
+        if (e && e.pointerId) e.currentTarget.releasePointerCapture(e.pointerId);
         
         if (isPanning) {
             setIsPanning(false);
             return;
         }
+
         if (isDrawing) {
             setIsDrawing(false);
+            
+            if ([TOOLS.LINE, TOOLS.ARROW, TOOLS.RECT, TOOLS.TRIANGLE, TOOLS.CIRCLE].includes(tool)) {
+                contextRef.current.globalAlpha = 1; 
+                contextRef.current.drawImage(draftCanvasRef.current, 0, 0);
+                draftContextRef.current.clearRect(0, 0, draftCanvasRef.current.width, draftCanvasRef.current.height);
+            }
             saveState();
         }
     };
 
-    const confirmClearCanvas = () => {
-        contextRef.current.fillStyle = '#000000';
-        contextRef.current.fillRect(0, 0, canvasRef.current.width, canvasRef.current.height);
-        saveState();
-        setShowClearConfirm(false);
+    const adjustZoom = (multiplier) => {
+        if (!containerRef.current) return;
+        const cWidth = containerRef.current.clientWidth;
+        const cHeight = containerRef.current.clientHeight;
+
+        setScale(prev => {
+            const newScale = Math.min(Math.max(0.1, prev * multiplier), 10);
+            setPan(prevPan => {
+                const mouseX = cWidth / 2; const mouseY = cHeight / 2;
+                return {
+                    x: mouseX - (mouseX - prevPan.x) * (newScale / prev),
+                    y: mouseY - (mouseY - prevPan.y) * (newScale / prev)
+                };
+            });
+            return newScale;
+        });
     };
 
+    const handleGlobalPicker = async () => {
+        if (!window.EyeDropper) return showIslandAlert('error', 'Ваш браузер не поддерживает эту функцию', '❌'); 
+        try {
+            const result = await new window.EyeDropper().open();
+            setColor(result.sRGBHex);
+            setTool(TOOLS.PEN);
+        } catch (e) {  }
+    };
+
+    
     const isPanMode = tool === TOOLS.PAN || isSpaceDown;
-    let cursorStyle = 'crosshair';
-    if (isPanning) cursorStyle = 'grabbing';
-    else if (isPanMode) cursorStyle = 'grab';
-    else if (tool === TOOLS.PICKER) cursorStyle = 'crosshair';
-    else if (tool === TOOLS.FILL) cursorStyle = 'crosshair'; 
+    let containerCursor = 'none'; 
+    if (isPanning) containerCursor = 'grabbing';
+    else if (isPanMode) containerCursor = 'grab';
+    else if (tool === TOOLS.PICKER || tool === TOOLS.FILL) containerCursor = 'crosshair';
 
     return (
         <div className="drawing-studio">
+            {}
+            <div 
+                ref={brushCursorRef}
+                style={{
+                    position: 'fixed', top: 0, left: 0, pointerEvents: 'none', zIndex: 9999,
+                    width: size * scale, height: size * scale,
+                    marginLeft: -(size * scale) / 2, marginTop: -(size * scale) / 2,
+                    borderRadius: '50%', border: '1.5px solid white',
+                    boxShadow: '0 0 0 1px rgba(0,0,0,0.5), inset 0 0 0 1px rgba(0,0,0,0.5)',
+                    backgroundColor: tool === TOOLS.ERASER ? 'rgba(255,255,255,0.4)' : color,
+                    opacity: 0, transition: 'opacity 0.1s'
+                }}
+            />
+
             {showClearConfirm && (
                 <div className="drawing-local-modal-overlay">
                     <div className="drawing-local-modal">
@@ -471,62 +438,41 @@ const DrawingBoard = ({ onSave, aspectRatio = 3.24 }) => {
                             title="Очистить холст?"
                             message="Вы уверены, что хотите удалить весь рисунок?"
                             confirmText="Очистить"
-                            onConfirm={confirmClearCanvas}
-                            onCancel={() => setShowClearConfirm(false)}
                             isDanger={true}
+                            onCancel={() => setShowClearConfirm(false)}
+                            onConfirm={() => {
+                                contextRef.current.fillStyle = '#000000';
+                                contextRef.current.fillRect(0, 0, canvasRef.current.width, canvasRef.current.height);
+                                saveState();
+                                setShowClearConfirm(false);
+                            }}
                         />
                     </div>
                 </div>
             )}
 
+            {}
             <div className="studio-sidebar custom-scrollbar-minimal">
-                <button className={`tool-btn ${tool === TOOLS.PAN ? 'active' : ''}`} onClick={() => setTool(TOOLS.PAN)} title="Перемещение (Пробел)">
-                    <ToolPanIcon />
-                </button>
+                <button className={`tool-btn ${tool === TOOLS.PAN ? 'active' : ''}`} onClick={() => setTool(TOOLS.PAN)} title="Перемещение (Пробел)"><ToolPanIcon /></button>
                 <div className="tool-divider" />
-                <button className={`tool-btn ${tool === TOOLS.PEN ? 'active' : ''}`} onClick={() => setTool(TOOLS.PEN)} title="Кисть">
-                    <ToolPenIcon />
-                </button>
-                <button className={`tool-btn ${tool === TOOLS.SPRAY ? 'active' : ''}`} onClick={() => setTool(TOOLS.SPRAY)} title="Баллончик">
-                    <ToolSprayIcon />
-                </button>
-                <button className={`tool-btn ${tool === TOOLS.FILL ? 'active' : ''}`} onClick={() => setTool(TOOLS.FILL)} title="Заливка">
-                    <ToolFillIcon />
-                </button>
-                <button className={`tool-btn ${tool === TOOLS.ERASER ? 'active' : ''}`} onClick={() => setTool(TOOLS.ERASER)} title="Ластик">
-                    <ToolEraserIcon />
-                </button>
+                <button className={`tool-btn ${tool === TOOLS.PEN ? 'active' : ''}`} onClick={() => setTool(TOOLS.PEN)} title="Кисть"><ToolPenIcon /></button>
+                <button className={`tool-btn ${tool === TOOLS.SPRAY ? 'active' : ''}`} onClick={() => setTool(TOOLS.SPRAY)} title="Баллончик"><ToolSprayIcon /></button>
+                <button className={`tool-btn ${tool === TOOLS.FILL ? 'active' : ''}`} onClick={() => setTool(TOOLS.FILL)} title="Заливка"><ToolFillIcon /></button>
+                <button className={`tool-btn ${tool === TOOLS.ERASER ? 'active' : ''}`} onClick={() => setTool(TOOLS.ERASER)} title="Ластик"><ToolEraserIcon /></button>
                 <div className="tool-divider" />
-                <button className={`tool-btn ${tool === TOOLS.PICKER ? 'active' : ''}`} onClick={() => setTool(TOOLS.PICKER)} title="Пипетка (Холст)">
-                    <ToolPickerIcon />
-                </button>
-                {window.EyeDropper && (
-                    <button className="tool-btn" onClick={handleGlobalPicker} title="Пипетка (Весь экран)">
-                        <ToolGlobalPickerIcon />
-                    </button>
-                )}
+                <button className={`tool-btn ${tool === TOOLS.PICKER ? 'active' : ''}`} onClick={() => setTool(TOOLS.PICKER)} title="Пипетка (Холст)"><ToolPickerIcon /></button>
+                {window.EyeDropper && <button className="tool-btn" onClick={handleGlobalPicker} title="Пипетка (Весь экран)"><ToolGlobalPickerIcon /></button>}
                 <div className="tool-divider" />
-                <button className={`tool-btn ${tool === TOOLS.LINE ? 'active' : ''}`} onClick={() => setTool(TOOLS.LINE)} title="Линия">
-                    <ToolLineIcon />
-                </button>
-                <button className={`tool-btn ${tool === TOOLS.ARROW ? 'active' : ''}`} onClick={() => setTool(TOOLS.ARROW)} title="Стрелка">
-                    <ToolArrowIcon />
-                </button>
-                <button className={`tool-btn ${tool === TOOLS.RECT ? 'active' : ''}`} onClick={() => setTool(TOOLS.RECT)} title="Прямоугольник">
-                    <ToolRectIcon />
-                </button>
-                <button className={`tool-btn ${tool === TOOLS.TRIANGLE ? 'active' : ''}`} onClick={() => setTool(TOOLS.TRIANGLE)} title="Треугольник">
-                    <ToolTriangleIcon />
-                </button>
-                <button className={`tool-btn ${tool === TOOLS.CIRCLE ? 'active' : ''}`} onClick={() => setTool(TOOLS.CIRCLE)} title="Круг">
-                    <ToolCircleIcon />
-                </button>
+                <button className={`tool-btn ${tool === TOOLS.LINE ? 'active' : ''}`} onClick={() => setTool(TOOLS.LINE)} title="Линия"><ToolLineIcon /></button>
+                <button className={`tool-btn ${tool === TOOLS.ARROW ? 'active' : ''}`} onClick={() => setTool(TOOLS.ARROW)} title="Стрелка"><ToolArrowIcon /></button>
+                <button className={`tool-btn ${tool === TOOLS.RECT ? 'active' : ''}`} onClick={() => setTool(TOOLS.RECT)} title="Прямоугольник"><ToolRectIcon /></button>
+                <button className={`tool-btn ${tool === TOOLS.TRIANGLE ? 'active' : ''}`} onClick={() => setTool(TOOLS.TRIANGLE)} title="Треугольник"><ToolTriangleIcon /></button>
+                <button className={`tool-btn ${tool === TOOLS.CIRCLE ? 'active' : ''}`} onClick={() => setTool(TOOLS.CIRCLE)} title="Круг"><ToolCircleIcon /></button>
                 <div className="tool-divider" />
-                <button className="tool-btn danger" onClick={() => setShowClearConfirm(true)} title="Очистить всё">
-                    <TrashIcon size={22} />
-                </button>
+                <button className="tool-btn danger" onClick={() => setShowClearConfirm(true)} title="Очистить всё"><TrashIcon size={22} /></button>
             </div>
 
+            {}
             <div className="studio-main">
                 <div 
                     className="canvas-container" 
@@ -536,73 +482,55 @@ const DrawingBoard = ({ onSave, aspectRatio = 3.24 }) => {
                     onPointerUp={handlePointerUp}
                     onPointerCancel={handlePointerUp}
                     onPointerLeave={handlePointerUp}
-                    style={{ touchAction: 'none' }}
+                    style={{ touchAction: 'none', cursor: containerCursor }}
                 >
-                    <canvas
-                        ref={canvasRef}
-                        style={{
-                            position: 'absolute',
-                            transformOrigin: '0 0',
-                            transform: `translate(${pan.x}px, ${pan.y}px) scale(${scale})`,
-                            cursor: cursorStyle
-                        }}
-                    />
+                    {}
+                    <div style={{
+                        position: 'absolute',
+                        transformOrigin: '0 0',
+                        transform: `translate(${pan.x}px, ${pan.y}px) scale(${scale})`,
+                    }}>
+                        <canvas ref={canvasRef} style={{ position: 'absolute', top: 0, left: 0, zIndex: 1 }} />
+                        <canvas ref={draftCanvasRef} style={{ position: 'absolute', top: 0, left: 0, zIndex: 2, pointerEvents: 'none' }} />
+                    </div>
                     
                     <div className="zoom-controls">
-                        <button onClick={() => adjustZoom(1.2)} title="Приблизить">
-                            <ZoomInIcon />
-                        </button>
-                        <button onClick={centerCanvas} title="Центрировать">
-                            {Math.round(scale * 100)}%
-                        </button>
-                        <button onClick={() => adjustZoom(0.8)} title="Отдалить">
-                            <ZoomOutIcon />
-                        </button>
+                        <button onClick={() => adjustZoom(1.2)} title="Приблизить"><ZoomInIcon /></button>
+                        <button onClick={centerCanvas} title="Центрировать">{Math.round(scale * 100)}%</button>
+                        <button onClick={() => adjustZoom(0.8)} title="Отдалить"><ZoomOutIcon /></button>
                     </div>
                 </div>
 
+                {}
                 <div className="studio-footer custom-scrollbar">
                     <div className="history-ctrls">
-                        <button onClick={() => loadState(historyIndex - 1)} disabled={historyIndex <= 0}>
-                            <NavBackIcon size={20} />
-                        </button>
-                        <button onClick={() => loadState(historyIndex + 1)} disabled={historyIndex >= history.length - 1}>
-                            <NavForwardIcon size={20} />
-                        </button>
+                        <button onClick={() => loadState(historyIndex - 1)} disabled={historyIndex <= 0}><NavBackIcon size={20} /></button>
+                        <button onClick={() => loadState(historyIndex + 1)} disabled={historyIndex >= history.length - 1}><NavForwardIcon size={20} /></button>
                     </div>
 
                     <div className="color-palette">
                         <input 
-                            type="color" 
-                            className="color-picker-native"
-                            value={color}
-                            onChange={(e) => { setColor(e.target.value); if(tool === TOOLS.ERASER || tool === TOOLS.PAN || tool === TOOLS.PICKER) setTool(TOOLS.PEN); }}
-                            title="Свой цвет"
+                            type="color" className="color-picker-native" value={color} title="Свой цвет"
+                            onChange={(e) => { setColor(e.target.value); if([TOOLS.ERASER, TOOLS.PAN, TOOLS.PICKER].includes(tool)) setTool(TOOLS.PEN); }}
                         />
                         {COLORS.map(c => (
                             <div 
                                 key={c} 
-                                className={`color-item ${color.toLowerCase() === c.toLowerCase() && tool !== TOOLS.ERASER && tool !== TOOLS.PAN && tool !== TOOLS.PICKER ? 'selected' : ''}`}
+                                className={`color-item ${color.toLowerCase() === c.toLowerCase() && ![TOOLS.ERASER, TOOLS.PAN, TOOLS.PICKER].includes(tool) ? 'selected' : ''}`}
                                 style={{ backgroundColor: c }}
-                                onClick={() => { setColor(c); if(tool === TOOLS.ERASER || tool === TOOLS.PAN || tool === TOOLS.PICKER) setTool(TOOLS.PEN); }}
+                                onClick={() => { setColor(c); if([TOOLS.ERASER, TOOLS.PAN, TOOLS.PICKER].includes(tool)) setTool(TOOLS.PEN); }}
                             />
                         ))}
                     </div>
 
                     <div className="prop-group">
-                        <label>
-                            <span>Размер</span>
-                            <span>{size}px</span>
-                        </label>
-                        <input type="range" min="1" max="100" value={size} onChange={e => setSize(parseInt(e.target.value))} />
+                        <label><span>Размер</span><span>{size}px</span></label>
+                        <input type="range" min="1" max="150" value={size} onChange={e => setSize(parseInt(e.target.value))} />
                     </div>
 
                     <div className="prop-group">
-                        <label>
-                            <span>Непрозрачность</span>
-                            <span>{Math.round(opacity * 100)}%</span>
-                        </label>
-                        <input type="range" min="0.1" max="1" step="0.1" value={opacity} onChange={e => setOpacity(parseFloat(e.target.value))} />
+                        <label><span>Непрозрачность</span><span>{Math.round(opacity * 100)}%</span></label>
+                        <input type="range" min="0.05" max="1" step="0.05" value={opacity} onChange={e => setOpacity(parseFloat(e.target.value))} />
                     </div>
 
                     <button className="studio-save-btn" onClick={() => canvasRef.current.toBlob(onSave, 'image/png')}>

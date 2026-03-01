@@ -5,6 +5,9 @@ import { Shimmer } from '../../Skeletons';
 import { useModalStore } from '../../../store/modalStore';
 import VerificationModal from '../VerificationModal';
 import { VerifiedCheck, ClockCircle, DangerCircle } from "@solar-icons/react";
+import { getCachedUrl } from '../../../utils/assetHelper';
+
+const SITE_DOMAIN = 'https://xn--d1ah4a.com';
 
 const AccountSettings = ({ user, setCurrentUser, setStatus }) => {
     const openModal = useModalStore(state => state.openModal);
@@ -19,16 +22,13 @@ const AccountSettings = ({ user, setCurrentUser, setStatus }) => {
     const [pins, setPins] = useState([]);
     const [pinsLoading, setPinsLoading] = useState(true);
     
-    
     const [verificationStatus, setVerificationStatus] = useState('none');
 
-    
     useEffect(() => {
         let isMounted = true;
 
         const fetchData = async () => {
             try {
-                
                 const pinsRes = await (apiClient.getMyPins ? apiClient.getMyPins() : window.api.call('/users/me/pins', 'GET'));
                 if (isMounted) {
                     if (pinsRes && Array.isArray(pinsRes.data)) {
@@ -37,7 +37,6 @@ const AccountSettings = ({ user, setCurrentUser, setStatus }) => {
                         setPins([]); 
                     }
                 }
-                
                 
                 if (!user?.isVerified) {
                     const verifRes = await (apiClient.getVerificationStatus 
@@ -61,7 +60,6 @@ const AccountSettings = ({ user, setCurrentUser, setStatus }) => {
         return () => { isMounted = false; };
     }, [user?.isVerified]);
 
-    
     const handleSave = async () => {
         setLoading(true);
         try {
@@ -79,7 +77,6 @@ const AccountSettings = ({ user, setCurrentUser, setStatus }) => {
         }
     };
 
-    
     const togglePin = async (slug, isActive) => {
         try {
             if (isActive) {
@@ -129,7 +126,6 @@ const AccountSettings = ({ user, setCurrentUser, setStatus }) => {
             <div className="settings-section-title">Верификация</div>
             
             {user?.isVerified ? (
-                
                 <div style={{
                     background: 'rgba(29, 155, 240, 0.1)', 
                     padding: '12px 16px', borderRadius: '16px', 
@@ -141,7 +137,6 @@ const AccountSettings = ({ user, setCurrentUser, setStatus }) => {
                     Ваш аккаунт подтвержден
                 </div>
             ) : verificationStatus === 'pending' ? (
-                
                 <div style={{
                     background: 'rgba(255, 173, 31, 0.1)', 
                     padding: '12px 16px', borderRadius: '16px', 
@@ -154,7 +149,6 @@ const AccountSettings = ({ user, setCurrentUser, setStatus }) => {
                     Заявка на рассмотрении
                 </div>
             ) : (
-                
                 <div className="settings-option" onClick={() => openModal(<VerificationModal />)}>
                     <div className="settings-option-info">
                         <span className="settings-option-name" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
@@ -201,9 +195,9 @@ const AccountSettings = ({ user, setCurrentUser, setStatus }) => {
                         <div key={pin.slug} className="settings-option" onClick={() => togglePin(pin.slug, pin.isActive)}>
                             <div style={{display: 'flex', alignItems: 'center', gap: 16}}>
                                 <img 
-                                    src={`/assets/pins/${pin.slug}.png`} 
+                                    src={getCachedUrl(`${SITE_DOMAIN}/assets/pins/${pin.slug}.png`)} 
                                     alt={pin.name} 
-                                    style={{width: 36, height: 36}} 
+                                    style={{width: 36, height: 36, objectFit: 'contain'}} 
                                     onError={(e) => e.target.style.display='none'}
                                 />
                                 <div className="settings-option-info">

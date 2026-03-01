@@ -15,7 +15,9 @@ const AppearanceSettings = ({ setStatus, reopenModal }) => {
     const {
         iconStyle, setIconStyle,
         fontFamily, setFontFamily,
-        emojiFamily, setEmojiFamily
+        emojiFamily, setEmojiFamily,
+        scrollbarMode, setScrollbarMode,
+        useFullNumbers, setUseFullNumbers 
     } = useAppearanceStore();
 
     const openModal = useModalStore(state => state.openModal);
@@ -302,6 +304,33 @@ const AppearanceSettings = ({ setStatus, reopenModal }) => {
                         <div className="bg-info"><IconInfo size={16}/><span>Прямые ссылки на видео могут не работать. Рекомендуется использовать видео с хостингов (например, Imgur).</span></div>
                     </div>
                 )}
+            </div>
+
+            <div className="settings-section-title">Интерфейс</div>
+            
+            <div className="settings-option" onClick={() => setScrollbarMode(scrollbarMode === 'hidden' ? 'visible' : 'hidden')}>
+                <div className="settings-option-left">
+                    <div className="settings-icon">🖱️</div>
+                    <div className="settings-option-info">
+                        <span className="settings-option-name">Скрыть скроллбар</span>
+                        <span className="settings-option-desc">Полностью убрать видимую полосу прокрутки экрана</span>
+                    </div>
+                </div>
+                <button className={`toggle-switch ${scrollbarMode === 'hidden' ? 'active' : ''}`}><span className="toggle-thumb" /></button>
+            </div>
+
+            {}
+            <div className="settings-option" onClick={() => setUseFullNumbers(!useFullNumbers)}>
+                <div className="settings-option-left">
+                    <div className="settings-icon">🔢</div>
+                    <div className="settings-option-info">
+                        <span className="settings-option-name">Полные числа</span>
+                        <span className="settings-option-desc">Отображать 1 500 вместо 1.5K</span>
+                    </div>
+                </div>
+                <button className={`toggle-switch ${useFullNumbers ? 'active' : ''}`}>
+                    <span className="toggle-thumb" />
+                </button>
             </div>
 
             <div className="settings-section-title">Эффекты</div>

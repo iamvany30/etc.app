@@ -37,7 +37,7 @@ const ProfileMenu = ({ user, anchorRect, onSettingsClick, onLogoutClick, onClose
             left: anchorRect.left,
             width: 270,
             transform: 'translateY(-100%)', 
-            zIndex: 10000
+            zIndex: 'var(--z-profile-menu)'
         };
     }, [anchorRect]);
 

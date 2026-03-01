@@ -47,7 +47,7 @@
     box-shadow: var(--ep-shadow);
     display: flex;
     flex-direction: column;
-    z-index: 9999;
+    z-index: var(--z-titlebar);
     font-family: var(--ep-font-family);
     overflow: hidden;
     animation: ep-fade-in 0.2s ease-out;
@@ -303,19 +303,4 @@
 @keyframes ep-tab-slide {
     from { transform: scaleX(0); }
     to { transform: scaleX(1); }
-}
-
-
-.custom-scrollbar::-webkit-scrollbar {
-    width: 6px;
-}
-.custom-scrollbar::-webkit-scrollbar-track {
-    background: transparent;
-}
-.custom-scrollbar::-webkit-scrollbar-thumb {
-    background: rgba(0,0,0,0.1);
-    border-radius: 10px;
-}
-.custom-scrollbar::-webkit-scrollbar-thumb:hover {
-    background: rgba(0,0,0,0.2);
 }

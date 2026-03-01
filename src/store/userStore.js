@@ -1,4 +1,4 @@
-/* @source src/store/userStore.js */
+
 import { create } from 'zustand';
 import { FeedCache } from '../core/FeedCache';
 
@@ -16,6 +16,7 @@ export const useUserStore = create((set, get) => ({
 
             if (newUser) {
                 const safeUser = { ...newUser };
+                
                 delete safeUser.accessToken;
                 delete safeUser.refreshToken;
                 localStorage.setItem('nowkie_user', JSON.stringify(safeUser));
@@ -32,7 +33,9 @@ export const useUserStore = create((set, get) => ({
             try {
                 const list = await window.api.invoke('auth:get-accounts');
                 if (Array.isArray(list)) set({ accounts: list });
-            } catch (e) {}
+            } catch (e) {
+                console.error("[UserStore] Failed to refresh accounts list", e);
+            }
         }
     },
 
@@ -43,6 +46,7 @@ export const useUserStore = create((set, get) => ({
         const targetAccount = state.accounts.find(acc => acc.id === userId);
         if (!targetAccount) return;
 
+        
         set({ isOverlayExiting: false, switchingTarget: targetAccount });
 
         try {
@@ -52,6 +56,7 @@ export const useUserStore = create((set, get) => ({
             
             if (!switchResult.success) {
                 console.error("[UserStore] Ошибка переключения:", switchResult.error);
+                
                 
                 if (switchResult.error === 'TOKEN_DEAD') {
                     console.log(`[UserStore] Токен аккаунта ${targetAccount.username} мертв. Удаляем и ищем следующий...`);
@@ -75,7 +80,9 @@ export const useUserStore = create((set, get) => ({
                 throw new Error(switchResult.error);
             }
 
+            
             FeedCache.clear();
+            
             
             const newUserProfile = await window.api.invoke('get-init-user');
             if (!newUserProfile || newUserProfile.error) {
@@ -94,12 +101,15 @@ export const useUserStore = create((set, get) => ({
                 }
             }
 
+            
             const elapsed = Date.now() - startTime;
             const remaining = Math.max(0, 1200 - elapsed);
             if (remaining > 0) await new Promise(r => setTimeout(r, remaining));
 
             state.setCurrentUser(newUserProfile);
             state.refreshAccountsList();
+            
+            
             setTimeout(() => {
                 set({ isOverlayExiting: true });
                 setTimeout(() => {

@@ -1,18 +1,12 @@
-/* @source src/components/LockScreen.jsx */
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { LockKeyhole, Scanner, ArrowLeft } from '@solar-icons/react';
 import { useUserStore } from '../store/userStore';
 import '../styles/LockScreen.css';
 
 const LockScreen = () => {
-    
-    const [isLocked, setIsLocked] = useState(() => {
-        const enabled = localStorage.getItem('itd_app_lock_enabled') === 'true';
-        const pin = localStorage.getItem('itd_app_lock_pin');
-        
-        return enabled && typeof pin === 'string' && pin.length >= 4;
-    });
+    const currentUser = useUserStore(state => state.currentUser);
 
+    const [isLocked, setIsLocked] = useState(false);
     const [pinInput, setPinInput] = useState('');
     const [error, setError] = useState(false);
     const [showConfirmReset, setShowConfirmReset] = useState(false);
@@ -21,28 +15,40 @@ const LockScreen = () => {
 
     const hasAutoScanned = useRef(false);
 
-    
     useEffect(() => {
-        if (!isLocked) return;
+        if (currentUser?.id) {
+            const enabled = localStorage.getItem(`itd_lock_enabled_${currentUser.id}`) === 'true';
+            const pin = localStorage.getItem(`itd_lock_pin_${currentUser.id}`);
+            
+            if (enabled && pin && pin.length >= 4) {
+                setIsLocked(true);
+                setPinInput('');
+                hasAutoScanned.current = false;
+            } else {
+                setIsLocked(false);
+            }
+        } else {
+            setIsLocked(false);
+        }
+    }, [currentUser?.id]);
 
-        const correctPin = localStorage.getItem('itd_app_lock_pin');
+    useEffect(() => {
+        if (!isLocked || !currentUser) return;
 
-        
+        const correctPin = localStorage.getItem(`itd_lock_pin_${currentUser.id}`);
         if (!correctPin || correctPin.length < 4) return;
 
         if (pinInput === correctPin) {
-            
             setIsLocked(false);
             setPinInput('');
         } else if (pinInput.length >= correctPin.length && pinInput !== correctPin) {
-            
             setError(true);
             setTimeout(() => {
                 setPinInput('');
                 setError(false);
             }, 400);
         }
-    }, [pinInput, isLocked]);
+    }, [pinInput, isLocked, currentUser]);
 
     const handleKey = useCallback((num) => {
         if (pinInput.length < 10 && !error && !showConfirmReset) {
@@ -56,45 +62,35 @@ const LockScreen = () => {
         }
     }, [showConfirmReset]);
 
-    
     const handleBiometric = useCallback(async (isAuto = false) => {
         if (showConfirmReset || isScanning || !isLocked) return;
         
-        console.log(`[LockScreen] 🔒 Запуск биометрии. Авто-запуск: ${isAuto}`);
         setIsScanning(true);
         try {
             if (!window.api || !window.api.invoke) {
-                throw new Error('Биометрия доступна только в десктопном приложении');
+                throw new Error('Biometric not available');
             }
 
-            console.log('[LockScreen] ⏳ Ожидание ответа от ОС (Windows Hello)...');
             const res = await window.api.invoke('auth:biometric');
             
-            console.log('[LockScreen] 📥 Ответ от ОС получен:', res);
-            
             if (res && res.success === true) {
-                console.log('[LockScreen] ✅ Доступ разрешен!');
                 setIsLocked(false);
             } else {
-                throw new Error(res?.error || 'Отмена сканирования или ошибка ОС');
+                throw new Error(res?.error || 'Biometric failed');
             }
         } catch (e) {
-            console.error('[LockScreen] ❌ Ошибка биометрии:', e.message);
             if (!isAuto) {
                 setError(true);
                 setTimeout(() => setError(false), 400);
             }
         } finally {
             setIsScanning(false);
-            console.log('[LockScreen] ⏹️ Процесс сканирования завершен');
         }
     }, [showConfirmReset, isScanning, isLocked]);
 
-    
     useEffect(() => {
         if (isLocked && !hasAutoScanned.current) {
             hasAutoScanned.current = true;
-            
             const timer = setTimeout(() => {
                 handleBiometric(true);
             }, 500);
@@ -102,19 +98,15 @@ const LockScreen = () => {
         }
     }, [isLocked, handleBiometric]);
 
-    
     const handleForgotPinConfirm = async () => {
+        if (!currentUser) return;
         setIsLoggingOut(true);
         try {
             const store = useUserStore.getState();
-            const current = store.currentUser;
-            if (current) {
-                await store.logoutAccount(current.id);
-            }
+            await store.logoutAccount(currentUser.id);
             
-            
-            localStorage.removeItem('itd_app_lock_enabled');
-            localStorage.removeItem('itd_app_lock_pin');
+            localStorage.removeItem(`itd_lock_enabled_${currentUser.id}`);
+            localStorage.removeItem(`itd_lock_pin_${currentUser.id}`);
             
             window.location.reload();
         } catch (e) {
@@ -123,7 +115,6 @@ const LockScreen = () => {
         }
     };
 
-    
     useEffect(() => {
         const handleKeyDown = (e) => {
             if (!isLocked) return;
@@ -139,9 +130,9 @@ const LockScreen = () => {
         return () => window.removeEventListener('keydown', handleKeyDown);
     }, [isLocked, handleKey, handleDel, showConfirmReset]);
 
-    if (!isLocked) return null;
+    if (!isLocked || !currentUser) return null;
 
-    const correctPin = localStorage.getItem('itd_app_lock_pin');
+    const correctPin = localStorage.getItem(`itd_lock_pin_${currentUser.id}`);
     const pinLength = (correctPin && correctPin.length >= 4) ? correctPin.length : 4;
 
     return (
@@ -169,14 +160,13 @@ const LockScreen = () => {
                     <button 
                         className={`numpad-btn action-btn ${isScanning ? 'scanning' : ''}`} 
                         onClick={() => handleBiometric(false)} 
-                        title="Использовать биометрию"
                     >
                         <Scanner size={28} />
                     </button>
                     <button className="numpad-btn" onClick={() => handleKey('0')}>
                         0
                     </button>
-                    <button className="numpad-btn action-btn" onClick={handleDel} title="Стереть">
+                    <button className="numpad-btn action-btn" onClick={handleDel}>
                         <ArrowLeft size={28} />
                     </button>
                 </div>
@@ -186,7 +176,6 @@ const LockScreen = () => {
                 </button>
             </div>
 
-            {}
             {showConfirmReset && (
                 <div className="lock-reset-overlay">
                     <div className="lock-reset-dialog">

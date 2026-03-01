@@ -5,7 +5,7 @@
     inset: 0;
     width: 100vw;
     height: 100vh;
-    z-index: 20000;
+    z-index: var(--z-image-viewer);
     
     background-color: rgba(0, 0, 0, 0.88); 
     backdrop-filter: blur(25px);

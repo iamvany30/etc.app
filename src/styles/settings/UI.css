@@ -63,7 +63,9 @@
 .settings-save-btn {
     width: 100%; 
     padding: 16px; 
-    background: linear-gradient(135deg, var(--color-primary), var(--color-primary-hover, #1a8cd8));
+    
+    background: var(--color-primary);
+    
     color: #fff; 
     border: none; 
     border-radius: 16px;
@@ -72,26 +74,49 @@
     cursor: pointer; 
     margin-top: 16px;
     transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+    
     box-shadow: 0 8px 20px var(--color-primary-alpha);
+    position: relative;
+    overflow: hidden;
 }
+
 .settings-save-btn:hover:not(:disabled) { 
     transform: translateY(-2px);
+    
     box-shadow: 0 12px 25px var(--color-primary-alpha);
     filter: brightness(1.1);
 }
-.settings-save-btn:active:not(:disabled) { transform: scale(0.97); box-shadow: 0 4px 10px var(--color-primary-alpha); }
-.settings-save-btn:disabled { opacity: 0.5; cursor: default; transform: none; background: var(--color-border); color: var(--color-text-secondary); box-shadow: none; }
+
+.settings-save-btn:active:not(:disabled) { 
+    transform: scale(0.97); 
+    box-shadow: 0 4px 10px var(--color-primary-alpha); 
+}
+
+.settings-save-btn:disabled { 
+    opacity: 0.5; 
+    cursor: default; 
+    transform: none; 
+    background: var(--color-border); 
+    color: var(--color-text-secondary); 
+    box-shadow: none; 
+}
+
 
 .settings-save-btn.secondary {
     background: var(--color-item-bg);
     border: 1px solid var(--color-border);
     color: var(--color-text);
     box-shadow: 0 2px 8px rgba(0,0,0,0.02);
+    margin-top: 0;
 }
+
 .settings-save-btn.secondary:hover:not(:disabled) {
-    background: var(--color-card);
-    border-color: var(--color-text-secondary);
-    box-shadow: 0 6px 16px rgba(0,0,0,0.06);
+    
+    background: var(--color-primary-pastel);
+    color: var(--color-primary);
+    border-color: var(--color-primary-pastel-hover);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(var(--color-primary-rgb), 0.15);
 }
 
 
@@ -111,12 +136,16 @@
 }
 
 .settings-option:not([style*="cursor: default"]):hover { 
-    border-color: var(--color-primary-alpha); 
-    background: var(--color-card); 
+    
+    border-color: var(--color-primary-pastel-hover); 
+    background: var(--color-primary-pastel); 
     transform: translateY(-2px);
     box-shadow: 0 8px 24px rgba(0,0,0,0.06);
 }
-.settings-option:not([style*="cursor: default"]):active { transform: scale(0.98); }
+
+.settings-option:not([style*="cursor: default"]):active { 
+    transform: scale(0.98); 
+}
 
 .settings-option-info { display: flex; flex-direction: column; gap: 4px; flex: 1; min-width: 0; padding-right: 16px;}
 .settings-option-name { font-weight: 700; font-size: 15px; color: var(--color-text); line-height: 1.2; }
@@ -136,8 +165,13 @@
     cursor: pointer;
     box-shadow: inset 0 2px 5px rgba(0,0,0,0.1);
 }
+
 .toggle-switch:hover { background-color: var(--color-text-secondary); }
-.toggle-switch.active { background-color: var(--color-primary); box-shadow: inset 0 2px 5px rgba(0,0,0,0.2); }
+
+.toggle-switch.active { 
+    background-color: var(--color-primary); 
+    box-shadow: 0 0 15px var(--color-primary-alpha); 
+}
 
 .toggle-thumb {
     width: 24px; 
@@ -148,6 +182,7 @@
     transition: transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.2s;
     box-shadow: 0 2px 6px rgba(0,0,0,0.25);
 }
+
 .toggle-switch.active .toggle-thumb { transform: translateX(20px); }
 
 
@@ -164,13 +199,11 @@
 .status-message-inline.success { background: rgba(0, 186, 124, 0.1); color: #00ba7c; border-color: rgba(0, 186, 124, 0.2); }
 .status-message-inline.error { background: rgba(244, 33, 46, 0.1); color: #f4212e; border-color: rgba(244, 33, 46, 0.2); }
 
-
 @media (max-width: 768px) {
     .settings-option { padding: 16px; border-radius: 16px; }
     .form-input, .form-textarea, .form-select { padding: 14px 16px; font-size: 16px; }
     .settings-save-btn { padding: 16px; border-radius: 99px; }
 }
-
 
 .settings-badge {
     padding: 12px 16px;

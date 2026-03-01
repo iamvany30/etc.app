@@ -12,6 +12,11 @@ import GlobalPlayer from './GlobalPlayer';
 import { SidebarExpandIcon, SidebarCloseIcon } from './icons/CustomIcons';
 import '../styles/RightSidebar.css';
 
+
+import { useItdPlusStore } from '../store/itdPlusStore';
+import VerifiedBadgeWithTooltip from './VerifiedBadgeWithTooltip';
+
+const GOLD_VERIFIED_IDS = ['48f4cd67-58a2-4c0d-b1be-235fc4bb91a4'];
 const PROMOTED_USERNAMES = ['vany', "itdStatus"];
 
 const WidgetBox = ({ title, children, showMoreLink, className = "", delay = "0s", headerAccessory }) => (
@@ -56,8 +61,8 @@ const RightSidebar = () => {
     const downloads = useDownloadStore(state => state.downloads);
     const { isOpen, isMinimized, title, url, maximizeBrowser, closeBrowser } = useBrowser();
     
-    
     const currentUser = useUserStore(state => state.currentUser);
+    const itdPlusVerifiedUsers = useItdPlusStore(state => state.verifiedUsers);
 
     const activeUploads = Object.values(uploads).filter(u => u.status !== 'complete' && u.status !== 'error');
     const activeDownloads = Object.values(downloads);
@@ -68,26 +73,21 @@ const RightSidebar = () => {
         const fetchSidebarData = async () => {
             setLoading(true);
             try {
-                
                 const usersRes = await apiClient.getSuggestions();
                 let apiUsers = usersRes?.users || [];
 
-                
                 const promotedPromises = PROMOTED_USERNAMES.map(username =>
                     apiClient.getProfile(username).catch(() => null) 
                 );
                 const promotedResults = await Promise.all(promotedPromises);
 
-                
                 const promotedUsers = promotedResults
                     .map(res => res?.user || res?.data || res)
                     .filter(u => u && u.username && u.username !== currentUser?.username);
 
-                
                 const promotedSet = new Set(promotedUsers.map(u => u.username));
                 apiUsers = apiUsers.filter(u => !promotedSet.has(u.username));
 
-                
                 const finalUsers = [...promotedUsers, ...apiUsers].slice(0, 5);
 
                 setUsers(finalUsers);
@@ -214,15 +214,34 @@ const RightSidebar = () => {
             ) : (
                 users.length > 0 &&
                 <WidgetBox title="Кого читать" showMoreLink="/explore" delay="0s">
-                    {users.map((user, idx) => (
-                        <Link to={`/profile/${user.username}`} key={user.id || user.username} className="widget-item stagger-item" style={{ '--i': idx }}>
-                            <div className="avatar" style={{ width: 40, height: 40, fontSize: 20 }}>{user.avatar || "👤"}</div>
-                            <div className="widget-item-info">
-                                <span className="name">{user.displayName}</span>
-                                <span className="count">@{user.username}</span>
-                            </div>
-                        </Link>
-                    ))}
+                    {users.map((user, idx) => {
+                        
+                        const isGreenVerified = itdPlusVerifiedUsers.has(user.id) || itdPlusVerifiedUsers.has(user.username);
+                        const hasBlue = user.verified || user.isVerified;
+                        const hasGold = GOLD_VERIFIED_IDS.includes(user.id);
+
+                        return (
+                            <Link to={`/profile/${user.username}`} key={user.id || user.username} className="widget-item stagger-item" style={{ '--i': idx }}>
+                                <div className="avatar" style={{ width: 40, height: 40, fontSize: 20 }}>{user.avatar || "👤"}</div>
+                                <div className="widget-item-info">
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '4px', overflow: 'hidden' }}>
+                                        <span className="name" style={{ display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                            {user.displayName}
+                                        </span>
+                                        {}
+                                        {hasBlue ? (
+                                            <VerifiedBadgeWithTooltip type="blue" size={14} style={{ flexShrink: 0 }} />
+                                        ) : hasGold ? (
+                                            <VerifiedBadgeWithTooltip type="gold" size={14} style={{ flexShrink: 0 }} />
+                                        ) : isGreenVerified ? (
+                                            <VerifiedBadgeWithTooltip type="green" size={14} style={{ flexShrink: 0 }} />
+                                        ) : null}
+                                    </div>
+                                    <span className="count">@{user.username}</span>
+                                </div>
+                            </Link>
+                        );
+                    })}
                 </WidgetBox>
             )}
 

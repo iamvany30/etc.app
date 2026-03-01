@@ -3,6 +3,7 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { apiClient } from '../api/client';
 import { NotificationSkeleton } from '../components/Skeletons';
+import ScrollArea from '../components/ScrollArea';
 import '../styles/Notifications.css';
 
 import {
@@ -242,7 +243,7 @@ const NotificationsPage = () => {
                 </div>
             </header>
 
-            <div className="notifications-list-scroll content-fade-in">
+            <ScrollArea className="notifications-list-scroll content-fade-in">
                 {loading ? (
                     <div className="notifications-list">
                         {[1, 2, 3, 4, 5, 6, 7].map(i => <NotificationSkeleton key={i} />)}
@@ -265,7 +266,7 @@ const NotificationsPage = () => {
                     </div>
                 )}
                 <div style={{ height: '140px' }} />
-            </div>
+            </ScrollArea>
         </div>
     );
 };

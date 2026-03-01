@@ -1,0 +1,13 @@
+/* @source src/styles/ScrollArea.css */
+
+.custom-scroll-area {
+    flex: 1;
+    min-height: 0;
+    width: 100%;
+    overflow-y: auto !important; 
+    overflow-x: hidden;
+    scrollbar-gutter: stable !important; 
+    scroll-behavior: smooth;
+    -webkit-overflow-scrolling: touch;
+    position: relative;
+}

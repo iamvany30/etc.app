@@ -59,7 +59,7 @@ const ModalManager = () => {
             ref={overlayRef}
             onMouseDown={handleMouseDown}
             onMouseUp={handleMouseUp}
-            style={{ zIndex: 9000 }} 
+            style={{ zIndex: 'var(--z-modal-overlay)' }} 
         >
             <div 
                 className={`modal-content ${variant || 'glass'} ${isVisible ? 'active' : ''}`} 

@@ -24,24 +24,6 @@ let isHandlersRegistered = false;
 
 const activeNotifications = new Set();
 
-function decryptCookieEditorData(encryptedBase64, password) {
-    try {
-        const rawData = Buffer.from(encryptedBase64, 'base64');
-        const iv = rawData.subarray(0, 12);
-        const authTag = rawData.subarray(rawData.length - 16);
-        const encrypted = rawData.subarray(12, rawData.length - 16);
-        const salt = password + password;
-        const key = crypto.pbkdf2Sync(password, salt, 1024, 32, 'sha256');
-        const decipher = crypto.createDecipheriv('aes-256-gcm', key, iv);
-        decipher.setAuthTag(authTag);
-        let decrypted = decipher.update(encrypted, null, 'utf8');
-        decrypted += decipher.final('utf8');
-        return decrypted;
-    } catch (e) {
-        return null;
-    }
-}
-
 async function loginWithRefreshToken(refreshTokenStr) {
     if (!refreshTokenStr || refreshTokenStr.length < 10) {
         return { success: false, error: "Некорректный токен" };
@@ -292,34 +274,6 @@ ipcMain.handle('get-init-user', async () => {
             }
             return result;
         } catch (error) {
-            return { success: false, error: error.message };
-        }
-    });
-
-    ipcMain.handle('auth:manual-import', async (event, jsonString) => {
-        try {
-            await network.captureAndSaveCookies();
-            let cookies;
-            const importData = JSON.parse(jsonString);
-            if (importData?.data && typeof importData.data === 'string') {
-                const decryptedStr = decryptCookieEditorData(importData.data, "123");
-                if (!decryptedStr) return { success: false, error: "Не удалось расшифровать. Убедитесь, что пароль '123'" };
-                cookies = JSON.parse(decryptedStr);
-            } else if (Array.isArray(importData)) {
-                cookies = importData;
-            } else {
-                return { success: false, error: "Неизвестный формат JSON" };
-            }
-            if (!Array.isArray(cookies)) return { success: false, error: "Не получен массив куки" };
-            const sessionData = { cookies, localStorage: {}, userAgent: USER_AGENT, url: `${API_BASE}/feed` };
-            const result = await finalizeLoginFlow(sessionData);
-            if (result.success) {
-                const win = getMainWindow();
-                if (win) win.reload();
-            }
-            return result;
-        } catch (error) {
-            logDebug(`Manual import error: ${error.message}`);
             return { success: false, error: error.message };
         }
     });
@@ -640,6 +594,45 @@ ipcMain.handle('get-init-user', async () => {
             return { success: true };
         } catch(err) {
             return { success: false };
+        }
+    });
+
+    ipcMain.on('sys:set-progress', (e, { progress, mode }) => {
+        const win = getMainWindow();
+        if (win && !win.isDestroyed()) {
+            
+            win.setProgressBar(progress, { mode });
+        }
+    });
+
+    ipcMain.on('sys:set-badge', (e, count) => {
+        if (process.platform === 'darwin') {
+            app.setBadgeCount(count);
+        } else if (process.platform === 'win32') {
+            
+        }
+    });
+
+    ipcMain.on('sys:set-thumbar', (e, isPlaying) => {
+        const win = getMainWindow();
+        if (win && !win.isDestroyed() && process.platform === 'win32') {
+            win.setThumbarButtons([
+                {
+                    tooltip: 'Предыдущий трек',
+                    icon: nativeImage.createFromPath(path.join(PATHS.RESOURCES, 'prev.png')), 
+                    click() { win.webContents.send('media-control', 'prev'); }
+                },
+                {
+                    tooltip: isPlaying ? 'Пауза' : 'Играть',
+                    icon: nativeImage.createFromPath(path.join(PATHS.RESOURCES, isPlaying ? 'pause.png' : 'play.png')),
+                    click() { win.webContents.send('media-control', 'play-pause'); }
+                },
+                {
+                    tooltip: 'Следующий трек',
+                    icon: nativeImage.createFromPath(path.join(PATHS.RESOURCES, 'next.png')),
+                    click() { win.webContents.send('media-control', 'next'); }
+                }
+            ]);
         }
     });
 

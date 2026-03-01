@@ -121,16 +121,16 @@ const Snowfall = () => {
     return (
         <canvas
             ref={canvasRef}
-            style={{
-                position: 'fixed',
-                top: 0,
-                left: 0,
-                pointerEvents: 'none',
-                zIndex: 5, 
-                width: '100%',
-                height: '100%',
-                opacity: 0.7
-            }}
+style={{
+    position: 'fixed',
+    top: 0,
+    left: 0,
+    pointerEvents: 'none',
+    zIndex: 'var(--z-snowfall)', 
+    width: '100%',
+    height: '100%',
+    opacity: 0.7
+}}
         />
     );
 };

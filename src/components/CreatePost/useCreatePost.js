@@ -1,4 +1,4 @@
-
+/* @source src/components/CreatePost/useCreatePost.js */
 import React, { useState, useCallback, useRef, useEffect } from 'react';
 import { apiClient } from '../../api/client';
 import { request } from '../../api/core'; 
@@ -7,13 +7,14 @@ import { useUserStore } from '../../store/userStore';
 import { useIslandStore } from '../../store/islandStore';
 import PhoneVerificationModal from '../modals/PhoneVerificationModal';
 import DrawingBoard from '../DrawingBoard';
-import { parseAndCleanForBackend, MARKDOWN_CONFIG } from '../../utils/markdownUtils';
 import { storage } from '../../utils/storage';
 
-export const MAX_POST_LENGTH = 400;
+export const MAX_POST_LENGTH = 5000; 
 
 const DRAFT_TEXT_KEY = 'itd_post_draft_text';
+const DRAFT_SPANS_KEY = 'itd_post_draft_spans';
 const DRAFT_POLL_KEY = 'itd_post_draft_poll';
+const DRAFT_MEDIA_KEY = 'itd_post_draft_media'; 
 
 const useDebounce = (value, delay) => {
     const [debouncedValue, setDebouncedValue] = useState(value);
@@ -33,40 +34,77 @@ export const useCreatePost = (onPostCreated, wallId = null) => {
     const textareaRef = useRef(null);
 
     const [text, setTextState] = useState("");
+    const [spans, setSpansState] = useState([]); 
     const [pollData, setPollData] = useState(null);
+    const [attachments, setAttachments] = useState([]);
 
+    
     useEffect(() => {
         let isMounted = true;
         const loadDrafts = async () => {
             try {
-                const savedText = await storage.get(DRAFT_TEXT_KEY);
-                const savedPoll = await storage.get(DRAFT_POLL_KEY);
+                const [savedText, savedSpans, savedPoll, savedMedia] = await Promise.all([
+                    storage.get(DRAFT_TEXT_KEY),
+                    storage.get(DRAFT_SPANS_KEY),
+                    storage.get(DRAFT_POLL_KEY),
+                    storage.get(DRAFT_MEDIA_KEY)
+                ]);
                 
                 if (isMounted) {
                     if (savedText && !text) setTextState(savedText);
+                    if (savedSpans && spans.length === 0) setSpansState(savedSpans);
                     if (savedPoll && !pollData) setPollData(savedPoll); 
+                    
+                    if (savedMedia && Array.isArray(savedMedia) && savedMedia.length > 0) {
+                        const rehydratedAttachments = savedMedia.map(att => {
+                            let previewUrl = att.previewUrl;
+                            if (att.file instanceof Blob || att.file instanceof File) {
+                                try { previewUrl = URL.createObjectURL(att.file); } catch(e) {}
+                            } else if (att.serverData?.url) {
+                                previewUrl = att.serverData.url;
+                            } else if (att.url) {
+                                previewUrl = att.url;
+                            }
+                            const status = att.status === 'pending' || att.status === 'uploading' ? 'error' : att.status;
+                            return { ...att, previewUrl, status };
+                        });
+                        setAttachments(rehydratedAttachments);
+                    }
                 }
-            } catch (e) {
-                console.error("[useCreatePost] Ошибка загрузки черновика:", e);
-            }
+            } catch (e) { console.error(e); }
         };
         loadDrafts();
         return () => { isMounted = false; };
     }, []);
 
+    
+    useEffect(() => { storage.set(DRAFT_TEXT_KEY, text).catch(e => console.error(e)); }, [text]);
+    useEffect(() => { storage.set(DRAFT_SPANS_KEY, spans).catch(e => console.error(e)); }, [spans]);
     useEffect(() => {
-        storage.set(DRAFT_TEXT_KEY, text).catch(e => console.error(e));
-    }, [text]);
-
-    useEffect(() => {
-        if (pollData) {
-            storage.set(DRAFT_POLL_KEY, pollData).catch(e => console.error(e));
-        } else {
-            storage.remove(DRAFT_POLL_KEY).catch(e => console.error(e));
-        }
+        if (pollData) storage.set(DRAFT_POLL_KEY, pollData).catch(e => console.error(e));
+        else storage.remove(DRAFT_POLL_KEY).catch(e => console.error(e));
     }, [pollData]);
+    useEffect(() => {
+        const saveMediaDraft = async () => {
+            if (attachments.length > 0) {
+                const mediaToSave = attachments.map(att => ({
+                    localId: att.localId, 
+                    id: att.id, 
+                    status: att.status,
+                    file: att.file, 
+                    serverData: att.serverData,
+                    url: att.url,
+                    type: att.type
+                }));
+                await storage.set(DRAFT_MEDIA_KEY, mediaToSave);
+            } else {
+                await storage.remove(DRAFT_MEDIA_KEY);
+            }
+        };
+        saveMediaDraft();
+    }, [attachments]);
 
-    const [attachments, setAttachments] = useState([]);
+
     const [isSending, setIsSending] = useState(false);
     const [isRecording, setIsRecording] = useState(false); 
     const [isDragOver, setIsDragOver] = useState(false); 
@@ -91,11 +129,8 @@ export const useCreatePost = (onPostCreated, wallId = null) => {
             try {
                 const res = await apiClient.search(debouncedMentionQuery);
                 setMentionResults(res?.data?.users || res?.users || []);
-            } catch (e) {
-                console.error(e);
-            } finally {
-                setIsMentionLoading(false);
-            }
+            } catch (e) { console.error(e); } 
+            finally { setIsMentionLoading(false); }
         };
         searchUsers();
     }, [debouncedMentionQuery]);
@@ -120,12 +155,10 @@ export const useCreatePost = (onPostCreated, wallId = null) => {
     
     const processFiles = useCallback(async (files) => {
         if (!files || files.length === 0) return;
-        
         const mediaFiles = Array.from(files).filter(f => {
             const type = f.type.toLowerCase();
             return type.startsWith('image/') || type.startsWith('video/') || f.name.toLowerCase().endsWith('.gif');
         });
-        
         if (mediaFiles.length === 0) return;
 
         if (attachments.length + mediaFiles.length > 4) {
@@ -137,17 +170,15 @@ export const useCreatePost = (onPostCreated, wallId = null) => {
             localId: `pending_${Date.now()}_${Math.random()}`, 
             previewUrl: URL.createObjectURL(file), 
             status: 'pending', 
-            file: file 
+            file: file,
+            type: file.type
         }));
-
         setAttachments(prev => [...prev, ...pendingAttachments]);
 
         const uploadPromises = pendingAttachments.map(async (pending) => {
             try {
                 const result = await apiClient.uploadFile(pending.file);
-                if (result?.data?.id) {
-                    return { localId: pending.localId, serverData: result.data };
-                }
+                if (result?.data?.id) return { localId: pending.localId, serverData: result.data };
                 throw new Error(result?.error?.message || 'Server upload failed');
             } catch (error) {
                 return { localId: pending.localId, error };
@@ -161,118 +192,100 @@ export const useCreatePost = (onPostCreated, wallId = null) => {
             results.forEach(res => {
                 const index = nextState.findIndex(att => att.localId === res.localId);
                 if (index !== -1) {
-                    URL.revokeObjectURL(nextState[index].previewUrl); 
                     if (res.serverData) {
-                        nextState[index] = res.serverData; 
+                        nextState[index] = { 
+                            ...nextState[index], 
+                            status: 'complete', 
+                            id: res.serverData.id, 
+                            serverData: res.serverData,
+                            url: res.serverData.url, 
+                            type: res.serverData.mimeType || res.serverData.type || nextState[index].type
+                        }; 
                     } else {
-                        nextState.splice(index, 1); 
+                        nextState[index] = { ...nextState[index], status: 'error' };
                     }
                 }
             });
             return nextState;
         });
-
-        const successfulCount = results.filter(r => r.serverData).length;
-        if (successfulCount < results.length) {
-            showIslandAlert('error', `Ошибка загрузки ${results.length - successfulCount} файлов`, '⚠️');
-        }
-
     }, [attachments.length, showIslandAlert]);
 
-    const handlePaste = useCallback((e) => {
-        if (e.clipboardData && e.clipboardData.files.length > 0) {
-            e.preventDefault();
-            processFiles(e.clipboardData.files);
-        }
-    }, [processFiles]);
-
-    const setText = useCallback((valOrEvent) => {
-        const value = valOrEvent?.target?.value ?? valOrEvent;
-        setTextState(value);
-        detectAndFetchLink(value);
+    const setTextAndSpans = useCallback((newText, newSpans) => {
+        setTextState(newText);
+        setSpansState(newSpans);
+        detectAndFetchLink(newText);
         
-        const cursor = valOrEvent?.target?.selectionStart;
-        if (cursor !== null && cursor !== undefined) {
-            const textBeforeCursor = value.slice(0, cursor);
-            const currentWord = textBeforeCursor.split(/[\s\n]+/).pop();
-            if (currentWord.startsWith('@') && currentWord.length > 1) {
-                setMentionQuery(currentWord.slice(1));
-                setMentionCursorPos(cursor - currentWord.length + 1);
+        const currentWordMatch = newText.match(/(?:^|\s)(@[a-zA-Z0-9_]*)$/);
+        if (currentWordMatch) {
+            const word = currentWordMatch[1];
+            if (word.length > 1) {
+                setMentionQuery(word.slice(1));
+                setMentionCursorPos(newText.length - word.length + 1);
             } else {
                 setMentionQuery(null);
             }
+        } else {
+            setMentionQuery(null);
         }
     }, []);
     
-    const handleMentionSelect = (username) => {
-        if (!username || mentionCursorPos === null || !textareaRef.current) return;
-        const currentText = text;
-        const afterCursor = currentText.slice(mentionCursorPos); 
-        const endOfWordMatch = afterCursor.match(/[\s\n]/);
-        const endOfWordIndex = endOfWordMatch ? endOfWordMatch.index : -1;
-        const replaceEnd = endOfWordIndex === -1 ? currentText.length : mentionCursorPos + endOfWordIndex;
-        
-        const newText = currentText.substring(0, mentionCursorPos - 1) + `@${username} ` + currentText.substring(replaceEnd);
-        setText(newText);
+    const handleMentionSelect = useCallback((username) => {
+        if (!username || !textareaRef.current) return;
+        textareaRef.current.insertEmoji(`@${username} `); 
         setMentionQuery(null);
         setMentionResults([]);
         setMentionCursorPos(null);
-        
-        setTimeout(() => {
-            if (textareaRef.current) {
-                textareaRef.current.focus();
-                const newCursor = (mentionCursorPos - 1) + 1 + username.length + 1;
-                textareaRef.current.setSelectionRange(newCursor, newCursor);
-            }
-        }, 0);
-    };
+    }, []);
 
-    const insertMarkdown = useCallback((type) => {
-        const textarea = textareaRef.current;
-        if (!textarea) return;
-        const config = MARKDOWN_CONFIG[type];
-        if (!config) return;
-        const start = textarea.selectionStart;
-        const end = textarea.selectionEnd;
-        const currentText = textarea.value;
-        const selectedText = currentText.substring(start, end);
-        const newText = currentText.substring(0, start) + config.start + selectedText + (config.end || config.start) + currentText.substring(end);
-        setText(newText);
-    }, [text, setText]);
+    const insertMarkdown = useCallback((type, url = null) => {
+        if (textareaRef.current) textareaRef.current.format(type, url);
+    }, []);
 
     const insertEmoji = useCallback((emoji) => {
-        const textarea = textareaRef.current;
-        if (!textarea) {
-            setText(text + emoji);
-            return;
-        }
+        if (textareaRef.current) textareaRef.current.insertEmoji(emoji);
+    }, []);
 
-        const start = textarea.selectionStart;
-        const end = textarea.selectionEnd;
-        const currentText = textarea.value;
-        const newText = currentText.substring(0, start) + emoji + currentText.substring(end);
-        
-        setText(newText);
-        
-        setTimeout(() => {
-            textarea.focus();
-            textarea.selectionStart = textarea.selectionEnd = start + emoji.length;
-            textarea.style.height = 'auto';
-            textarea.style.height = textarea.scrollHeight + 'px';
-        }, 0);
-    }, [text, setText]);
 
+    
     const submitPost = async (contentOverride = null, attachmentIdsOverride = null) => {
-        const rawContent = contentOverride !== null ? contentOverride : text;
-        if (!rawContent.trim() && !pollData && (attachmentIdsOverride || attachments.filter(a => !a.status)).length === 0) return;
+        let rawContent = contentOverride !== null ? contentOverride : text;
+        let finalSpans = contentOverride === null ? spans : [];
+        
+        const hasContent = rawContent.trim().length > 0;
+        const hasAttachments = (attachmentIdsOverride || attachments.filter(a => a.status === 'complete').map(a => a.id)).length > 0;
+        const hasPoll = pollData && pollData.question?.trim();
+
+        if (!hasContent && !hasAttachments && !hasPoll) return;
+
         if (rawContent.length > MAX_POST_LENGTH && contentOverride === null) {
             showIslandAlert('error', 'Слишком длинный текст', '📝');
             return;
         }
 
+        const pendingUploads = attachments.filter(a => a.status === 'pending');
+        if (pendingUploads.length > 0) {
+            showIslandAlert('warning', 'Дождитесь загрузки файлов', '⏳');
+            return;
+        }
+
         setIsSending(true);
         try {
-            const ids = attachmentIdsOverride ?? attachments.map(a => a.id).filter(Boolean);
+            
+            rawContent = rawContent.replace(/[\s\n]+$/, ''); 
+            
+            finalSpans = finalSpans
+                .filter(s => s.offset < rawContent.length && s.length > 0)
+                .map(s => {
+                    const safeSpan = { ...s };
+                    
+                    if (safeSpan.offset + safeSpan.length > rawContent.length) {
+                        safeSpan.length = rawContent.length - safeSpan.offset;
+                    }
+                    return safeSpan;
+                });
+
+            const ids = attachmentIdsOverride ?? attachments.map(a => a.id || a.serverData?.id).filter(Boolean);
+
             let pollPayload = null;
             if (pollData && !attachmentIdsOverride) {
                 const validOptions = pollData.options.filter(o => o.trim().length > 0);
@@ -283,17 +296,19 @@ export const useCreatePost = (onPostCreated, wallId = null) => {
                 };
             }
 
-            const { cleanText, spans } = contentOverride === null 
-                ? parseAndCleanForBackend(rawContent) 
-                : { cleanText: rawContent, spans: [] };
-            
-            const res = await apiClient.createPost(cleanText, ids, pollPayload, spans, wallId);
+            const res = await apiClient.createPost(rawContent, ids, pollPayload, finalSpans, wallId);
 
             if (res && !res.error) {
                 storage.remove(DRAFT_TEXT_KEY);
+                storage.remove(DRAFT_SPANS_KEY);
                 storage.remove(DRAFT_POLL_KEY);
+                storage.remove(DRAFT_MEDIA_KEY);
                 
                 setTextState("");
+                setSpansState([]);
+                if (textareaRef.current?.getElement) {
+                    textareaRef.current.getElement().innerHTML = '';
+                }
                 setAttachments([]);
                 setPollData(null);
                 setLinkPreview(null);
@@ -310,6 +325,7 @@ export const useCreatePost = (onPostCreated, wallId = null) => {
                 showIslandAlert('error', msg, '❌');
             }
         } catch (e) {
+            console.error(e);
             showIslandAlert('error', 'Сбой при отправке', '📡');
         } finally { 
             setIsSending(false); 
@@ -340,15 +356,14 @@ export const useCreatePost = (onPostCreated, wallId = null) => {
     const removeLinkPreview = () => setLinkPreview(null);
     const togglePoll = () => setPollData(p => p ? null : { question: '', options: ['', ''], multiple: false });
     const updatePoll = (newData) => setPollData(newData);
-    
+    const isUploading = attachments.some(a => a.status === 'pending');
+
     return {
-        text, setText, textareaRef, insertMarkdown, insertEmoji, handlePaste,
-        attachments, removeAttachment, handleFileSelect,
-        isSending,
+        text, spans, setTextAndSpans, textareaRef, insertMarkdown, insertEmoji,
+        attachments, removeAttachment, handleFileSelect, processFiles,
+        isSending, isUploading,
         isRecording, setIsRecording, handleVoiceSent,
-        pollData, togglePoll, updatePoll,
-        openDrawingModal,
-        submitPost, 
+        pollData, togglePoll, updatePoll, openDrawingModal, submitPost, 
         mentionResults, isMentionLoading, handleMentionSelect,
         linkPreview, isFetchingPreview, removeLinkPreview,
         isDragOver, setIsDragOver,

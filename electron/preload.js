@@ -9,17 +9,13 @@ contextBridge.exposeInMainWorld('api', {
     call: (endpoint, method, body) => ipcRenderer.invoke('api-call', { endpoint, method, body }),
     getInitUser: () => ipcRenderer.invoke('get-init-user'),
     
-    runDiagnostics: () => ipcRenderer.invoke('app:diagnostics'),
     checkInternetQuick: () => ipcRenderer.invoke('app:quick-check'),
-
-    autoGrabToken: () => ipcRenderer.invoke('auto-grab-token'),
-    openStealthLogin: () => ipcRenderer.invoke('open-stealth-login'),
-    
     onAuthLog: (callback) => {
         const subscription = (_event, message) => callback(message);
         ipcRenderer.on('auth-log', subscription);
         return () => ipcRenderer.removeListener('auth-log', subscription);
     },
+    
 
     compressAudio: (fileData) => ipcRenderer.invoke('compress-audio', fileData),
     compressVideo: (fileData) => ipcRenderer.invoke('compress-video', fileData),
@@ -62,5 +58,10 @@ contextBridge.exposeInMainWorld('api', {
         getStats: () => ipcRenderer.invoke('cache:get-stats'),
         clear: (categories) => ipcRenderer.invoke('cache:clear', categories),
         updateLimits: (limits) => ipcRenderer.invoke('cache:update-limits', limits)
+    },
+    system: {
+        setProgressBar: (progress, mode = 'normal') => ipcRenderer.send('sys:set-progress', { progress, mode }),
+        setBadge: (count) => ipcRenderer.send('sys:set-badge', count),
+        setThumbarButtons: (isPlaying) => ipcRenderer.send('sys:set-thumbar', isPlaying)
     },
 });

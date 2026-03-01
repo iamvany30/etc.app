@@ -2,8 +2,8 @@
 import React, { useState, useMemo, useRef, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { Virtuoso } from 'react-virtuoso';
-import { usePosts } from '../hooks/usePosts'; 
-import { useQueryClient } from '@tanstack/react-query'; 
+import { usePosts } from '../hooks/usePosts';
+import { useQueryClient } from '@tanstack/react-query';
 
 import PostCard from '../components/PostCard';
 import CreatePost from '../components/CreatePost';
@@ -13,7 +13,7 @@ import { Ghost, Planet, RefreshCircle, MagicStick3, UsersGroupTwoRounded } from 
 import '../styles/Feed.css';
 
 const Feed = () => {
-    
+
     const [tab, setTab] = useState('popular');
     const virtuosoRef = useRef(null);
     const queryClient = useQueryClient();
@@ -30,18 +30,38 @@ const Feed = () => {
 
     const allPosts = useMemo(() => {
         if (!data?.pages) return [];
-        return data.pages.flatMap(page => {
-            if (!page) return [];
+
+        const uniquePosts = [];
+        const uniqueIds = new Set();
+
+        data.pages.forEach(page => {
+            if (!page) return;
             const postsArray = page.posts || (Array.isArray(page) ? page : (page.data && Array.isArray(page.data) ? page.data : []));
-            return postsArray;
-        }).filter(Boolean); 
+
+            postsArray.forEach(post => {
+                if (post && !uniqueIds.has(post.id)) {
+                    uniqueIds.add(post.id);
+                    uniquePosts.push(post);
+                }
+            });
+        });
+
+        return uniquePosts;
     }, [data]);
 
     const handlePostCreated = useCallback((newPost) => {
         queryClient.setQueryData(['posts', tab], (oldData) => {
             if (!oldData || !oldData.pages || oldData.pages.length === 0) return oldData;
+
             const newPages = [...oldData.pages];
-            
+            const firstPage = newPages[0];
+            const postsArray = Array.isArray(firstPage) ? firstPage : (firstPage.posts || []);
+
+
+            if (postsArray.some(p => p.id === newPost.id)) {
+                return oldData;
+            }
+
             if (Array.isArray(newPages[0])) {
                 newPages[0] = [newPost, ...newPages[0]];
             } else if (newPages[0]) {
@@ -50,10 +70,10 @@ const Feed = () => {
                     posts: [newPost, ...(newPages[0].posts || [])]
                 };
             }
-            
+
             return { ...oldData, pages: newPages };
         });
-        
+
         virtuosoRef.current?.scrollToIndex({ index: 0, align: 'start', behavior: 'smooth' });
     }, [queryClient, tab]);
 
@@ -81,11 +101,11 @@ const Feed = () => {
                     </button>
                 </div>
             </header>
-            
+
             <div className="feed-create-post-wrapper">
                 <CreatePost onPostCreated={handlePostCreated} />
             </div>
-            
+
             {isLoading && (
                 <div className="skeleton-list">
                     {[1, 2, 3].map(i => <PostSkeleton key={i} />)}
@@ -95,21 +115,21 @@ const Feed = () => {
             {!isLoading && !isError && allPosts.length === 0 && (
                 <div className="empty-state">
                     <div className="empty-state-icon">
-                        {tab === 'following' ? <Ghost size={48} /> : 
-                         tab === 'clan' ? <UsersGroupTwoRounded size={48} /> :
-                         <Planet size={48} />}
+                        {tab === 'following' ? <Ghost size={48} /> :
+                            tab === 'clan' ? <UsersGroupTwoRounded size={48} /> :
+                                <Planet size={48} />}
                     </div>
                     <h3>
-                        {tab === 'following' ? 'Ваша лента пуста' : 
-                         tab === 'clan' ? 'В клане тихо' : 
-                         'Ничего не найдено'}
+                        {tab === 'following' ? 'Ваша лента пуста' :
+                            tab === 'clan' ? 'В клане тихо' :
+                                'Ничего не найдено'}
                     </h3>
                     <p>
-                        {tab === 'following' 
+                        {tab === 'following'
                             ? <>Посты от тех, на кого вы подписаны, появятся здесь. <Link to="/explore" className="empty-feed-link">Найти друзей</Link>.</>
                             : tab === 'clan'
-                            ? 'Здесь будут посты участников вашего эмодзи-клана.'
-                            : 'В этой ленте пока нет постов. Станьте первым, кто напишет!'}
+                                ? 'Здесь будут посты участников вашего эмодзи-клана.'
+                                : 'В этой ленте пока нет постов. Станьте первым, кто напишет!'}
                     </p>
                 </div>
             )}
@@ -126,8 +146,8 @@ const Feed = () => {
     ), [tab, isLoading, isError, allPosts.length, error, fetchNextPage, handlePostCreated]);
 
     const Footer = useMemo(() => () => {
-        if (isFetchingNextPage) return <div style={{padding: '20px 0'}}><PostSkeleton /></div>;
-        
+        if (isFetchingNextPage) return <div style={{ padding: '20px 0' }}><PostSkeleton /></div>;
+
         if (!hasNextPage && allPosts.length > 0) {
             return (
                 <div className="feed-end-message">
@@ -150,9 +170,8 @@ const Feed = () => {
                         fetchNextPage();
                     }
                 }}
-                overscan={1500} 
-                data-virtuoso-scroller="true" 
-                
+                overscan={1500}
+                data-virtuoso-scroller="true"
                 itemContent={(index, post) => {
                     if (!post) return null;
                     return <PostCard post={post} key={post.id || index} />;

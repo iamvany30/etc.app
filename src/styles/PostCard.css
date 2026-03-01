@@ -1,8 +1,6 @@
 /* @source src/styles/PostCard.css */
 
-/* =========================================
-   1. БАЗОВЫЙ КОНТЕЙНЕР ПОСТА
-   ========================================= */
+
 .post-container {
     display: grid;
     grid-template-columns: 44px 1fr;
@@ -35,9 +33,7 @@
     background-color: rgba(0, 0, 0, 0.02);
 }
 
-/* =========================================
-   2. МЕТА-ИНФОРМАЦИЯ (Закреп / Репост)
-   ========================================= */
+
 .post-meta-row {
     grid-column: 2 / 3; 
     display: flex;
@@ -58,9 +54,7 @@
     fill: currentColor;
 }
 
-/* =========================================
-   3. АВАТАРКА АВТОРА
-   ========================================= */
+
 .post-avatar-column {
     grid-column: 1 / 2;
     display: flex;
@@ -81,7 +75,6 @@
     display: block;
     transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1), filter 0.2s ease;
     
-    
     text-decoration: none;
     border: none;
     color: inherit;
@@ -91,10 +84,6 @@
     filter: brightness(0.9);
     transform: scale(1.05);
     text-decoration: none; 
-}
-.avatar-wrapper-post:hover {
-    filter: brightness(0.9);
-    transform: scale(1.05);
 }
 
 .online-indicator-post {
@@ -114,9 +103,7 @@
     border-color: var(--color-item-bg);
 }
 
-/* =========================================
-   4. ОСНОВНОЙ КОНТЕНТ ПОСТА
-   ========================================= */
+
 .post-content-column {
     grid-column: 2 / 3;
     display: flex;
@@ -129,7 +116,6 @@
 .post-container:has(.post-meta-row) .post-content-column {
     padding-top: 0;
 }
-
 
 .post-header-row {
     display: flex;
@@ -176,7 +162,6 @@
     opacity: 0.6;
 }
 
-
 .post-menu-btn {
     width: 32px;
     height: 32px;
@@ -198,7 +183,6 @@
     background-color: rgba(var(--color-primary-rgb), 0.1);
 }
 
-
 .post-text-content {
     font-size: 15px;
     line-height: 1.5;
@@ -208,9 +192,7 @@
     margin-bottom: 8px; 
 }
 
-/* =========================================
-   5. ЦИТАТЫ (РЕПОСТЫ)
-   ========================================= */
+
 .quote-container {
     margin-top: 8px;
     border: 1px solid var(--color-border);
@@ -254,16 +236,66 @@
     white-space: nowrap;
 }
 
-/* =========================================
-   6. ПАНЕЛЬ ДЕЙСТВИЙ (ЛАЙКИ, КОММЕНТЫ)
-   ========================================= */
+
 .post-footer-actions {
     display: flex;
     justify-content: space-between;
     align-items: center;
     margin-top: 8px;
-    max-width: 460px; 
+    width: 100%;
+    padding-right: 8px;
 }
+
+.post-footer-left {
+    display: flex;
+    align-items: center;
+    gap: 2px;
+}
+
+.post-footer-right {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+
+.post-captured-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 10px;
+    border-radius: 99px;
+    background: linear-gradient(135deg, rgba(var(--color-primary-rgb), 0.15), rgba(var(--color-primary-rgb), 0.05));
+    border: 1px solid rgba(var(--color-primary-rgb), 0.2);
+    font-size: 11px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: var(--color-primary);
+    cursor: default;
+    user-select: none;
+    transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.post-captured-badge:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(var(--color-primary-rgb), 0.15);
+}
+
+.captured-emoji {
+    font-size: 14px;
+    filter: drop-shadow(0 2px 4px rgba(0,0,0,0.2));
+}
+
+.captured-text {
+    color: var(--color-text);
+    opacity: 0.9;
+}
+
+[data-bg='light'] .captured-text {
+    color: var(--color-text-secondary);
+}
+
 
 .action-group {
     display: flex;
@@ -280,6 +312,11 @@
     margin-left: -8px;
     transition: color 0.2s ease;
     position: relative;
+}
+
+.post-footer-right .action-group {
+    margin-left: 0;
+    padding: 0;
 }
 
 .action-icon-wrapper {
@@ -318,9 +355,7 @@
 .action-group:active .action-icon-wrapper { transform: scale(0.85); }
 .action-group.like:active .action-icon-wrapper { transform: scale(1.2); }
 
-/* =========================================
-   7. ВЫПАДАЮЩЕЕ МЕНЮ (ПОСТ)
-   ========================================= */
+
 .post-dropdown-menu {
     background-color: rgba(var(--glass-bg-rgb), 0.85);
     backdrop-filter: blur(25px) saturate(200%);
@@ -391,9 +426,7 @@
 }
 [data-bg='light'] .post-menu-separator { background-color: rgba(0, 0, 0, 0.06); }
 
-/* =========================================
-   8. КОНТЕЙНЕР КОММЕНТАРИЕВ (ИЗОЛИРОВАН ОТ СЕТКИ)
-   ========================================= */
+
 .comments-section-wrapper {
     grid-column: 1 / -1; 
     border-top: 1px solid var(--color-border);
@@ -403,10 +436,8 @@
     padding-left: 76px; 
     background-color: transparent;
     
-    
     display: block;
     overflow: hidden; 
-    
     
     animation: commentsFadeIn 0.25s ease-out forwards;
 }
@@ -422,9 +453,7 @@
     }
 }
 
-/* =========================================
-   9. РЕДАКТИРОВАНИЕ И МУЗЫКА
-   ========================================= */
+
 .music-post-container {
     width: 100%;
     margin-top: 8px;
@@ -476,8 +505,24 @@
     color: #fff;
 }
 
+
 [data-perf='low'] .post-dropdown-menu {
     backdrop-filter: none !important;
     -webkit-backdrop-filter: none !important;
     background-color: var(--color-item-bg) !important;
+}
+
+
+@media (max-width: 480px) {
+    .post-footer-right .action-group.view span {
+        display: none; 
+    }
+    
+    .post-captured-badge {
+        padding: 4px 6px;
+    }
+    
+    .captured-text {
+        display: none; 
+    }
 }
